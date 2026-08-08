@@ -54,23 +54,11 @@ enum ValueScale {
     });
   }
 
-  /// The four-stop gradient a swatch button shows, sampled at 0/25/50/75%.
-  List<Color> get swatchStops {
-    final ar = srgbToLinear(dark.r),
-        ag = srgbToLinear(dark.g),
-        ab = srgbToLinear(dark.b);
-    final zr = srgbToLinear(light.r),
-        zg = srgbToLinear(light.g),
-        zb = srgbToLinear(light.b);
-    return [0.0, 0.25, 0.5, 0.75]
-        .map(
-          (t) => Color.fromARGB(
-            255,
-            clampChannel8(ar + (zr - ar) * t),
-            clampChannel8(ag + (zg - ag) * t),
-            clampChannel8(ab + (zb - ab) * t),
-          ),
-        )
-        .toList();
-  }
+  /// The four bands a swatch button shows, at 0/25/50/75%.
+  ///
+  /// These are the scale's own four-step ramp rather than a smooth blend, so
+  /// the swatch shows colours the engine actually produces. (The HTML
+  /// prototype hard-codes swatch hexes that match neither its own ramp nor an
+  /// sRGB interpolation of the endpoints; they appear to be hand-picked.)
+  List<Color> get swatchBands => ramp(4);
 }

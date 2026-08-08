@@ -40,6 +40,9 @@ class ScaleControl extends StatelessWidget {
     return SizedBox(
       height: 32 * s,
       child: Row(
+        // Without this a swatch sizes to its bands, which have no height of
+        // their own, and collapses to a hairline.
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           for (final scale in ValueScale.values) ...[
             Expanded(
@@ -47,17 +50,20 @@ class ScaleControl extends StatelessWidget {
                 behavior: HitTestBehavior.opaque,
                 onTap: () => session.setScale(scale),
                 child: Container(
-                  decoration: BoxDecoration(
+                  foregroundDecoration: BoxDecoration(
                     border: Border.all(
                       color: scale == session.settings.scale
                           ? AskanceColors.accent
-                          : AskanceColors.dividerDark,
+                          : AskanceColors.swatchBorder,
                       width: kRule,
                     ),
-                    gradient: LinearGradient(
-                      colors: scale.swatchStops,
-                      stops: const [0, 0.25, 0.5, 0.75],
-                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final band in scale.swatchBands)
+                        Expanded(child: ColoredBox(color: band)),
+                    ],
                   ),
                 ),
               ),

@@ -11,6 +11,7 @@ class ActionButton extends StatefulWidget {
     required this.label,
     required this.onPressed,
     this.trailing,
+    this.trailingIcon,
     this.solid = true,
     this.height = 46,
     this.fontSize = 14,
@@ -22,6 +23,9 @@ class ActionButton extends StatefulWidget {
   final String label;
   final VoidCallback? onPressed;
   final String? trailing;
+
+  /// Used where the design's symbol is not in Archivo; see [GlyphIcon].
+  final Widget? trailingIcon;
   final bool solid;
   final double height;
   final double fontSize;
@@ -56,11 +60,15 @@ class _ActionButtonState extends State<ActionButton> {
                     : const Color(0x12201E1D))
               : null);
 
+    final live = widget.enabled && widget.onPressed != null;
+
     return Opacity(
-      opacity: widget.opacity,
+      // A locked share option keeps its own dimming and stays tappable; a
+      // button with nothing to do is dimmed and inert.
+      opacity: live ? widget.opacity : widget.opacity * 0.4,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTapDown: widget.enabled ? (_) => setState(() => _down = true) : null,
+        onTapDown: live ? (_) => setState(() => _down = true) : null,
         onTapUp: widget.enabled ? (_) => setState(() => _down = false) : null,
         onTapCancel: widget.enabled
             ? () => setState(() => _down = false)
@@ -93,7 +101,9 @@ class _ActionButtonState extends State<ActionButton> {
                   ).by(s),
                 ),
               ),
-              if (widget.trailing != null)
+              if (widget.trailingIcon != null)
+                widget.trailingIcon!
+              else if (widget.trailing != null)
                 Text(
                   widget.trailing!,
                   style: AskanceText.button(

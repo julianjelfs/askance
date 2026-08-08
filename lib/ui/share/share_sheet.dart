@@ -12,6 +12,7 @@ import '../../state/canvas_session.dart';
 import '../../state/providers.dart';
 import '../../theme.dart';
 import '../widgets/controls.dart';
+import '../widgets/glyphs.dart';
 import 'image_output.dart';
 
 /// A bottom sheet on phone, a 360px centred dialog on desktop. One action on
@@ -268,7 +269,11 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
 
             ActionButton(
               label: 'Keep on the shelf',
-              trailing: '★',
+              trailingIcon: GlyphIcon(
+                Glyph.star,
+                size: 14 * s,
+                color: AskanceColors.ground,
+              ),
               onPressed: _busy ? null : _keep,
               opacity: optionOpacity,
             ),
@@ -310,7 +315,24 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
             SizedBox(height: 8 * s),
             ActionButton(
               label: 'Print',
-              trailing: '⌘P',
+              trailingIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  GlyphIcon(
+                    Glyph.command,
+                    size: 13 * s,
+                    color: AskanceColors.ground,
+                  ),
+                  SizedBox(width: 3 * s),
+                  Text(
+                    'P',
+                    style: AskanceText.button(
+                      14,
+                      color: AskanceColors.ground,
+                    ).by(s),
+                  ),
+                ],
+              ),
               solid: false,
               onDark: true,
               onPressed: _busy ? null : _print,
@@ -319,7 +341,11 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
             SizedBox(height: 8 * s),
             ActionButton(
               label: 'Copy to clipboard',
-              trailing: '⧉',
+              trailingIcon: GlyphIcon(
+                Glyph.copy,
+                size: 14 * s,
+                color: AskanceColors.ground,
+              ),
               solid: false,
               onDark: true,
               onPressed: _busy ? null : _copy,

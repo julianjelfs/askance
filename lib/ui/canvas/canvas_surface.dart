@@ -8,6 +8,7 @@ import '../../engine/value_painter.dart';
 import '../../state/canvas_session.dart';
 import '../../theme.dart';
 import '../widgets/controls.dart';
+import '../widgets/glyphs.dart';
 
 /// The image itself, plus every gesture that acts on it.
 ///
@@ -219,13 +220,10 @@ class SplitHandle extends StatelessWidget {
                     height: 32 * s,
                     color: AskanceColors.accent,
                     alignment: Alignment.center,
-                    child: Text(
-                      '◀▶',
-                      style: AskanceText.controlLabel(
-                        9,
-                        tracking: 0,
-                        color: AskanceColors.ground,
-                      ).by(s),
+                    child: GlyphIcon(
+                      Glyph.splitGrip,
+                      size: 11 * s,
+                      color: AskanceColors.ground,
                     ),
                   ),
                 ),

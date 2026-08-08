@@ -14,6 +14,7 @@ import '../onboarding/onboarding_screen.dart';
 import '../share/share_sheet.dart';
 import '../shelf/shelf_screen.dart';
 import '../widgets/controls.dart';
+import '../widgets/glyphs.dart';
 
 /// Designed at 1180 x 760: the rail is fixed and the stage flexes.
 class DesktopScreen extends ConsumerStatefulWidget {
@@ -301,7 +302,11 @@ class _RailState extends ConsumerState<_Rail> {
         const SizedBox(height: 14),
         ActionButton(
           label: 'SHARE',
-          trailing: '↗',
+          trailingIcon: const GlyphIcon(
+            Glyph.arrowUpRight,
+            size: 13,
+            color: AskanceColors.ground,
+          ),
           height: 38,
           fontSize: 11,
           onPressed: session.hasImage

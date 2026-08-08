@@ -29,6 +29,9 @@ abstract final class AskanceColors {
   /// Track behind a segmented control on a dark ground.
   static const trackDark = Color(0x1AF3F2F2);
 
+  /// Border around an inactive scale swatch.
+  static const swatchBorder = Color(0x40F3F2F2);
+
   /// Dashed border of an empty shelf slot.
   static const emptySlot = Color(0x4D201E1D);
 }
