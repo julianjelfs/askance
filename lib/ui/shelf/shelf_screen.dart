@@ -1,4 +1,3 @@
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -10,11 +9,6 @@ import '../onboarding/onboarding_screen.dart';
 import '../pick_image.dart';
 import '../widgets/controls.dart';
 import 'study_card.dart';
-
-/// Loads the bundled reference photograph instead of opening a picker, so the
-/// canvas can be driven in automated runs where a native file dialog cannot be
-/// answered. Off unless built with --dart-define=ASKANCE_DEV_IMAGE=true.
-const bool kDevImage = bool.fromEnvironment('ASKANCE_DEV_IMAGE');
 
 /// The shelf, and the launch screen: what you have made, and two ways to start
 /// something new.
@@ -197,15 +191,6 @@ class _Footer extends ConsumerWidget {
             solid: false,
             onPressed: () => startStudy(context, ref, fromCamera: canTakePhoto),
           ),
-          if (kDevImage) ...[
-            SizedBox(height: 10 * s),
-            ActionButton(
-              label: 'Reference photograph',
-              trailing: '→',
-              solid: false,
-              onPressed: () => startDevStudy(context, ref),
-            ),
-          ],
         ],
       ),
     );
@@ -227,24 +212,6 @@ Future<void> startStudy(
   session.imageKey = null;
   session.loadImage(image, picked.bytes);
 
-  if (!context.mounted) return;
-  if (MediaQuery.sizeOf(context).width < kDesktopBreakpoint) {
-    await Navigator.of(
-      context,
-    ).push(NoTransitionRoute(builder: (_) => const CanvasScreen()));
-  }
-}
-
-/// Development only: opens the bundled reference photograph.
-Future<void> startDevStudy(BuildContext context, WidgetRef ref) async {
-  final data = await rootBundle.load('assets/dev/ref-portrait.jpg');
-  final bytes = data.buffer.asUint8List();
-  if (!context.mounted) return;
-  final session = ref.read(sessionProvider);
-  final image = await decodeImage(bytes);
-  session.startFreshStudy();
-  session.imageKey = null;
-  session.loadImage(image, bytes);
   if (!context.mounted) return;
   if (MediaQuery.sizeOf(context).width < kDesktopBreakpoint) {
     await Navigator.of(

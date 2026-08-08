@@ -35,9 +35,6 @@ flutter:
   shaders:
     - shaders/askance.frag
 
-  assets:
-    - assets/dev/
-
   fonts:
     - family: Archivo
       fonts:

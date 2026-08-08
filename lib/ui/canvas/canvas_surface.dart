@@ -223,23 +223,24 @@ class SplitHandle extends StatelessWidget {
         final width = constraints.maxWidth;
         final target = 44 * s;
         return Stack(
+          clipBehavior: Clip.hardEdge,
           children: [
             Positioned(
-              left: (session.splitPosition * width - target / 2).clamp(
-                0.0,
-                width - target,
-              ),
+              // Deliberately not clamped into the frame: the grip stays
+              // centred on the boundary the whole way and clips at the edges.
+              // Holding it back so it stays wholly visible would leave it
+              // trailing the rule by half its width at either extreme.
+              left: session.splitPosition * width - target / 2,
               top: 0,
               bottom: 0,
               width: target,
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onHorizontalDragUpdate: (d) {
-                  final box = context.findRenderObject() as RenderBox?;
-                  if (box == null) return;
-                  final local = box.globalToLocal(d.globalPosition);
-                  session.setSplitPosition(local.dx / width);
-                },
+                // Follows the pointer by delta, so it needs no mapping back
+                // into the surface's coordinate space.
+                onHorizontalDragUpdate: (d) => session.setSplitPosition(
+                  session.splitPosition + d.delta.dx / width,
+                ),
                 onHorizontalDragEnd: (_) => session.setSplitPosition(
                   session.splitPosition,
                   settle: true,

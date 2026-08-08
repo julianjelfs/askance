@@ -1,11 +1,11 @@
 {
-    "name": "askance",
-    "short_name": "askance",
+    "name": "Askance",
+    "short_name": "Askance",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#201e1d",
+    "theme_color": "#201e1d",
+    "description": "Flattens a photograph into a handful of values, so you can see the shapes light actually makes.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
