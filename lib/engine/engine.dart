@@ -40,10 +40,18 @@ double skeletonLineWidth(double renderWidth) =>
 /// Where the source image lands when cover-cropped into a [output]-sized frame
 /// at 1x zoom.
 Rect coverRect(Size source, Size output) {
-  final scale = math.max(output.width / source.width, output.height / source.height);
+  final scale = math.max(
+    output.width / source.width,
+    output.height / source.height,
+  );
   final w = source.width * scale;
   final h = source.height * scale;
-  return Rect.fromLTWH((output.width - w) / 2, (output.height - h) * kCropAlignY, w, h);
+  return Rect.fromLTWH(
+    (output.width - w) / 2,
+    (output.height - h) * kCropAlignY,
+    w,
+    h,
+  );
 }
 
 /// Pan/zoom over the cover-cropped frame. Translation is in output pixels and
@@ -98,7 +106,12 @@ class ViewTransform {
       ViewTransform(zoom: zoom ?? this.zoom, offset: offset ?? this.offset);
 
   /// Zoom to [target] keeping the output-space point [focus] under the finger.
-  ViewTransform zoomedAt(Offset focus, double target, Size source, Size output) {
+  ViewTransform zoomedAt(
+    Offset focus,
+    double target,
+    Size source,
+    Size output,
+  ) {
     final next = target.clamp(minZoom, maxZoom);
     final k = next / zoom;
     final o = Offset(
@@ -117,62 +130,66 @@ class ViewTransform {
   int get hashCode => Object.hash(zoom, offset);
 }
 
-/// The blurred, cropped source at output resolution. This is the input to the
-/// shader; the blur has to happen in screen space, which is what makes shapes
-/// simplify uniformly no matter how far you have zoomed in.
-class BlurredSource {
-  BlurredSource._(this.image, this._key);
-
-  final ui.Image image;
-  final Object _key;
-
-  static Object keyFor({
-    required Size outputPx,
-    required double detail,
-    required ViewTransform view,
-  }) => Object.hash(outputPx.width, outputPx.height, detail, view.zoom, view.offset);
-
-  bool matches(Object key) => _key == key;
-
-  void dispose() => image.dispose();
-
-  static BlurredSource render({
-    required ui.Image source,
-    required Size outputPx,
-    required double detail,
-    required ViewTransform view,
-  }) {
-    final w = outputPx.width.round();
-    final h = outputPx.height.round();
-    final recorder = ui.PictureRecorder();
-    final canvas = ui.Canvas(recorder, Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble()));
-    final dest = view.destination(
-      Size(source.width.toDouble(), source.height.toDouble()),
-      Size(w.toDouble(), h.toDouble()),
-    );
-    canvas.drawImageRect(
-      source,
-      Rect.fromLTWH(0, 0, source.width.toDouble(), source.height.toDouble()),
-      dest,
-      Paint()
-        ..filterQuality = FilterQuality.medium
-        // Clamp rather than decal: a decal blur pulls transparency in from
-        // outside the image and leaves a dark rim once premultiplied.
-        ..imageFilter = ui.ImageFilter.blur(
-          sigmaX: blurSigma(detail, w.toDouble()),
-          sigmaY: blurSigma(detail, w.toDouble()),
-          tileMode: TileMode.clamp,
-        ),
-    );
-    final picture = recorder.endRecording();
-    final image = picture.toImageSync(w, h);
-    picture.dispose();
-    return BlurredSource._(
-      image,
-      keyFor(outputPx: outputPx, detail: detail, view: view),
-    );
-  }
+/// Renders the blurred, cropped source at output resolution.
+///
+/// This is the input to the shader. The blur has to happen in screen space —
+/// that is what makes shapes simplify uniformly however far you have zoomed —
+/// so it cannot be folded into the fragment pass at sigma 16.
+///
+/// Deliberately asynchronous: `Picture.toImageSync` hands back an image whose
+/// backing texture may not have been rasterised yet, and binding that as a
+/// shader sampler intermittently samples an empty texture. `toImage` waits for
+/// the raster thread, at the cost of the result landing a frame later.
+Future<ui.Image> renderBlurredSource({
+  required ui.Image source,
+  required Size outputPx,
+  required double detail,
+  required ViewTransform view,
+}) async {
+  final w = outputPx.width.round();
+  final h = outputPx.height.round();
+  final recorder = ui.PictureRecorder();
+  final canvas = ui.Canvas(
+    recorder,
+    Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble()),
+  );
+  final dest = view.destination(
+    Size(source.width.toDouble(), source.height.toDouble()),
+    Size(w.toDouble(), h.toDouble()),
+  );
+  final sigma = blurSigma(detail, w.toDouble());
+  canvas.drawImageRect(
+    source,
+    Rect.fromLTWH(0, 0, source.width.toDouble(), source.height.toDouble()),
+    dest,
+    Paint()
+      ..filterQuality = FilterQuality.medium
+      // Clamp rather than decal: a decal blur pulls transparency in from
+      // outside the image and leaves a dark rim once premultiplied.
+      ..imageFilter = ui.ImageFilter.blur(
+        sigmaX: sigma,
+        sigmaY: sigma,
+        tileMode: TileMode.clamp,
+      ),
+  );
+  final picture = recorder.endRecording();
+  final image = await picture.toImage(w, h);
+  picture.dispose();
+  return image;
 }
+
+/// Identifies a blur result, so it is recomputed only when it has to be.
+Object blurKeyFor({
+  required Size outputPx,
+  required double detail,
+  required ViewTransform view,
+}) => Object.hash(
+  outputPx.width,
+  outputPx.height,
+  detail,
+  view.zoom,
+  view.offset,
+);
 
 /// Wraps the compiled fragment program and knows how to set its uniforms.
 class ValueShader {

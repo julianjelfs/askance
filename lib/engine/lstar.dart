@@ -25,7 +25,11 @@ double luminanceOfLstar(double l) =>
 
 /// L* of an 8-bit sRGB triple, 0..100.
 double lstarOfSrgb8(int r, int g, int b) => lstarOfLuminance(
-  luminance(srgbToLinear(r / 255), srgbToLinear(g / 255), srgbToLinear(b / 255)),
+  luminance(
+    srgbToLinear(r / 255),
+    srgbToLinear(g / 255),
+    srgbToLinear(b / 255),
+  ),
 );
 
 int clampChannel8(double linear) =>

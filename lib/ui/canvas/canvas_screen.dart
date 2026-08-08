@@ -1,0 +1,368 @@
+import 'package:flutter/material.dart'
+    show TextField, InputDecoration, InputBorder;
+import 'package:flutter/services.dart' show TextInputAction;
+import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../engine/engine.dart';
+import '../../state/canvas_session.dart';
+import '../../state/providers.dart';
+import '../../theme.dart';
+import '../share/share_sheet.dart';
+import '../widgets/controls.dart';
+import 'canvas_surface.dart';
+import 'tool_panel.dart';
+
+/// The app. A fullscreen image with chrome over it that can be dismissed
+/// entirely.
+class CanvasScreen extends ConsumerWidget {
+  const CanvasScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final session = ref.watch(sessionProvider);
+    final shader = ref.watch(shaderProvider);
+
+    return Container(
+      color: AskanceColors.ink,
+      child: ListenableBuilder(
+        listenable: session,
+        builder: (context, _) {
+          if (!session.hasImage || !shader.hasValue) {
+            return const SizedBox.expand();
+          }
+          return _CanvasBody(session: session, shader: shader.requireValue);
+        },
+      ),
+    );
+  }
+}
+
+class _CanvasBody extends ConsumerWidget {
+  const _CanvasBody({required this.session, required this.shader});
+
+  final CanvasSession session;
+  final ValueShader shader;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = DesignScale.of(context);
+    final padding = MediaQuery.paddingOf(context);
+    final chromeVisible = session.chromeVisible;
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        CanvasSurface(session: session, shader: shader),
+
+        if (session.settings.mode == ViewMode.split && !session.peeking)
+          SplitHandle(session: session),
+
+        // Chrome fades out entirely on a single tap, and stops taking hits
+        // while it is gone.
+        IgnorePointer(
+          ignoring: !chromeVisible,
+          child: AnimatedOpacity(
+            opacity: chromeVisible ? 1 : 0,
+            duration: AskanceMotion.chromeFade,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: _TopBar(session: session, topInset: padding.top),
+                ),
+                Positioned(
+                  top: padding.top + 60 * s,
+                  right: 14 * s,
+                  child: _ModeRail(session: session),
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (session.openTool != null)
+                        ToolPanel(session: session, tool: session.openTool!),
+                      _ToolBar(session: session, bottomInset: padding.bottom),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TopBar extends ConsumerStatefulWidget {
+  const _TopBar({required this.session, required this.topInset});
+
+  final CanvasSession session;
+  final double topInset;
+
+  @override
+  ConsumerState<_TopBar> createState() => _TopBarState();
+}
+
+class _TopBarState extends ConsumerState<_TopBar> {
+  bool _editing = false;
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.session.name,
+  );
+  final _focus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _focus.addListener(() {
+      if (!_focus.hasFocus && _editing) _commit();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  void _commit() {
+    final name = _controller.text.trim();
+    widget.session.rename(name.isEmpty ? 'Untitled study' : name);
+    final id = widget.session.studyId;
+    if (id != null) {
+      ref.read(studiesProvider.notifier).rename(id, widget.session.name);
+    }
+    setState(() => _editing = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = DesignScale.of(context);
+    final session = widget.session;
+    final nameStyle =
+        AskanceText.controlLabel(
+              10,
+              tracking: 0.05,
+              color: AskanceColors.ground,
+            )
+            .by(s)
+            .copyWith(
+              shadows: const [Shadow(color: Color(0x99000000), blurRadius: 6)],
+            );
+
+    return Container(
+      padding: EdgeInsets.only(top: widget.topInset),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0x8C201E1D), Color(0x00201E1D)],
+        ),
+      ),
+      child: SizedBox(
+        height: 46 * s,
+        child: Row(
+          children: [
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => Navigator.of(context).maybePop(),
+              child: SizedBox(
+                width: 42 * s,
+                height: 32 * s,
+                child: Center(
+                  child: Text(
+                    '←',
+                    style: AskanceText.button(
+                      16,
+                      color: AskanceColors.ground,
+                    ).by(s),
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: _editing
+                  ? TextField(
+                      controller: _controller,
+                      focusNode: _focus,
+                      autofocus: true,
+                      style: nameStyle,
+                      cursorColor: AskanceColors.accent,
+                      cursorWidth: kRule,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _commit(),
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        contentPadding: EdgeInsets.zero,
+                        border: InputBorder.none,
+                      ),
+                    )
+                  : GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        _controller.text = session.name;
+                        setState(() => _editing = true);
+                      },
+                      child: Text(
+                        session.name.toUpperCase(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: nameStyle,
+                      ),
+                    ),
+            ),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => showShareSheet(context, ref),
+              child: SizedBox(
+                width: 42 * s,
+                height: 46 * s,
+                child: Center(
+                  child: ShareIcon(size: 18 * s, color: AskanceColors.ground),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ModeRail extends StatelessWidget {
+  const _ModeRail({required this.session});
+
+  final CanvasSession session;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = DesignScale.of(context);
+    final skeleton = session.settings.mode == ViewMode.skeleton;
+
+    Widget cell({
+      required String label,
+      required bool active,
+      required VoidCallback onTap,
+      required bool first,
+    }) => GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        width: 44 * s,
+        height: 44 * s,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: active ? AskanceColors.accent : null,
+          border: first
+              ? null
+              : const Border(
+                  top: BorderSide(
+                    color: AskanceColors.dividerDark,
+                    width: kRule,
+                  ),
+                ),
+        ),
+        child: Text(
+          label,
+          style: AskanceText.controlLabel(
+            9,
+            tracking: 0.06,
+            color: AskanceColors.ground,
+          ).by(s),
+        ),
+      ),
+    );
+
+    return Container(
+      color: AskanceColors.ink,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final mode in ViewMode.values)
+            cell(
+              label: mode.railLabel,
+              active: session.settings.mode == mode,
+              onTap: () => session.setMode(mode),
+              first: mode == ViewMode.values.first,
+            ),
+          if (skeleton)
+            cell(
+              label: '№',
+              active: session.settings.numbers,
+              onTap: session.toggleNumbers,
+              first: false,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ToolBar extends StatelessWidget {
+  const _ToolBar({required this.session, required this.bottomInset});
+
+  final CanvasSession session;
+  final double bottomInset;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = DesignScale.of(context);
+
+    String labelFor(CanvasTool tool) => switch (tool) {
+      CanvasTool.steps => '${session.settings.steps} VAL',
+      CanvasTool.detail => 'DETAIL',
+      CanvasTool.scale => 'SCALE',
+      CanvasTool.grid => 'GRID',
+    };
+
+    return Container(
+      color: AskanceColors.ink,
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: SizedBox(
+        height: 44 * s,
+        child: Row(
+          children: [
+            for (final tool in CanvasTool.values)
+              Expanded(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => session.toggleTool(tool),
+                  child: Container(
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: session.openTool == tool
+                          ? AskanceColors.accent
+                          : null,
+                      border: tool == CanvasTool.steps
+                          ? null
+                          : const Border(
+                              left: BorderSide(
+                                color: AskanceColors.dividerDark,
+                                width: kRule,
+                              ),
+                            ),
+                    ),
+                    child: Text(
+                      labelFor(tool),
+                      style: AskanceText.controlLabel(
+                        10,
+                        color: AskanceColors.ground,
+                      ).by(s),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}

@@ -28,8 +28,12 @@ enum ValueScale {
   /// Sanity check the README calls out: Graphite at 3 steps must give a middle
   /// band of sRGB 122,120,120. Interpolating in the wrong space gives ~132.
   List<Color> ramp(int steps) {
-    final ar = srgbToLinear(dark.r), ag = srgbToLinear(dark.g), ab = srgbToLinear(dark.b);
-    final zr = srgbToLinear(light.r), zg = srgbToLinear(light.g), zb = srgbToLinear(light.b);
+    final ar = srgbToLinear(dark.r),
+        ag = srgbToLinear(dark.g),
+        ab = srgbToLinear(dark.b);
+    final zr = srgbToLinear(light.r),
+        zg = srgbToLinear(light.g),
+        zb = srgbToLinear(light.b);
 
     final ya = luminance(ar, ag, ab);
     final yz = luminance(zr, zg, zb);
@@ -52,8 +56,12 @@ enum ValueScale {
 
   /// The four-stop gradient a swatch button shows, sampled at 0/25/50/75%.
   List<Color> get swatchStops {
-    final ar = srgbToLinear(dark.r), ag = srgbToLinear(dark.g), ab = srgbToLinear(dark.b);
-    final zr = srgbToLinear(light.r), zg = srgbToLinear(light.g), zb = srgbToLinear(light.b);
+    final ar = srgbToLinear(dark.r),
+        ag = srgbToLinear(dark.g),
+        ab = srgbToLinear(dark.b);
+    final zr = srgbToLinear(light.r),
+        zg = srgbToLinear(light.g),
+        zb = srgbToLinear(light.b);
     return [0.0, 0.25, 0.5, 0.75]
         .map(
           (t) => Color.fromARGB(
