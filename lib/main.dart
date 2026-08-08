@@ -1,122 +1,137 @@
-import 'package:flutter/material.dart';
+// TEMPORARY: shader capability gate. Replaced by the real app once the web
+// path is confirmed. See README "Verify the shader path early on PWA".
+import 'dart:ui' as ui;
 
-void main() {
-  runApp(const MyApp());
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
+
+import 'engine/engine.dart';
+import 'engine/value_scale.dart';
+
+void main() => runApp(const GateApp());
+
+class GateApp extends StatefulWidget {
+  const GateApp({super.key});
+  @override
+  State<GateApp> createState() => _GateAppState();
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class _GateAppState extends State<GateApp> {
+  String _status = 'loading…';
+  ValueShader? _shader;
+  ui.Image? _image;
 
-  // This widget is the root of your application.
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
-    );
+  void initState() {
+    super.initState();
+    _boot();
   }
-}
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
+  Future<void> _boot() async {
+    final log = StringBuffer();
+    try {
+      _shader = await ValueShader.load();
+      log.writeln('FragmentProgram.fromAsset OK');
+    } catch (e) {
+      log.writeln('FragmentProgram FAILED: $e');
+      setState(() => _status = log.toString());
+      return;
+    }
+    try {
+      final data = await rootBundle.load('assets/dev/ref-portrait.jpg');
+      final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
+      _image = (await codec.getNextFrame()).image;
+      log.writeln('image ${_image!.width}x${_image!.height} OK');
+    } catch (e) {
+      log.writeln('image decode FAILED: $e');
+    }
+    try {
+      final blurred = BlurredSource.render(
+        source: _image!,
+        outputPx: const Size(64, 64),
+        detail: 0.5,
+        view: const ViewTransform(),
+      );
+      log.writeln('toImageSync OK (${blurred.image.width}x${blurred.image.height})');
+      blurred.dispose();
+    } catch (e) {
+      log.writeln('toImageSync FAILED: $e');
+    }
+    debugPrint('[askance-gate] $log');
+    setState(() => _status = log.toString());
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Container(
+        color: const Color(0xFF201E1D),
+        child: Stack(
+          fit: StackFit.expand,
           children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+            if (_shader != null && _image != null)
+              CustomPaint(painter: _GatePainter(_shader!, _image!)),
+            Positioned(
+              left: 12,
+              bottom: 12,
+              child: Text(
+                _status,
+                style: const TextStyle(
+                  fontFamily: 'Archivo',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 11,
+                  height: 1.5,
+                  color: Color(0xFFEC3013),
+                ),
+              ),
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ),
     );
   }
+}
+
+class _GatePainter extends CustomPainter {
+  _GatePainter(this.shader, this.image);
+  final ValueShader shader;
+  final ui.Image image;
+
+  // Held across frames. Disposing either of these inside paint() destroys them
+  // before the recorded picture is rasterised, which on web renders as a solid
+  // fill of nothing.
+  BlurredSource? _blurred;
+  ui.FragmentShader? _fragment;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final dpr = WidgetsBinding.instance.platformDispatcher.views.first.devicePixelRatio;
+    final devicePx = Size(size.width * dpr, size.height * dpr);
+    final key = BlurredSource.keyFor(
+      outputPx: devicePx,
+      detail: 0.5,
+      view: const ViewTransform(),
+    );
+    if (_blurred == null || !_blurred!.matches(key)) {
+      _blurred = BlurredSource.render(
+        source: image,
+        outputPx: devicePx,
+        detail: 0.5,
+        view: const ViewTransform(),
+      );
+      _fragment = shader.build(
+        logicalSize: size,
+        devicePx: devicePx,
+        steps: 3,
+        scale: ValueScale.graphite,
+        skeleton: false,
+      )..setImageSampler(0, _blurred!.image);
+    }
+    canvas.drawRect(Offset.zero & size, Paint()..shader = _fragment!);
+  }
+
+  @override
+  bool shouldRepaint(covariant _GatePainter old) => false;
 }
