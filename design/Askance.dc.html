@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><meta name="design_doc_mode" content="canvas"><link rel="stylesheet" href="_ds/modernist-64350e32-bcf5-463d-8ea5-8618cd97f358/styles.css"><script src="_ds/modernist-64350e32-bcf5-463d-8ea5-8618cd97f358/_ds_bundle.js"></script><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&display=swap" rel="stylesheet"><style>
+body{margin:0;background:#f3f2f2;color:#201e1d;font-family:Archivo,system-ui,sans-serif}
+a{color:#ec3013;text-underline-offset:3px}a:hover{color:#ae1800}
+.dv-turn{padding:40px 44px 32px;border-bottom:2px solid rgba(32,30,29,.4);scroll-margin-top:16px}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}
+.dv-tid{font:700 10px/1 Archivo,monospace;padding:5px 7px;background:#201e1d;color:#f3f2f2;text-decoration:none;letter-spacing:.08em}
+.dv-tname{font:800 13px/1.2 Archivo,sans-serif;color:#201e1d;letter-spacing:-.01em}
+.dv-opts{display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px}
+.dv-oid{font:700 10.5px/1 Archivo,monospace;padding:4px 7px;background:rgba(32,30,29,.1);color:#201e1d;text-decoration:none;letter-spacing:.08em}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 Archivo,sans-serif;color:rgba(32,30,29,.55)}
+.dv-card{max-width:100%;background:#f3f2f2;border:2px solid rgba(32,30,29,.4);overflow:hidden}
+.dv-opt:target .dv-oid{background:#ec3013;color:#f3f2f2}
+.dv-next{margin:22px 0 0;font:12px/1.5 Archivo,sans-serif;color:rgba(32,30,29,.55)}
+</style></helmet>
+
+<section class="dv-turn" id="t4">
+<div class="dv-thd"><a class="dv-tid" href="#t4">4</a><span class="dv-tname">The paywall — free to look, £3.99 to keep</span></div>
+<div style="display:grid;grid-template-columns:minmax(0,460px) minmax(0,380px);gap:0 44px;max-width:900px;margin:0 0 8px">
+<div>
+<p style="margin:0 0 12px;font:400 13px/1.6 Archivo,sans-serif;color:rgba(32,30,29,.75);text-wrap:pretty">The unlock lives inside the SHARE sheet on both surfaces — there is no separate upsell screen and nothing interrupts you while you are working. Everything on the canvas stays free forever: every value count, every scale, grid, split, skeleton, zoom. The £3.99 buys the two things that outlive the session, keeping a study on the shelf and getting an image out.</p>
+<p style="margin:0;font:400 13px/1.6 Archivo,sans-serif;color:rgba(32,30,29,.75);text-wrap:pretty">Tapping any locked option is treated as intent to buy rather than an error. Open SHARE in <a class="dv-oid" href="#2a">2a</a> or <a class="dv-oid" href="#3a">3a</a> to see it; the switch below flips both surfaces back to locked.</p>
+</div>
+<div style="border-left:2px solid rgba(32,30,29,.4);padding-left:22px">
+<div style="font:700 9px/1 Archivo,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:rgba(32,30,29,.5);margin:0 0 10px">Prototype state</div>
+<div style="display:flex;gap:8px">
+<button style="height:36px;background:#201e1d;color:#f3f2f2;border:0;font:800 11px/1 Archivo,sans-serif;letter-spacing:.1em;padding:0 14px;cursor:pointer" style-hover="background:#444141" onClick="{{ share.reset }}">SET LOCKED</button>
+<button style="height:36px;background:none;color:#201e1d;border:2px solid rgba(32,30,29,.4);font:800 11px/1 Archivo,sans-serif;letter-spacing:.1em;padding:0 12px;cursor:pointer" style-hover="background:rgba(32,30,29,.07)" onClick="{{ share.restore }}">SET UNLOCKED</button>
+</div>
+<div style="font:400 11px/1.5 Archivo,sans-serif;color:rgba(32,30,29,.55);margin:12px 0 0">Purchase takes ~1s to confirm, as a real store would.</div>
+</div>
+</div>
+<p class="dv-next">Try next: "show the locked state on the shelf too" · "write the App Store copy" · "price it at £4.99 and see how it reads"</p>
+</section>
+
+<section class="dv-turn" id="t3">
+<div class="dv-thd"><a class="dv-tid" href="#t3">3</a><span class="dv-tname">Desktop &amp; web — the same engine, controls in a left rail</span></div>
+<div style="max-width:860px;margin:0 0 30px;padding:0 0 24px;border-bottom:2px solid rgba(32,30,29,.4)"><p style="margin:0;font:400 13px/1.6 Archivo,sans-serif;color:rgba(32,30,29,.75);text-wrap:pretty;max-width:560px">On a large screen nothing needs to hide, so the phone's four tools unfold into one standing rail and the image sits whole on the ground rather than filling the frame. Scroll to zoom, hold to peek the photo, drag the red rule in split. Saving from either surface writes to the same shelf — <a class="dv-oid" href="#2a">2a</a> picks up studies saved here.</p></div>
+<div class="dv-opts">
+<div class="dv-opt" id="3a">
+<div class="dv-olabel"><a class="dv-oid" href="#3a">3a</a>Askance for desktop and web, 1180 × 760</div>
+<div class="dv-card" style="width:1180px">
+<div style="display:grid;grid-template-columns:284px 1fr;width:1180px;height:760px;background:#f3f2f2">
+
+<div style="background:#201e1d;color:#f3f2f2;display:flex;flex-direction:column;overflow:hidden">
+<div style="padding:20px 20px 16px;border-bottom:2px solid rgba(243,242,242,.22);display:flex;align-items:center;justify-content:space-between"><div style="font:800 22px/1 Archivo,sans-serif;letter-spacing:-.02em">Askance</div><button style="height:30px;background:none;color:#f3f2f2;border:2px solid rgba(243,242,242,.45);font:800 10px/1 Archivo,sans-serif;letter-spacing:.1em;cursor:pointer;padding:0 12px" style-hover="background:rgba(243,242,242,.15)" onClick="{{ shelfOpen }}">SHELF</button></div>
+<div style="padding:16px 20px;border-bottom:2px solid rgba(243,242,242,.22)"><div style="font:700 9px/1 Archivo,sans-serif;color:rgba(243,242,242,.5);letter-spacing:.16em;text-transform:uppercase;margin:0 0 8px">Study</div><div style="font:700 14px/1.25 Archivo,sans-serif;margin:0 0 12px;text-wrap:pretty">{{ b4.name }}</div><button style="width:100%;height:34px;background:#ec3013;color:#f3f2f2;border:0;font:800 10px/1 Archivo,sans-serif;letter-spacing:.1em;text-align:left;padding:0 12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" style-hover="background:#dd2b0f" onClick="{{ share.open4 }}"><span>SHARE</span><span>↗</span></button></div>
+
+<div style="flex:1;min-height:0;overflow:auto"><div style="padding:16px 20px;border-bottom:2px solid rgba(243,242,242,.22)"><div style="font:700 9px/1 Archivo,sans-serif;color:rgba(243,242,242,.5);letter-spacing:.16em;text-transform:uppercase;margin:0 0 10px">View</div><div style="display:grid;gap:2px">
+<button style="height:38px;background:{{ b4.mValue }};border:0;color:#f3f2f2;font:700 12px/1 Archivo,sans-serif;letter-spacing:.06em;text-align:left;padding:0 12px;cursor:pointer" onClick="{{ h4.modeValue }}">VALUE MAP</button>
+<button style="height:38px;background:{{ b4.mOriginal }};border:0;color:#f3f2f2;font:700 12px/1 Archivo,sans-serif;letter-spacing:.06em;text-align:left;padding:0 12px;cursor:pointer" onClick="{{ h4.modeOriginal }}">PHOTOGRAPH</button>
+<button style="height:38px;background:{{ b4.mSplit }};border:0;color:#f3f2f2;font:700 12px/1 Archivo,sans-serif;letter-spacing:.06em;text-align:left;padding:0 12px;cursor:pointer" onClick="{{ h4.modeSplit }}">SPLIT</button>
+<button style="height:38px;background:{{ b4.mSkeleton }};border:0;color:#f3f2f2;font:700 12px/1 Archivo,sans-serif;letter-spacing:.06em;text-align:left;padding:0 12px;cursor:pointer" onClick="{{ h4.modeSkeleton }}">SKELETON</button>
+<sc-if value="{{ s4.isSkeleton }}" hint-placeholder-val="{{ false }}"><button style="height:38px;background:{{ b4.numBg }};border:0;color:#f3f2f2;font:700 12px/1 Archivo,sans-serif;letter-spacing:.06em;text-align:left;padding:0 12px;cursor:pointer;margin-left:16px" onClick="{{ h4.toggleNumbers }}">№ NUMBER THE REGIONS</button></sc-if>
+</div></div>
+
+<div style="padding:16px 20px;border-bottom:2px solid rgba(243,242,242,.22)"><div style="display:flex;justify-content:space-between;align-items:baseline;margin:0 0 10px"><span style="font:700 9px/1 Archivo,sans-serif;color:rgba(243,242,242,.5);letter-spacing:.16em;text-transform:uppercase">Values</span><span style="font:700 10px/1 Archivo,sans-serif;color:#ec3013">{{ s4.steps }} STEPS</span></div><div style="position:relative;display:grid;grid-template-columns:repeat(6,1fr);height:36px;background:rgba(243,242,242,.1)"><div style="position:absolute;top:0;bottom:0;left:{{ b4.stepsLeft }};width:16.666%;background:#ec3013;transition:left .22s cubic-bezier(.2,.8,.2,1)"></div><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 12px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h4.steps2 }}">2</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 12px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h4.steps3 }}">3</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 12px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h4.steps4 }}">4</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 12px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h4.steps5 }}">5</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 12px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h4.steps6 }}">6</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 12px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h4.steps7 }}">7</button></div></div>
+
+<div style="padding:16px 20px;border-bottom:2px solid rgba(243,242,242,.22)"><div style="display:flex;justify-content:space-between;align-items:baseline;margin:0 0 4px"><span style="font:700 9px/1 Archivo,sans-serif;color:rgba(243,242,242,.5);letter-spacing:.16em;text-transform:uppercase">Detail</span><span style="font:700 10px/1 Archivo,sans-serif;color:#ec3013">{{ b4.detailNum }}</span></div><div style="position:relative;height:36px;display:flex;align-items:center;cursor:pointer;touch-action:none" onPointerDown="{{ h4.detailDown }}"><div style="position:absolute;left:0;right:0;height:2px;background:rgba(243,242,242,.25)"></div><div style="position:absolute;left:0;width:{{ b4.detailPct }};height:2px;background:#ec3013"></div><div style="position:absolute;top:4px;bottom:4px;left:{{ b4.detailPct }};width:4px;margin-left:-2px;background:#ec3013"></div></div></div>
+
+<div style="padding:16px 20px;border-bottom:2px solid rgba(243,242,242,.22)"><div style="font:700 9px/1 Archivo,sans-serif;color:rgba(243,242,242,.5);letter-spacing:.16em;text-transform:uppercase;margin:0 0 10px">Root of the scale</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px"><button style="height:34px;border:2px solid rgba(243,242,242,.25);padding:0;cursor:pointer;background:linear-gradient(90deg,#111010 0 25%,#5e5c5c 25% 50%,#b6b3b3 50% 75%,#f8f4f4 75% 100%)" onClick="{{ h4.pal0 }}"></button><button style="height:34px;border:2px solid rgba(243,242,242,.25);padding:0;cursor:pointer;background:linear-gradient(90deg,#2a0b05 0 25%,#8d3521 25% 50%,#d4796a 50% 75%,#ffe0d9 75% 100%)" onClick="{{ h4.pal1 }}"></button><button style="height:34px;border:2px solid rgba(243,242,242,.25);padding:0;cursor:pointer;background:linear-gradient(90deg,#0d1520 0 25%,#3f5772 25% 50%,#93aec4 50% 75%,#eef2f7 75% 100%)" onClick="{{ h4.pal2 }}"></button><button style="height:34px;border:2px solid rgba(243,242,242,.25);padding:0;cursor:pointer;background:linear-gradient(90deg,#241a10 0 25%,#6d5637 25% 50%,#b8a184 50% 75%,#f6efe2 75% 100%)" onClick="{{ h4.pal3 }}"></button></div></div>
+
+<div style="padding:16px 20px"><div style="font:700 9px/1 Archivo,sans-serif;color:rgba(243,242,242,.5);letter-spacing:.16em;text-transform:uppercase;margin:0 0 10px">Grid</div><div style="display:flex;gap:8px"><div style="position:relative;display:grid;grid-template-columns:repeat(3,1fr);height:34px;background:rgba(243,242,242,.1);flex:1"><div style="position:absolute;top:0;bottom:0;left:{{ b4.gridLeft }};width:33.333%;background:#ec3013;transition:left .22s cubic-bezier(.2,.8,.2,1)"></div><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 10px/1 Archivo,sans-serif;letter-spacing:.06em;cursor:pointer;padding:0" onClick="{{ h4.gridOff }}">OFF</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 10px/1 Archivo,sans-serif;letter-spacing:.06em;cursor:pointer;padding:0" onClick="{{ h4.gridSquare }}">SQUARE</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 10px/1 Archivo,sans-serif;letter-spacing:.06em;cursor:pointer;padding:0" onClick="{{ h4.gridDiamond }}">DIAMOND</button></div><div style="display:flex;align-items:center;border:2px solid rgba(243,242,242,.25);height:34px"><button style="width:28px;height:30px;background:none;border:0;color:#f3f2f2;font:700 14px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h4.gridMinus }}">–</button><span style="min-width:16px;text-align:center;font:700 11px/1 Archivo,sans-serif;color:#f3f2f2">{{ s4.gridN }}</span><button style="width:28px;height:30px;background:none;border:0;color:#f3f2f2;font:700 14px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h4.gridPlus }}">+</button></div></div></div></div>
+<div style="padding:14px 20px 18px;border-top:2px solid rgba(243,242,242,.22);font:400 11px/1.5 Archivo,sans-serif;color:rgba(243,242,242,.55)">{{ b4.count }} studies on the shelf · scroll to zoom · hold to peek</div>
+</div>
+
+<div style="position:relative;display:flex;align-items:center;justify-content:center;background:#eae9e9;overflow:hidden">
+<sc-if value="{{ deskShelf }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;background:#f3f2f2;z-index:8;display:flex;flex-direction:column">
+<div style="padding:24px 28px 16px;border-bottom:2px solid rgba(32,30,29,.4);display:flex;align-items:baseline;justify-content:space-between"><span style="font:800 26px/1 Archivo,sans-serif;letter-spacing:-.02em">Studies</span><button style="background:none;border:0;color:rgba(32,30,29,.6);font:700 18px/1 Archivo,sans-serif;cursor:pointer;padding:0" style-hover="color:#ec3013" onClick="{{ shelfClose }}">×</button></div>
+<div style="flex:1;min-height:0;overflow:auto;padding:22px 28px">
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px">
+<sc-for list="{{ deskItems }}" as="it" hint-placeholder-count="3">
+<button style="display:block;text-align:left;padding:0;border:2px solid rgba(32,30,29,.4);background:#eae9e9;cursor:pointer" style-hover="border-color:#ec3013" onClick="{{ it.open }}"><canvas ref="{{ it.ref }}" width="256" height="320" style="width:100%;height:auto;display:block"></canvas><div style="padding:9px 10px 10px;border-top:2px solid rgba(32,30,29,.4)"><div style="font:700 12px/1.2 Archivo,sans-serif">{{ it.name }}</div><div style="font:400 10px/1.3 Archivo,sans-serif;color:rgba(32,30,29,.55);margin-top:4px">{{ it.meta }}</div></div></button>
+</sc-for>
+<div style="border:2px dashed rgba(32,30,29,.3);aspect-ratio:4/5;display:flex;align-items:flex-end;padding:12px;background:repeating-linear-gradient(45deg,rgba(32,30,29,.05) 0 6px,transparent 6px 12px)"><span style="font:400 9px/1.3 ui-monospace,Menlo,monospace;color:rgba(32,30,29,.5)">empty slot</span></div>
+</div>
+</div>
+<div style="padding:16px 28px 22px;border-top:2px solid rgba(32,30,29,.4);display:flex;gap:10px">
+<button style="height:44px;background:#ec3013;color:#f3f2f2;border:0;font:800 13px/1 Archivo,sans-serif;text-align:left;padding:0 16px;cursor:pointer;display:flex;align-items:center;gap:14px" style-hover="background:#dd2b0f" onClick="{{ deskNew }}"><span>New study from an image</span><span>→</span></button>
+</div>
+</div>
+</sc-if>
+<div style="position:relative;width:496px;height:744px;border:2px solid rgba(32,30,29,.4);overflow:hidden;touch-action:none;background:#201e1d" onPointerDown="{{ h4.imgDown }}" onPointerMove="{{ h4.imgMove }}" onPointerUp="{{ h4.imgUp }}" onPointerCancel="{{ h4.imgUp }}">
+<canvas ref="{{ c4 }}" width="496" height="744" style="position:absolute;inset:0;width:496px;height:744px;transform-origin:50% 50%"></canvas>
+<div style="position:absolute;inset:0;pointer-events:none;background-image:{{ b4.gridBg }}"></div>
+<sc-if value="{{ share.isDesk }}" hint-placeholder-val="{{ false }}">
+<div data-chrome="1" style="position:absolute;inset:0;background:rgba(32,30,29,.65);display:flex;align-items:center;justify-content:center;z-index:5">
+<div style="width:360px;background:#201e1d;border:2px solid #ec3013;padding:20px">
+<div style="display:flex;align-items:baseline;justify-content:space-between;margin:0 0 16px"><span style="font:800 18px/1 Archivo,sans-serif;color:#f3f2f2;letter-spacing:-.02em">Share this study</span><button style="background:none;border:0;color:rgba(243,242,242,.6);font:700 16px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ share.close }}">×</button></div>
+<sc-if value="{{ share.locked }}" hint-placeholder-val="{{ true }}">
+<div style="border:2px solid #ec3013;padding:13px;margin:0 0 14px">
+<div style="font:700 9px/1 Archivo,sans-serif;color:#ec3013;letter-spacing:.16em;text-transform:uppercase;margin:0 0 8px">One payment · lifetime</div>
+<div style="font:800 17px/1.15 Archivo,sans-serif;color:#f3f2f2;letter-spacing:-.02em;margin:0 0 7px">Keep and export your studies</div>
+<div style="font:400 12px/1.5 Archivo,sans-serif;color:rgba(243,242,242,.65);margin:0 0 14px;text-wrap:pretty">Looking is free, always. £3.99 unlocks the shelf and every way out of the app.</div>
+<button style="width:100%;height:46px;background:#ec3013;color:#f3f2f2;border:0;font:800 14px/1 Archivo,sans-serif;text-align:left;padding:0 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" style-hover="background:#dd2b0f" onClick="{{ share.unlock }}"><span>{{ share.buyLabel }}</span><span>→</span></button>
+<button style="background:none;border:0;color:rgba(243,242,242,.55);font:700 10px/1 Archivo,sans-serif;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;padding:10px 0 0" style-hover="color:#f3f2f2" onClick="{{ share.restore }}">Restore purchase</button>
+</div>
+</sc-if>
+<div style="opacity:{{ share.lockDim }};transition:opacity .25s"><button style="width:100%;height:46px;background:#ec3013;color:#f3f2f2;border:0;font:800 14px/1 Archivo,sans-serif;text-align:left;padding:0 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;margin:0 0 18px" style-hover="background:#dd2b0f" onClick="{{ share.shelf }}"><span>Keep on the shelf</span><span>★</span></button><div style="font:700 9px/1 Archivo,sans-serif;color:rgba(243,242,242,.5);letter-spacing:.16em;text-transform:uppercase;margin:0 0 8px">Size</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;height:36px;margin:0 0 6px;background:rgba(243,242,242,.1)">
+<button style="background:{{ share.screenBg }};border:0;color:#f3f2f2;font:700 11px/1 Archivo,sans-serif;letter-spacing:.08em;cursor:pointer;padding:0" onClick="{{ share.sizeScreen }}">SCREEN</button>
+<button style="background:{{ share.printBg }};border:0;color:#f3f2f2;font:700 11px/1 Archivo,sans-serif;letter-spacing:.08em;cursor:pointer;padding:0" onClick="{{ share.sizePrint }}">PRINT</button>
+</div>
+<div style="font:400 11px/1.4 Archivo,sans-serif;color:rgba(243,242,242,.55);margin:0 0 16px">Image size · {{ share.dims }} · exactly what you see</div>
+<div style="display:grid;gap:8px">
+<button style="height:44px;background:none;color:#f3f2f2;border:2px solid rgba(243,242,242,.35);font:800 13px/1 Archivo,sans-serif;text-align:left;padding:0 12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" style-hover="background:rgba(243,242,242,.12)" onClick="{{ share.save }}"><span>Save image</span><span>↓</span></button>
+<button style="height:44px;background:none;color:#f3f2f2;border:2px solid rgba(243,242,242,.35);font:800 13px/1 Archivo,sans-serif;text-align:left;padding:0 12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" style-hover="background:rgba(243,242,242,.12)" onClick="{{ share.print }}"><span>Print</span><span>⌘P</span></button>
+<button style="height:44px;background:none;color:#f3f2f2;border:2px solid rgba(243,242,242,.35);font:800 13px/1 Archivo,sans-serif;text-align:left;padding:0 12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" style-hover="background:rgba(243,242,242,.12)" onClick="{{ share.copy }}"><span>Copy to clipboard</span><span>⧉</span></button>
+</div>
+</div><div style="font:700 10px/1.4 Archivo,sans-serif;color:#ec3013;letter-spacing:.08em;text-transform:uppercase;margin:14px 0 0;min-height:14px">{{ share.msg }}</div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ s4.isSplit }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;top:0;bottom:0;left:{{ b4.splitPct }};width:44px;margin-left:-22px;cursor:ew-resize;touch-action:none" data-chrome="1" onPointerDown="{{ h4.splitDown }}"><div style="position:absolute;top:0;bottom:0;left:21px;width:2px;background:#ec3013"></div><div style="position:absolute;top:50%;left:6px;width:32px;height:32px;margin-top:-16px;background:#ec3013;display:flex;align-items:center;justify-content:center;color:#f3f2f2;font:700 11px/1 Archivo,sans-serif">◀▶</div></div></sc-if>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+<p class="dv-next">Try next: "let me rename a study" · "add export as an image" · "tighten the skeleton numbers"</p>
+</section>
+
+<section class="dv-turn" id="t2">
+<div class="dv-thd"><a class="dv-tid" href="#t2">2</a><span class="dv-tname">The full flow on <a class="dv-oid" href="#1b">1b</a> — onboarding, studies, canvas</span></div>
+<div style="max-width:860px;margin:0 0 30px;padding:0 0 24px;border-bottom:2px solid rgba(32,30,29,.4)"><p style="margin:0;font:400 13px/1.6 Archivo,sans-serif;color:rgba(32,30,29,.75);text-wrap:pretty;max-width:520px">One phone, the whole app. It opens on the studies shelf — the two thumbnails are rendered by the same engine, so the shelf shows a study's actual value map rather than the photo it came from. Open one to land on the canvas with the <a class="dv-oid" href="#1b">1b</a> chrome; the back mark returns. Onboarding is reachable from the question mark.</p></div>
+<div class="dv-opts">
+<div class="dv-opt" id="2a">
+<div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a>Askance — full flow, iOS phone</div>
+<div class="dv-card" style="width:324px">
+<div style="position:relative;width:320px;height:664px;background:#201e1d;overflow:hidden;touch-action:none" onPointerDown="{{ h3.imgDown }}" onPointerMove="{{ h3.imgMove }}" onPointerUp="{{ h3.imgUp }}" onPointerCancel="{{ h3.imgUp }}">
+
+<canvas ref="{{ c3 }}" width="480" height="996" style="position:absolute;inset:0;width:320px;height:664px;transform-origin:50% 50%"></canvas>
+<div style="position:absolute;inset:0;pointer-events:none;background-image:{{ b3.gridBg }}"></div>
+
+<sc-if value="{{ b3.isCanvas }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;top:0;left:0;right:0;height:62px;background:linear-gradient(180deg,rgba(32,30,29,.55),rgba(32,30,29,0));pointer-events:none"></div>
+<div data-chrome="1" style="position:absolute;top:0;left:0;right:0;height:46px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 0 4px 0;will-change:opacity;transition:opacity .22s;opacity:{{ b3.chromeOpacity }};pointer-events:{{ b3.chromePE }}">
+<button style="width:42px;height:32px;background:none;border:0;color:#f3f2f2;font:700 15px/1 Archivo,sans-serif;cursor:pointer;padding:0;text-shadow:0 1px 3px rgba(0,0,0,.5)" onClick="{{ nav.toLibrary }}">←</button>
+<span style="flex:1;font:700 10px/1 Archivo,sans-serif;color:#f3f2f2;letter-spacing:.05em;padding:0 0 6px;text-shadow:0 1px 3px rgba(0,0,0,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ b3.title }}</span>
+<button aria-label="Share" style="width:34px;height:34px;background:none;border:0;color:#f3f2f2;cursor:pointer;padding:0;margin:0 10px 0 6px;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 1px 3px rgba(0,0,0,.5))" style-hover="color:#ec3013" onClick="{{ share.open3 }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg></button>
+</div>
+<sc-if value="{{ share.isPhone }}" hint-placeholder-val="{{ false }}">
+<div data-chrome="1" style="position:absolute;inset:0;background:rgba(32,30,29,.6);z-index:5" onClick="{{ share.close }}"></div>
+<div data-chrome="1" style="position:absolute;left:0;right:0;bottom:0;background:#201e1d;border-top:2px solid #ec3013;z-index:6;padding:18px 18px 22px">
+<div style="display:flex;align-items:baseline;justify-content:space-between;margin:0 0 16px"><span style="font:800 18px/1 Archivo,sans-serif;color:#f3f2f2;letter-spacing:-.02em">Share this study</span><button style="background:none;border:0;color:rgba(243,242,242,.6);font:700 16px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ share.close }}">×</button></div>
+<sc-if value="{{ share.locked }}" hint-placeholder-val="{{ true }}">
+<div style="border:2px solid #ec3013;padding:14px;margin:0 0 16px">
+<div style="font:700 9px/1 Archivo,sans-serif;color:#ec3013;letter-spacing:.16em;text-transform:uppercase;margin:0 0 8px">One payment · lifetime</div>
+<div style="font:800 17px/1.15 Archivo,sans-serif;color:#f3f2f2;letter-spacing:-.02em;margin:0 0 8px">Keep and export your studies</div>
+<div style="font:400 12px/1.5 Archivo,sans-serif;color:rgba(243,242,242,.65);margin:0 0 14px;text-wrap:pretty">Looking is free, always — every value, every mode, no limit. £3.99 unlocks the shelf and every way out of the app.</div>
+<button style="width:100%;height:44px;background:#ec3013;color:#f3f2f2;border:0;font:800 14px/1 Archivo,sans-serif;text-align:left;padding:0 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" style-hover="background:#dd2b0f" onClick="{{ share.unlock }}"><span>{{ share.buyLabel }}</span><span>→</span></button>
+<button style="background:none;border:0;color:rgba(243,242,242,.55);font:700 10px/1 Archivo,sans-serif;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;padding:10px 0 0" style-hover="color:#f3f2f2" onClick="{{ share.restore }}">Restore purchase</button>
+</div>
+</sc-if>
+<div style="opacity:{{ share.lockDim }};transition:opacity .25s"><button style="width:100%;height:44px;background:#ec3013;color:#f3f2f2;border:0;font:800 13px/1 Archivo,sans-serif;text-align:left;padding:0 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;margin:0 0 18px" style-hover="background:#dd2b0f" onClick="{{ share.shelf }}"><span>Keep on the shelf</span><span>★</span></button><div style="font:700 9px/1 Archivo,sans-serif;color:rgba(243,242,242,.5);letter-spacing:.16em;text-transform:uppercase;margin:0 0 8px">Size</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;height:36px;margin:0 0 6px;background:rgba(243,242,242,.1)">
+<button style="background:{{ share.screenBg }};border:0;color:#f3f2f2;font:700 11px/1 Archivo,sans-serif;letter-spacing:.08em;cursor:pointer;padding:0" onClick="{{ share.sizeScreen }}">SCREEN</button>
+<button style="background:{{ share.printBg }};border:0;color:#f3f2f2;font:700 11px/1 Archivo,sans-serif;letter-spacing:.08em;cursor:pointer;padding:0" onClick="{{ share.sizePrint }}">PRINT</button>
+</div>
+<div style="font:400 11px/1.4 Archivo,sans-serif;color:rgba(243,242,242,.55);margin:0 0 16px">Image size · {{ share.dims }} · exactly what you see</div>
+<div style="display:grid;gap:8px">
+<button style="height:46px;background:none;color:#f3f2f2;border:2px solid rgba(243,242,242,.35);font:800 14px/1 Archivo,sans-serif;text-align:left;padding:0 12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" style-hover="background:rgba(243,242,242,.12)" onClick="{{ share.save }}"><span>Save image</span><span>↓</span></button>
+<button style="height:46px;background:none;color:#f3f2f2;border:2px solid rgba(243,242,242,.35);font:800 14px/1 Archivo,sans-serif;text-align:left;padding:0 12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" style-hover="background:rgba(243,242,242,.12)" onClick="{{ share.print }}"><span>Print</span><span>⌘P</span></button>
+<button style="height:46px;background:none;color:#f3f2f2;border:2px solid rgba(243,242,242,.35);font:800 14px/1 Archivo,sans-serif;text-align:left;padding:0 12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" style-hover="background:rgba(243,242,242,.12)" onClick="{{ share.copy }}"><span>Copy to clipboard</span><span>⧉</span></button>
+</div>
+</div><div style="font:700 10px/1.4 Archivo,sans-serif;color:#ec3013;letter-spacing:.08em;text-transform:uppercase;margin:14px 0 0;min-height:14px">{{ share.msg }}</div>
+</div>
+</sc-if>
+<sc-if value="{{ s3.isSplit }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;top:0;bottom:0;left:{{ b3.splitPct }};width:44px;margin-left:-22px;cursor:ew-resize;touch-action:none" data-chrome="1" onPointerDown="{{ h3.splitDown }}"><div style="position:absolute;top:0;bottom:0;left:21px;width:2px;background:#ec3013"></div><div style="position:absolute;top:50%;left:6px;width:32px;height:32px;margin-top:-16px;background:#ec3013;display:flex;align-items:center;justify-content:center;color:#f3f2f2;font:700 11px/1 Archivo,sans-serif">◀▶</div></div></sc-if>
+
+<div data-chrome="1" style="position:absolute;left:0;right:0;bottom:44px;display:flex;flex-direction:column;will-change:opacity;transition:opacity .22s;opacity:{{ b3.chromeOpacity }};pointer-events:{{ b3.chromePE }}">
+<sc-if value="{{ b3.showSteps }}" hint-placeholder-val="{{ false }}"><div style="background:#201e1d;border-top:2px solid #ec3013;padding:14px 16px 16px"><div style="font:700 9px/1 Archivo,sans-serif;color:rgba(243,242,242,.5);letter-spacing:.16em;text-transform:uppercase;margin:0 0 10px">Values in the scale</div><div style="position:relative;display:grid;grid-template-columns:repeat(6,1fr);height:34px;background:rgba(243,242,242,.1)"><div style="position:absolute;top:0;bottom:0;left:{{ b3.stepsLeft }};width:16.666%;background:#ec3013;transition:left .22s cubic-bezier(.2,.8,.2,1)"></div><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 12px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h3.steps2 }}">2</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 12px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h3.steps3 }}">3</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 12px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h3.steps4 }}">4</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 12px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h3.steps5 }}">5</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 12px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h3.steps6 }}">6</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 12px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h3.steps7 }}">7</button></div></div></sc-if>
+<sc-if value="{{ b3.showDetail }}" hint-placeholder-val="{{ false }}"><div style="background:#201e1d;border-top:2px solid #ec3013;padding:14px 16px 16px"><div style="display:flex;justify-content:space-between;align-items:baseline;margin:0 0 6px"><span style="font:700 9px/1 Archivo,sans-serif;color:rgba(243,242,242,.5);letter-spacing:.16em;text-transform:uppercase">Detail of the shapes</span><span style="font:700 10px/1 Archivo,sans-serif;color:#ec3013">{{ b3.detailNum }}</span></div><div style="position:relative;height:36px;display:flex;align-items:center;cursor:pointer;touch-action:none" onPointerDown="{{ h3.detailDown }}"><div style="position:absolute;left:0;right:0;height:2px;background:rgba(243,242,242,.25)"></div><div style="position:absolute;left:0;width:{{ b3.detailPct }};height:2px;background:#ec3013"></div><div style="position:absolute;top:4px;bottom:4px;left:{{ b3.detailPct }};width:4px;margin-left:-2px;background:#ec3013"></div></div></div></sc-if>
+<sc-if value="{{ b3.showScale }}" hint-placeholder-val="{{ false }}"><div style="background:#201e1d;border-top:2px solid #ec3013;padding:14px 16px 16px"><div style="font:700 9px/1 Archivo,sans-serif;color:rgba(243,242,242,.5);letter-spacing:.16em;text-transform:uppercase;margin:0 0 10px">Root of the scale</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px"><button style="height:32px;border:2px solid rgba(243,242,242,.25);padding:0;cursor:pointer;background:linear-gradient(90deg,#111010 0 25%,#5e5c5c 25% 50%,#b6b3b3 50% 75%,#f8f4f4 75% 100%)" onClick="{{ h3.pal0 }}"></button><button style="height:32px;border:2px solid rgba(243,242,242,.25);padding:0;cursor:pointer;background:linear-gradient(90deg,#2a0b05 0 25%,#8d3521 25% 50%,#d4796a 50% 75%,#ffe0d9 75% 100%)" onClick="{{ h3.pal1 }}"></button><button style="height:32px;border:2px solid rgba(243,242,242,.25);padding:0;cursor:pointer;background:linear-gradient(90deg,#0d1520 0 25%,#3f5772 25% 50%,#93aec4 50% 75%,#eef2f7 75% 100%)" onClick="{{ h3.pal2 }}"></button><button style="height:32px;border:2px solid rgba(243,242,242,.25);padding:0;cursor:pointer;background:linear-gradient(90deg,#241a10 0 25%,#6d5637 25% 50%,#b8a184 50% 75%,#f6efe2 75% 100%)" onClick="{{ h3.pal3 }}"></button></div></div></sc-if>
+<sc-if value="{{ b3.showGrid }}" hint-placeholder-val="{{ false }}"><div style="background:#201e1d;border-top:2px solid #ec3013;padding:14px 16px 16px"><div style="font:700 9px/1 Archivo,sans-serif;color:rgba(243,242,242,.5);letter-spacing:.16em;text-transform:uppercase;margin:0 0 10px">Grid</div><div style="display:flex;gap:8px"><div style="position:relative;display:grid;grid-template-columns:repeat(3,1fr);height:34px;background:rgba(243,242,242,.1);flex:1"><div style="position:absolute;top:0;bottom:0;left:{{ b3.gridLeft }};width:33.333%;background:#ec3013;transition:left .22s cubic-bezier(.2,.8,.2,1)"></div><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 10px/1 Archivo,sans-serif;letter-spacing:.06em;cursor:pointer;padding:0" onClick="{{ h3.gridOff }}">OFF</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 10px/1 Archivo,sans-serif;letter-spacing:.06em;cursor:pointer;padding:0" onClick="{{ h3.gridSquare }}">SQUARE</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 10px/1 Archivo,sans-serif;letter-spacing:.06em;cursor:pointer;padding:0" onClick="{{ h3.gridDiamond }}">DIAMOND</button></div><div style="display:flex;align-items:center;border:2px solid rgba(243,242,242,.25);height:34px"><button style="width:28px;height:30px;background:none;border:0;color:#f3f2f2;font:700 14px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h3.gridMinus }}">–</button><span style="min-width:16px;text-align:center;font:700 11px/1 Archivo,sans-serif;color:#f3f2f2">{{ s3.gridN }}</span><button style="width:28px;height:30px;background:none;border:0;color:#f3f2f2;font:700 14px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h3.gridPlus }}">+</button></div></div></div></sc-if>
+</div>
+
+<div data-chrome="1" style="position:absolute;left:0;right:0;bottom:0;height:44px;background:#201e1d;display:grid;grid-template-columns:repeat(4,1fr);will-change:opacity;transition:opacity .22s;opacity:{{ b3.chromeOpacity }};pointer-events:{{ b3.chromePE }}">
+<button style="background:{{ b3.tSteps }};border:0;border-right:2px solid rgba(243,242,242,.18);color:#f3f2f2;font:700 10px/1 Archivo,sans-serif;letter-spacing:.08em;cursor:pointer;padding:0" onClick="{{ h3.toolSteps }}">{{ s3.steps }} VAL</button>
+<button style="background:{{ b3.tDetail }};border:0;border-right:2px solid rgba(243,242,242,.18);color:#f3f2f2;font:700 10px/1 Archivo,sans-serif;letter-spacing:.08em;cursor:pointer;padding:0" onClick="{{ h3.toolDetail }}">DETAIL</button>
+<button style="background:{{ b3.tScale }};border:0;border-right:2px solid rgba(243,242,242,.18);color:#f3f2f2;font:700 10px/1 Archivo,sans-serif;letter-spacing:.08em;cursor:pointer;padding:0" onClick="{{ h3.toolScale }}">SCALE</button>
+<button style="background:{{ b3.tGrid }};border:0;color:#f3f2f2;font:700 10px/1 Archivo,sans-serif;letter-spacing:.08em;cursor:pointer;padding:0" onClick="{{ h3.toolGrid }}">GRID</button>
+</div>
+
+<div data-chrome="1" style="position:absolute;right:14px;top:60px;width:44px;background:#201e1d;display:flex;flex-direction:column;will-change:opacity;transition:opacity .22s;opacity:{{ b3.chromeOpacity }};pointer-events:{{ b3.chromePE }}">
+<button style="height:44px;background:{{ b3.mValue }};border:0;border-bottom:2px solid rgba(243,242,242,.18);color:#f3f2f2;font:700 9px/1 Archivo,sans-serif;letter-spacing:.06em;cursor:pointer;padding:0" onClick="{{ h3.modeValue }}">VAL</button>
+<button style="height:44px;background:{{ b3.mOriginal }};border:0;border-bottom:2px solid rgba(243,242,242,.18);color:#f3f2f2;font:700 9px/1 Archivo,sans-serif;letter-spacing:.06em;cursor:pointer;padding:0" onClick="{{ h3.modeOriginal }}">PHOTO</button>
+<button style="height:44px;background:{{ b3.mSplit }};border:0;border-bottom:2px solid rgba(243,242,242,.18);color:#f3f2f2;font:700 9px/1 Archivo,sans-serif;letter-spacing:.06em;cursor:pointer;padding:0" onClick="{{ h3.modeSplit }}">SPLIT</button>
+<button style="height:44px;background:{{ b3.mSkeleton }};border:0;color:#f3f2f2;font:700 9px/1 Archivo,sans-serif;letter-spacing:.06em;cursor:pointer;padding:0" onClick="{{ h3.modeSkeleton }}">EDGE</button>
+<sc-if value="{{ s3.isSkeleton }}" hint-placeholder-val="{{ false }}"><button style="height:44px;background:{{ b3.numBg }};border:0;border-top:2px solid rgba(243,242,242,.18);color:#f3f2f2;font:700 9px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h3.toggleNumbers }}">№</button></sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ b3.isLibrary }}" hint-placeholder-val="{{ true }}">
+<div style="position:absolute;inset:0;background:#f3f2f2;display:flex;flex-direction:column">
+<div style="height:46px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 18px 6px;font:700 11px/1 Archivo,sans-serif;color:#201e1d"><span>9:41</span><span></span></div>
+<div style="padding:8px 18px 14px;border-bottom:2px solid rgba(32,30,29,.4);display:flex;align-items:baseline;justify-content:space-between"><span style="font:800 26px/1 Archivo,sans-serif;letter-spacing:-.02em">Askance</span><button style="background:none;border:2px solid rgba(32,30,29,.4);width:28px;height:28px;color:#201e1d;font:700 12px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ nav.toOnboard }}">?</button></div>
+<div style="flex:1;overflow:auto;padding:16px 18px 0">
+<div style="font:700 9px/1 Archivo,sans-serif;letter-spacing:.16em;text-transform:uppercase;color:rgba(32,30,29,.5);margin:0 0 10px">Recent studies</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+<sc-for list="{{ items }}" as="it" hint-placeholder-count="2">
+<button style="display:block;text-align:left;padding:0;border:2px solid rgba(32,30,29,.4);background:#eae9e9;cursor:pointer" style-hover="border-color:#ec3013" onClick="{{ it.open }}"><canvas ref="{{ it.ref }}" width="256" height="320" style="width:100%;height:auto;display:block"></canvas><div style="padding:8px 9px 9px;border-top:2px solid rgba(32,30,29,.4)"><div style="font:700 11px/1.2 Archivo,sans-serif">{{ it.name }}</div><div style="font:400 10px/1.3 Archivo,sans-serif;color:rgba(32,30,29,.55);margin-top:3px">{{ it.meta }}</div></div></button>
+</sc-for>
+<div style="border:2px dashed rgba(32,30,29,.3);aspect-ratio:4/5;display:flex;align-items:flex-end;padding:10px;background:repeating-linear-gradient(45deg,rgba(32,30,29,.05) 0 6px,transparent 6px 12px)"><span style="font:400 9px/1.3 ui-monospace,Menlo,monospace;color:rgba(32,30,29,.5)">empty slot</span></div>
+</div>
+</div>
+<div style="padding:14px 18px 22px;border-top:2px solid rgba(32,30,29,.4);display:grid;gap:8px">
+<button style="height:46px;background:#ec3013;color:#f3f2f2;border:0;font:800 14px/1 Archivo,sans-serif;text-align:left;padding:0 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" style-hover="background:#dd2b0f" onClick="{{ nav.newStudy }}"><span>New study from photos</span><span>→</span></button>
+<button style="height:46px;background:none;color:#201e1d;border:2px solid rgba(32,30,29,.4);font:800 14px/1 Archivo,sans-serif;text-align:left;padding:0 12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" style-hover="background:rgba(32,30,29,.07)" onClick="{{ nav.newStudy }}"><span>Take a photo</span><span>→</span></button>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ b3.isOnboard }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;background:#201e1d;color:#f3f2f2;display:flex;flex-direction:column">
+<div style="height:46px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 18px 6px;font:700 11px/1 Archivo,sans-serif"><span>9:41</span><button style="background:none;border:0;color:rgba(243,242,242,.6);font:700 10px/1 Archivo,sans-serif;letter-spacing:.1em;cursor:pointer;padding:0" onClick="{{ nav.toLibrary }}">SKIP</button></div>
+<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;padding:0 22px 0">
+<div style="height:2px;background:#ec3013;width:44px;margin:0 0 18px"></div>
+<div style="font:800 34px/1.05 Archivo,sans-serif;letter-spacing:-.03em;margin:0 0 14px;text-wrap:pretty">{{ b3.obTitle }}</div>
+<div style="font:400 14px/1.55 Archivo,sans-serif;color:rgba(243,242,242,.7);max-width:250px;margin:0 0 30px;text-wrap:pretty">{{ b3.obBody }}</div>
+</div>
+<div style="display:flex;gap:6px;padding:0 22px 14px">
+<div style="height:2px;flex:1;background:{{ b3.ob0 }}"></div>
+<div style="height:2px;flex:1;background:{{ b3.ob1 }}"></div>
+<div style="height:2px;flex:1;background:{{ b3.ob2 }}"></div>
+</div>
+<button style="height:56px;background:#ec3013;color:#f3f2f2;border:0;font:800 15px/1 Archivo,sans-serif;text-align:left;padding:0 22px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" style-hover="background:#dd2b0f" onClick="{{ nav.obNext }}"><span>{{ b3.obCta }}</span><span>→</span></button>
+</div>
+</sc-if>
+
+</div>
+</div>
+</div>
+</div>
+<p class="dv-next">Try next: "add the desktop and web layout" · "let me save a study from the canvas" · "show the photo picker as its own screen"</p>
+</section>
+
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Askance — three ways to put the controls over a fullscreen image</span></div>
+
+<div style="display:grid;grid-template-columns:repeat(2,minmax(0,420px));gap:0 40px;max-width:900px;margin:0 0 34px;padding:0 0 26px;border-bottom:2px solid rgba(32,30,29,.4)">
+<div>
+<p style="margin:0 0 12px;font:800 22px/1.15 Archivo,sans-serif;letter-spacing:-.02em">A value scope, not an editor.</p>
+<p style="margin:0 0 10px;font:400 13px/1.6 Archivo,sans-serif;color:rgba(32,30,29,.75);text-wrap:pretty">All three phones below run the real engine on the reference photo: luminance is blurred by the detail setting, quantized into N bands, then painted from the chosen scale. Skeleton mode traces the band boundaries and labels each region with its value number. Everything is live — drag, tap, pinch, scroll to zoom.</p>
+<p style="margin:0;font:400 13px/1.6 Archivo,sans-serif;color:rgba(32,30,29,.75);text-wrap:pretty">The image is never framed, captioned or padded: it is the whole surface. What differs between <a class="dv-oid" href="#1a">1a</a>, <a class="dv-oid" href="#1b">1b</a> and <a class="dv-oid" href="#1c">1c</a> is only how the controls arrive over it.</p>
+</div>
+<div>
+<p style="margin:0 0 10px;font:700 10px/1 Archivo,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:rgba(32,30,29,.5)">Shared behaviour</p>
+<div style="display:grid;gap:0;font:400 12px/1.5 Archivo,sans-serif">
+<div style="display:grid;grid-template-columns:96px 1fr;gap:12px;padding:9px 0;border-top:2px solid rgba(32,30,29,.25)"><span style="font-weight:700">Single tap</span><span style="color:rgba(32,30,29,.7)">hides the control surface, and brings it back</span></div><div style="display:grid;grid-template-columns:96px 1fr;gap:12px;padding:9px 0;border-top:2px solid rgba(32,30,29,.25)"><span style="font-weight:700">Press &amp; hold</span><span style="color:rgba(32,30,29,.7)">anywhere on the image peeks the original; release returns</span></div>
+<div style="display:grid;grid-template-columns:96px 1fr;gap:12px;padding:9px 0;border-top:2px solid rgba(32,30,29,.25)"><span style="font-weight:700">Pinch / scroll</span><span style="color:rgba(32,30,29,.7)">zooms; one finger pans once zoomed in</span></div>
+<div style="display:grid;grid-template-columns:96px 1fr;gap:12px;padding:9px 0;border-top:2px solid rgba(32,30,29,.25)"><span style="font-weight:700">Split</span><span style="color:rgba(32,30,29,.7)">drag the red rule — original left, values right</span></div>
+<div style="display:grid;grid-template-columns:96px 1fr;gap:12px;padding:9px 0;border-top:2px solid rgba(32,30,29,.25)"><span style="font-weight:700">Skeleton</span><span style="color:rgba(32,30,29,.7)">band edges only, numbered 1 (darkest) upward</span></div>
+</div>
+<p style="margin:14px 0 0;font:400 12px/1.5 Archivo,sans-serif;color:rgba(32,30,29,.55);text-wrap:pretty">Not built yet: picker, saved studies, onboarding, desktop layout. Those follow the chrome you pick.</p>
+</div>
+</div>
+
+<div class="dv-opts">
+
+<div class="dv-opt" id="1a">
+<div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Bottom sheet — one summary bar, drag or tap to open the full board</div>
+<div class="dv-card" style="width:324px">
+<div style="position:relative;width:320px;height:664px;background:#201e1d;overflow:hidden;touch-action:none;margin:0" onPointerDown="{{ h0.imgDown }}" onPointerMove="{{ h0.imgMove }}" onPointerUp="{{ h0.imgUp }}" onPointerCancel="{{ h0.imgUp }}">
+<canvas ref="{{ c0 }}" width="480" height="996" style="position:absolute;inset:0;width:320px;height:664px;transform-origin:50% 50%"></canvas>
+<div style="position:absolute;inset:0;pointer-events:none;background-image:{{ b0.gridBg }}"></div>
+<div style="position:absolute;top:0;left:0;right:0;height:62px;background:linear-gradient(180deg,rgba(32,30,29,.55),rgba(32,30,29,0));pointer-events:none"></div><div style="position:absolute;top:0;left:0;right:0;height:46px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 18px 6px;font:700 11px/1 Archivo,sans-serif;color:#f3f2f2;letter-spacing:.02em;text-shadow:0 1px 3px rgba(0,0,0,.5);pointer-events:none"><span>9:41</span><span style="letter-spacing:.16em">ASKANCE</span></div>
+<sc-if value="{{ s0.isSplit }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;top:0;bottom:0;left:{{ b0.splitPct }};width:44px;margin-left:-22px;cursor:ew-resize;touch-action:none" data-chrome="1" style-hover="background:rgba(236,48,19,.08)" onPointerDown="{{ h0.splitDown }}"><div style="position:absolute;top:0;bottom:0;left:21px;width:2px;background:#ec3013"></div><div style="position:absolute;top:50%;left:6px;width:32px;height:32px;margin-top:-16px;background:#ec3013;display:flex;align-items:center;justify-content:center;color:#f3f2f2;font:700 11px/1 Archivo,sans-serif;letter-spacing:.06em">◀▶</div></div></sc-if>
+<div data-chrome="1" style="position:absolute;left:0;right:0;bottom:0;background:#201e1d;border-top:2px solid #ec3013;transform:translateY({{ b0.sheetY }});transition:transform .32s cubic-bezier(.2,.8,.2,1)">
+<div style="height:52px;display:flex;align-items:center;gap:12px;padding:0 18px;cursor:pointer" onClick="{{ h0.toggleSheet }}"><div style="width:26px;height:2px;background:#f3f2f2;opacity:.55"></div><span style="font:700 11px/1 Archivo,sans-serif;color:#f3f2f2;letter-spacing:.12em;text-transform:uppercase;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ b0.summary }}</span><span style="font:700 13px/1 Archivo,sans-serif;color:#ec3013">{{ b0.caret }}</span></div>
+<div style="max-height:{{ b0.sheetMax }};overflow:hidden;transition:max-height .32s cubic-bezier(.2,.8,.2,1)">
+<div style="padding:0 18px 20px">
+<div style="border-top:2px solid rgba(243,242,242,.22);padding:14px 0 0"><div style="font:700 9px/1 Archivo,sans-serif;color:rgba(243,242,242,.5);letter-spacing:.16em;text-transform:uppercase;margin:0 0 9px">View</div><div style="position:relative;display:grid;grid-template-columns:repeat(4,1fr);height:36px;background:rgba(243,242,242,.1)"><div style="position:absolute;top:0;bottom:0;left:{{ b0.modeLeft }};width:25%;background:#ec3013;transition:left .22s cubic-bezier(.2,.8,.2,1)"></div><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 11px/1 Archivo,sans-serif;letter-spacing:.08em;cursor:pointer;padding:0;text-align:center" onClick="{{ h0.modeValue }}">VALUE</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 11px/1 Archivo,sans-serif;letter-spacing:.08em;cursor:pointer;padding:0" onClick="{{ h0.modeOriginal }}">PHOTO</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 11px/1 Archivo,sans-serif;letter-spacing:.08em;cursor:pointer;padding:0" onClick="{{ h0.modeSplit }}">SPLIT</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 11px/1 Archivo,sans-serif;letter-spacing:.08em;cursor:pointer;padding:0" onClick="{{ h0.modeSkeleton }}">EDGES</button></div></div>
+<div style="border-top:2px solid rgba(243,242,242,.22);margin-top:14px;padding:14px 0 0"><div style="display:flex;justify-content:space-between;align-items:baseline;margin:0 0 9px"><span style="font:700 9px/1 Archivo,sans-serif;color:rgba(243,242,242,.5);letter-spacing:.16em;text-transform:uppercase">Values</span><span style="font:700 10px/1 Archivo,sans-serif;color:#ec3013">{{ s0.steps }} STEPS</span></div><div style="position:relative;display:grid;grid-template-columns:repeat(6,1fr);height:36px;background:rgba(243,242,242,.1)"><div style="position:absolute;top:0;bottom:0;left:{{ b0.stepsLeft }};width:16.666%;background:#ec3013;transition:left .22s cubic-bezier(.2,.8,.2,1)"></div><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 12px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h0.steps2 }}">2</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 12px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h0.steps3 }}">3</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 12px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h0.steps4 }}">4</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 12px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h0.steps5 }}">5</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 12px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h0.steps6 }}">6</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 12px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h0.steps7 }}">7</button></div></div>
+<div style="border-top:2px solid rgba(243,242,242,.22);margin-top:14px;padding:14px 0 0"><div style="display:flex;justify-content:space-between;align-items:baseline;margin:0 0 9px"><span style="font:700 9px/1 Archivo,sans-serif;color:rgba(243,242,242,.5);letter-spacing:.16em;text-transform:uppercase">Detail</span><span style="font:700 10px/1 Archivo,sans-serif;color:#ec3013">{{ b0.detailNum }}</span></div><div style="position:relative;height:36px;display:flex;align-items:center;cursor:pointer;touch-action:none" onPointerDown="{{ h0.detailDown }}"><div style="position:absolute;left:0;right:0;height:2px;background:rgba(243,242,242,.25)"></div><div style="position:absolute;left:0;width:{{ b0.detailPct }};height:2px;background:#ec3013"></div><div style="position:absolute;top:4px;bottom:4px;left:{{ b0.detailPct }};width:4px;margin-left:-2px;background:#ec3013"></div></div></div>
+<div style="border-top:2px solid rgba(243,242,242,.22);margin-top:14px;padding:14px 0 0"><div style="font:700 9px/1 Archivo,sans-serif;color:rgba(243,242,242,.5);letter-spacing:.16em;text-transform:uppercase;margin:0 0 9px">Scale root</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+<button style="height:34px;border:2px solid rgba(243,242,242,.25);padding:0;cursor:pointer;background:linear-gradient(90deg,#111010 0 25%,#5e5c5c 25% 50%,#b6b3b3 50% 75%,#f8f4f4 75% 100%)" onClick="{{ h0.pal0 }}"></button>
+<button style="height:34px;border:2px solid rgba(243,242,242,.25);padding:0;cursor:pointer;background:linear-gradient(90deg,#2a0b05 0 25%,#8d3521 25% 50%,#d4796a 50% 75%,#ffe0d9 75% 100%)" onClick="{{ h0.pal1 }}"></button>
+<button style="height:34px;border:2px solid rgba(243,242,242,.25);padding:0;cursor:pointer;background:linear-gradient(90deg,#0d1520 0 25%,#3f5772 25% 50%,#93aec4 50% 75%,#eef2f7 75% 100%)" onClick="{{ h0.pal2 }}"></button>
+<button style="height:34px;border:2px solid rgba(243,242,242,.25);padding:0;cursor:pointer;background:linear-gradient(90deg,#241a10 0 25%,#6d5637 25% 50%,#b8a184 50% 75%,#f6efe2 75% 100%)" onClick="{{ h0.pal3 }}"></button>
+</div></div>
+<div style="border-top:2px solid rgba(243,242,242,.22);margin-top:14px;padding:14px 0 0"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="font:700 9px/1 Archivo,sans-serif;color:rgba(243,242,242,.5);letter-spacing:.16em;text-transform:uppercase">Grid</span><div style="position:relative;display:grid;grid-template-columns:repeat(3,52px);height:32px;background:rgba(243,242,242,.1)"><div style="position:absolute;top:0;bottom:0;left:{{ b0.gridLeftPx }};width:52px;background:#ec3013;transition:left .22s cubic-bezier(.2,.8,.2,1)"></div><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 10px/1 Archivo,sans-serif;letter-spacing:.06em;cursor:pointer;padding:0" onClick="{{ h0.gridOff }}">OFF</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 10px/1 Archivo,sans-serif;letter-spacing:.06em;cursor:pointer;padding:0" onClick="{{ h0.gridSquare }}">SQUARE</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 10px/1 Archivo,sans-serif;letter-spacing:.06em;cursor:pointer;padding:0" onClick="{{ h0.gridDiamond }}">DIAMOND</button></div><div style="display:flex;align-items:center;border:2px solid rgba(243,242,242,.25);height:32px"><button style="width:28px;height:28px;background:none;border:0;color:#f3f2f2;font:700 14px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h0.gridMinus }}">–</button><span style="min-width:16px;text-align:center;font:700 11px/1 Archivo,sans-serif;color:#f3f2f2">{{ s0.gridN }}</span><button style="width:28px;height:28px;background:none;border:0;color:#f3f2f2;font:700 14px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h0.gridPlus }}">+</button></div></div></div>
+<sc-if value="{{ s0.isSkeleton }}" hint-placeholder-val="{{ false }}"><div style="border-top:2px solid rgba(243,242,242,.22);margin-top:14px;padding:14px 0 0;display:flex;justify-content:space-between;align-items:center"><span style="font:700 9px/1 Archivo,sans-serif;color:rgba(243,242,242,.5);letter-spacing:.16em;text-transform:uppercase">Number the regions</span><button style="width:56px;height:30px;border:2px solid rgba(243,242,242,.25);background:none;position:relative;cursor:pointer;padding:0" onClick="{{ h0.toggleNumbers }}"><span style="position:absolute;top:2px;bottom:2px;left:{{ b0.numX }};width:24px;background:#ec3013;transition:left .2s"></span></button></div></sc-if>
+</div></div></div>
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="1b">
+<div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Floating pill — tools stay put, one control row swaps in above</div>
+<div class="dv-card" style="width:324px">
+<div style="position:relative;width:320px;height:664px;background:#201e1d;overflow:hidden;touch-action:none" onPointerDown="{{ h1.imgDown }}" onPointerMove="{{ h1.imgMove }}" onPointerUp="{{ h1.imgUp }}" onPointerCancel="{{ h1.imgUp }}">
+<canvas ref="{{ c1 }}" width="480" height="996" style="position:absolute;inset:0;width:320px;height:664px;transform-origin:50% 50%"></canvas>
+<div style="position:absolute;inset:0;pointer-events:none;background-image:{{ b1.gridBg }}"></div>
+<div style="position:absolute;top:0;left:0;right:0;height:62px;background:linear-gradient(180deg,rgba(32,30,29,.55),rgba(32,30,29,0));pointer-events:none"></div><div style="position:absolute;top:0;left:0;right:0;height:46px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 18px 6px;font:700 11px/1 Archivo,sans-serif;color:#f3f2f2;letter-spacing:.02em;text-shadow:0 1px 3px rgba(0,0,0,.5);pointer-events:none"><span>9:41</span><span style="letter-spacing:.16em">ASKANCE</span></div>
+<sc-if value="{{ s1.isSplit }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;top:0;bottom:0;left:{{ b1.splitPct }};width:44px;margin-left:-22px;cursor:ew-resize;touch-action:none" data-chrome="1" onPointerDown="{{ h1.splitDown }}"><div style="position:absolute;top:0;bottom:0;left:21px;width:2px;background:#ec3013"></div><div style="position:absolute;top:50%;left:6px;width:32px;height:32px;margin-top:-16px;background:#ec3013;display:flex;align-items:center;justify-content:center;color:#f3f2f2;font:700 11px/1 Archivo,sans-serif">◀▶</div></div></sc-if>
+
+<div data-chrome="1" style="position:absolute;left:0;right:0;bottom:44px;display:flex;flex-direction:column;gap:0;will-change:opacity;transition:opacity .22s;opacity:{{ b1.chromeOpacity }};pointer-events:{{ b1.chromePE }}">
+<sc-if value="{{ b1.showSteps }}" hint-placeholder-val="{{ false }}"><div style="background:#201e1d;border-top:2px solid #ec3013;padding:14px 16px 16px"><div style="font:700 9px/1 Archivo,sans-serif;color:rgba(243,242,242,.5);letter-spacing:.16em;text-transform:uppercase;margin:0 0 10px">Values in the scale</div><div style="position:relative;display:grid;grid-template-columns:repeat(6,1fr);height:34px;background:rgba(243,242,242,.1)"><div style="position:absolute;top:0;bottom:0;left:{{ b1.stepsLeft }};width:16.666%;background:#ec3013;transition:left .22s cubic-bezier(.2,.8,.2,1)"></div><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 12px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h1.steps2 }}">2</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 12px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h1.steps3 }}">3</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 12px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h1.steps4 }}">4</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 12px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h1.steps5 }}">5</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 12px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h1.steps6 }}">6</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 12px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h1.steps7 }}">7</button></div></div></sc-if>
+<sc-if value="{{ b1.showDetail }}" hint-placeholder-val="{{ false }}"><div style="background:#201e1d;border-top:2px solid #ec3013;padding:14px 16px 16px"><div style="display:flex;justify-content:space-between;align-items:baseline;margin:0 0 6px"><span style="font:700 9px/1 Archivo,sans-serif;color:rgba(243,242,242,.5);letter-spacing:.16em;text-transform:uppercase">Detail of the shapes</span><span style="font:700 10px/1 Archivo,sans-serif;color:#ec3013">{{ b1.detailNum }}</span></div><div style="position:relative;height:36px;display:flex;align-items:center;cursor:pointer;touch-action:none" onPointerDown="{{ h1.detailDown }}"><div style="position:absolute;left:0;right:0;height:2px;background:rgba(243,242,242,.25)"></div><div style="position:absolute;left:0;width:{{ b1.detailPct }};height:2px;background:#ec3013"></div><div style="position:absolute;top:4px;bottom:4px;left:{{ b1.detailPct }};width:4px;margin-left:-2px;background:#ec3013"></div></div></div></sc-if>
+<sc-if value="{{ b1.showScale }}" hint-placeholder-val="{{ false }}"><div style="background:#201e1d;border-top:2px solid #ec3013;padding:14px 16px 16px"><div style="font:700 9px/1 Archivo,sans-serif;color:rgba(243,242,242,.5);letter-spacing:.16em;text-transform:uppercase;margin:0 0 10px">Root of the scale</div><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px"><button style="height:32px;border:2px solid rgba(243,242,242,.25);padding:0;cursor:pointer;background:linear-gradient(90deg,#111010 0 25%,#5e5c5c 25% 50%,#b6b3b3 50% 75%,#f8f4f4 75% 100%)" onClick="{{ h1.pal0 }}"></button><button style="height:32px;border:2px solid rgba(243,242,242,.25);padding:0;cursor:pointer;background:linear-gradient(90deg,#2a0b05 0 25%,#8d3521 25% 50%,#d4796a 50% 75%,#ffe0d9 75% 100%)" onClick="{{ h1.pal1 }}"></button><button style="height:32px;border:2px solid rgba(243,242,242,.25);padding:0;cursor:pointer;background:linear-gradient(90deg,#0d1520 0 25%,#3f5772 25% 50%,#93aec4 50% 75%,#eef2f7 75% 100%)" onClick="{{ h1.pal2 }}"></button><button style="height:32px;border:2px solid rgba(243,242,242,.25);padding:0;cursor:pointer;background:linear-gradient(90deg,#241a10 0 25%,#6d5637 25% 50%,#b8a184 50% 75%,#f6efe2 75% 100%)" onClick="{{ h1.pal3 }}"></button></div></div></sc-if>
+<sc-if value="{{ b1.showGrid }}" hint-placeholder-val="{{ false }}"><div style="background:#201e1d;border-top:2px solid #ec3013;padding:14px 16px 16px"><div style="font:700 9px/1 Archivo,sans-serif;color:rgba(243,242,242,.5);letter-spacing:.16em;text-transform:uppercase;margin:0 0 10px">Grid</div><div style="display:flex;gap:8px"><div style="position:relative;display:grid;grid-template-columns:repeat(3,1fr);height:34px;background:rgba(243,242,242,.1);flex:1"><div style="position:absolute;top:0;bottom:0;left:{{ b1.gridLeft }};width:33.333%;background:#ec3013;transition:left .22s cubic-bezier(.2,.8,.2,1)"></div><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 10px/1 Archivo,sans-serif;letter-spacing:.06em;cursor:pointer;padding:0" onClick="{{ h1.gridOff }}">OFF</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 10px/1 Archivo,sans-serif;letter-spacing:.06em;cursor:pointer;padding:0" onClick="{{ h1.gridSquare }}">SQUARE</button><button style="position:relative;background:none;border:0;color:#f3f2f2;font:700 10px/1 Archivo,sans-serif;letter-spacing:.06em;cursor:pointer;padding:0" onClick="{{ h1.gridDiamond }}">DIAMOND</button></div><div style="display:flex;align-items:center;border:2px solid rgba(243,242,242,.25);height:34px"><button style="width:28px;height:30px;background:none;border:0;color:#f3f2f2;font:700 14px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h1.gridMinus }}">–</button><span style="min-width:16px;text-align:center;font:700 11px/1 Archivo,sans-serif;color:#f3f2f2">{{ s1.gridN }}</span><button style="width:28px;height:30px;background:none;border:0;color:#f3f2f2;font:700 14px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h1.gridPlus }}">+</button></div></div></div></sc-if>
+</div>
+
+<div data-chrome="1" style="position:absolute;left:0;right:0;bottom:0;height:44px;background:#201e1d;display:grid;grid-template-columns:repeat(4,1fr);will-change:opacity;transition:opacity .22s;opacity:{{ b1.chromeOpacity }};pointer-events:{{ b1.chromePE }}">
+<button style="background:{{ b1.tSteps }};border:0;border-right:2px solid rgba(243,242,242,.18);color:#f3f2f2;font:700 10px/1 Archivo,sans-serif;letter-spacing:.08em;cursor:pointer;padding:0" onClick="{{ h1.toolSteps }}">{{ s1.steps }} VAL</button>
+<button style="background:{{ b1.tDetail }};border:0;border-right:2px solid rgba(243,242,242,.18);color:#f3f2f2;font:700 10px/1 Archivo,sans-serif;letter-spacing:.08em;cursor:pointer;padding:0" onClick="{{ h1.toolDetail }}">DETAIL</button>
+<button style="background:{{ b1.tScale }};border:0;border-right:2px solid rgba(243,242,242,.18);color:#f3f2f2;font:700 10px/1 Archivo,sans-serif;letter-spacing:.08em;cursor:pointer;padding:0" onClick="{{ h1.toolScale }}">SCALE</button>
+<button style="background:{{ b1.tGrid }};border:0;color:#f3f2f2;font:700 10px/1 Archivo,sans-serif;letter-spacing:.08em;cursor:pointer;padding:0" onClick="{{ h1.toolGrid }}">GRID</button>
+</div>
+
+<div data-chrome="1" style="position:absolute;right:14px;top:60px;width:44px;background:#201e1d;display:flex;flex-direction:column;will-change:opacity;transition:opacity .22s;opacity:{{ b1.chromeOpacity }};pointer-events:{{ b1.chromePE }}">
+<button style="height:44px;background:{{ b1.mValue }};border:0;border-bottom:2px solid rgba(243,242,242,.18);color:#f3f2f2;font:700 9px/1 Archivo,sans-serif;letter-spacing:.06em;cursor:pointer;padding:0" onClick="{{ h1.modeValue }}">VAL</button>
+<button style="height:44px;background:{{ b1.mOriginal }};border:0;border-bottom:2px solid rgba(243,242,242,.18);color:#f3f2f2;font:700 9px/1 Archivo,sans-serif;letter-spacing:.06em;cursor:pointer;padding:0" onClick="{{ h1.modeOriginal }}">PHOTO</button>
+<button style="height:44px;background:{{ b1.mSplit }};border:0;border-bottom:2px solid rgba(243,242,242,.18);color:#f3f2f2;font:700 9px/1 Archivo,sans-serif;letter-spacing:.06em;cursor:pointer;padding:0" onClick="{{ h1.modeSplit }}">SPLIT</button>
+<button style="height:44px;background:{{ b1.mSkeleton }};border:0;color:#f3f2f2;font:700 9px/1 Archivo,sans-serif;letter-spacing:.06em;cursor:pointer;padding:0" onClick="{{ h1.modeSkeleton }}">EDGE</button>
+<sc-if value="{{ s1.isSkeleton }}" hint-placeholder-val="{{ false }}"><button style="height:44px;background:none;border:0;border-top:2px solid rgba(243,242,242,.18);color:#f3f2f2;font:700 9px/1 Archivo,sans-serif;letter-spacing:.06em;cursor:pointer;padding:0" onClick="{{ h1.toggleNumbers }}">№</button></sc-if>
+</div>
+</div>
+</div>
+</div>
+
+<div class="dv-opt" id="1c">
+<div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Edge ruler — a scale down the right side you scrub with the thumb</div>
+<div class="dv-card" style="width:324px">
+<div style="position:relative;width:320px;height:664px;background:#201e1d;overflow:hidden;touch-action:none" onPointerDown="{{ h2.imgDown }}" onPointerMove="{{ h2.imgMove }}" onPointerUp="{{ h2.imgUp }}" onPointerCancel="{{ h2.imgUp }}">
+<canvas ref="{{ c2 }}" width="480" height="996" style="position:absolute;inset:0;width:320px;height:664px;transform-origin:50% 50%"></canvas>
+<div style="position:absolute;inset:0;pointer-events:none;background-image:{{ b2.gridBg }}"></div>
+<div style="position:absolute;top:0;left:0;right:0;height:62px;background:linear-gradient(180deg,rgba(32,30,29,.55),rgba(32,30,29,0));pointer-events:none"></div><div style="position:absolute;top:0;left:0;right:0;height:46px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 18px 6px;font:700 11px/1 Archivo,sans-serif;color:#f3f2f2;letter-spacing:.02em;text-shadow:0 1px 3px rgba(0,0,0,.5);pointer-events:none"><span>9:41</span><span style="letter-spacing:.16em">ASKANCE</span></div>
+<sc-if value="{{ s2.isSplit }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;top:0;bottom:0;left:{{ b2.splitPct }};width:44px;margin-left:-22px;cursor:ew-resize;touch-action:none" data-chrome="1" onPointerDown="{{ h2.splitDown }}"><div style="position:absolute;top:0;bottom:0;left:21px;width:2px;background:#ec3013"></div><div style="position:absolute;top:50%;left:6px;width:32px;height:32px;margin-top:-16px;background:#ec3013;display:flex;align-items:center;justify-content:center;color:#f3f2f2;font:700 11px/1 Archivo,sans-serif">◀▶</div></div></sc-if>
+
+<div data-chrome="1" style="position:absolute;left:0;bottom:0;right:56px;height:52px;display:grid;grid-template-columns:repeat(4,1fr);background:rgba(32,30,29,.92);will-change:opacity;transition:opacity .22s;opacity:{{ b2.chromeOpacity }};pointer-events:{{ b2.chromePE }}">
+<button style="background:none;border:0;border-right:2px solid rgba(243,242,242,.18);color:#f3f2f2;font:700 10px/1 Archivo,sans-serif;letter-spacing:.08em;cursor:pointer;padding:0" onClick="{{ h2.modeValue }}">VALUE</button>
+<button style="background:none;border:0;border-right:2px solid rgba(243,242,242,.18);color:#f3f2f2;font:700 10px/1 Archivo,sans-serif;letter-spacing:.08em;cursor:pointer;padding:0" onClick="{{ h2.modeOriginal }}">PHOTO</button>
+<button style="background:none;border:0;border-right:2px solid rgba(243,242,242,.18);color:#f3f2f2;font:700 10px/1 Archivo,sans-serif;letter-spacing:.08em;cursor:pointer;padding:0" onClick="{{ h2.modeSplit }}">SPLIT</button>
+<button style="background:none;border:0;color:#f3f2f2;font:700 10px/1 Archivo,sans-serif;letter-spacing:.08em;cursor:pointer;padding:0" onClick="{{ h2.modeSkeleton }}">EDGES</button>
+</div>
+
+<div data-chrome="1" style="position:absolute;right:0;top:46px;bottom:0;width:56px;background:rgba(32,30,29,.92);border-left:2px solid #ec3013;display:flex;flex-direction:column;will-change:opacity;transition:opacity .22s;opacity:{{ b2.chromeOpacity }};pointer-events:{{ b2.chromePE }}">
+<div style="display:grid;grid-template-rows:repeat(4,1fr);height:180px;border-bottom:2px solid rgba(243,242,242,.18)">
+<button style="background:none;border:0;color:#f3f2f2;font:700 9px/1.3 Archivo,sans-serif;letter-spacing:.06em;cursor:pointer;padding:0" onClick="{{ h2.paramSteps }}">VAL<br>{{ s2.steps }}</button>
+<button style="background:none;border:0;color:#f3f2f2;font:700 9px/1.3 Archivo,sans-serif;letter-spacing:.06em;cursor:pointer;padding:0" onClick="{{ h2.paramDetail }}">DTL<br>{{ b2.detailNum }}</button>
+<button style="background:none;border:0;color:#f3f2f2;font:700 9px/1.3 Archivo,sans-serif;letter-spacing:.06em;cursor:pointer;padding:0" onClick="{{ h2.paramScale }}">SCL<br>{{ b2.palName }}</button>
+<button style="background:none;border:0;color:#f3f2f2;font:700 9px/1.3 Archivo,sans-serif;letter-spacing:.06em;cursor:pointer;padding:0" onClick="{{ h2.paramGrid }}">GRD<br>{{ b2.gridLabel }}</button>
+</div>
+<div style="position:relative;flex:1;cursor:ns-resize;touch-action:none;overflow:hidden" onPointerDown="{{ h2.railDown }}">
+<div style="position:absolute;left:0;right:0;bottom:0;height:{{ b2.railPct }};background:rgba(236,48,19,.22);border-top:2px solid #ec3013"></div>
+<div style="position:absolute;left:0;top:0;bottom:0;width:100%">{{ b2.ticks }}</div>
+<div style="position:absolute;left:0;right:0;bottom:8px;text-align:center;font:700 9px/1 Archivo,sans-serif;color:#f3f2f2;letter-spacing:.1em;pointer-events:none">{{ b2.railName }}</div>
+</div>
+<sc-if value="{{ s2.isSkeleton }}" hint-placeholder-val="{{ false }}"><button style="height:46px;background:none;border:0;border-top:2px solid rgba(243,242,242,.18);color:#f3f2f2;font:700 10px/1 Archivo,sans-serif;cursor:pointer;padding:0" onClick="{{ h2.toggleNumbers }}">№</button></sc-if>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+<p class="dv-next">Try next: "build out <a class="dv-oid" href="#1a">1a</a> into the full flow — picker, saved studies, onboarding" · "give <a class="dv-oid" href="#1b">1b</a> the sheet's control board" · "show me the desktop layout"</p>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:900}}">
+const PALS=[[[17,16,16],[248,244,244],"GREY"],[[42,11,5],[255,224,217],"WARM"],[[13,21,32],[238,242,247],"COOL"],[[36,26,16],[246,239,226],"SEPIA"]];
+const S2L=new Float32Array(256);
+for(let i=0;i<256;i++){const c=i/255;S2L[i]=c<=0.04045?c/12.92:Math.pow((c+0.055)/1.055,2.4);}
+const LSTAR=new Float32Array(4097);
+for(let i=0;i<=4096;i++){const Y=i/4096;LSTAR[i]=Y>0.008856?116*Math.cbrt(Y)-16:903.3*Y;}
+const lstar=(r,g,b)=>LSTAR[(( 0.2126*S2L[r]+0.7152*S2L[g]+0.0722*S2L[b])*4096)|0];
+const yOfL=L=>L>8?Math.pow((L+16)/116,3):L/903.3;
+const l2s=v=>{const c=v<=0.0031308?v*12.92:1.055*Math.pow(v,1/2.4)-0.055;return Math.max(0,Math.min(255,Math.round(c*255)));};
+const DEF={steps:3,pal:0,detail:0.5,grid:"off",gridN:4,mode:"value",numbers:true,split:0.5};
+
+class Component extends DCLogic {
+  constructor(p){
+    super(p);
+    this.state={
+      studies:[{...DEF,grid:"square",gridN:3},{...DEF,steps:5,mode:"split",pal:2},{...DEF,steps:4,mode:"skeleton",pal:3},{...DEF},{...DEF,steps:4,detail:0.55}],
+      ui:[{sheet:false,chrome:true},{tool:"detail",chrome:true},{param:"steps",chrome:true},{tool:null,chrome:true},{chrome:true}],
+      app:{screen:"library",ob:0,title:"PORTRAIT, YELLOW WALL",openId:"a",saved:false},
+      saved:[
+        {id:"a",name:"Portrait, yellow wall",date:"8 Aug",steps:3,pal:0,detail:0.5,mode:"value",grid:"off",gridN:4},
+        {id:"b",name:"Same head, 5 steps",date:"7 Aug",steps:5,pal:3,detail:0.62,mode:"value",grid:"off",gridN:4}
+      ],
+      deskName:"Portrait, yellow wall",
+      deskId:"a",deskShelf:false,
+      share:{on:null,size:"screen",msg:""},
+      pro:false,buying:false,
+      tick:0
+    };
+    this.cvs=[0,1,2,3,4].map(()=>React.createRef());
+    this.thumbRefs={};this.deskThumbRefs={};
+    this.view=[0,1,2,3,4].map(()=>({z:1,x:0,y:0}));
+    this.peek=[false,false,false,false,false];
+  }
+
+  componentDidMount(){
+    const img=new Image();
+    img.onload=()=>{this.img=img;this.buildBase();this.drawAll();this.bindWheel();};
+    img.src="assets/ref-portrait.jpg";
+  }
+  componentDidUpdate(){this.drawAll();this.bindWheel();}
+
+  /* React delegates wheel at the document root, where it is passive — so
+     preventDefault is ignored and the host canvas pans instead of us
+     zooming. Bind natively, non-passive, on each surface. */
+  bindWheel(){
+    this._h=this._h||[0,1,2,3,4].map(i=>this.makeH(i));
+    this._bound=this._bound||{};
+    for(let i=0;i<5;i++){
+      const cv=this.cvs[i].current;if(!cv)continue;
+      const host=cv.parentElement;if(!host||this._bound[i]===host)continue;
+      this._bound[i]=host;
+      host.__askance=i;
+    }
+    if(this._wheelBound)return;
+    this._wheelBound=true;
+    const find=el=>{while(el&&el!==document.body){if(el.__askance!==undefined)return el.__askance;el=el.parentElement;}return -1;};
+    const onWheel=e=>{
+      const i=find(e.target);
+      if(i<0)return;
+      e.preventDefault();e.stopPropagation();
+      if(e.stopImmediatePropagation)e.stopImmediatePropagation();
+      this._h[i].wheel(e);
+    };
+    window.addEventListener("wheel",onWheel,{passive:false,capture:true});
+    document.addEventListener("wheel",onWheel,{passive:false,capture:true});
+  }
+
+  zoomAt(i,px,py,z){
+    const v=this.view[i];
+    const nx=px-(px-v.x)/v.z*z, ny=py-(py-v.y)/v.z*z;
+    const lim=160*(z-1);
+    v.z=z;
+    v.x=z<=1?0:Math.max(-lim,Math.min(lim,nx));
+    v.y=z<=1?0:Math.max(-lim*2,Math.min(lim*2,ny));
+    this.applyView(i);
+    this.settle(i);
+  }
+
+  buildBase(){this.bases={};this.tmps={};}
+
+  getBase(W,H){
+    const k=W+"x"+H;
+    if(!this.bases[k]){
+      const b=document.createElement("canvas");b.width=W;b.height=H;
+      const c=b.getContext("2d");
+      const s=Math.max(W/this.img.width,H/this.img.height);
+      const dw=this.img.width*s,dh=this.img.height*s;
+      c.drawImage(this.img,(W-dw)/2,(H-dh)*0.32,dw,dh);
+      this.bases[k]=b;
+      const t=document.createElement("canvas");t.width=W;t.height=H;this.tmps[k]=t;
+    }
+    return this.bases[k];
+  }
+
+  ramp(pi,n){
+    const [a,z]=PALS[pi];
+    const al=[S2L[a[0]],S2L[a[1]],S2L[a[2]]],zl=[S2L[z[0]],S2L[z[1]],S2L[z[2]]];
+    const Ya=0.2126*al[0]+0.7152*al[1]+0.0722*al[2];
+    const Yz=0.2126*zl[0]+0.7152*zl[1]+0.0722*zl[2];
+    const La=LSTAR[(Ya*4096)|0],Lz=LSTAR[(Yz*4096)|0];
+    const out=[];
+    for(let i=0;i<n;i++){
+      const Lt=n===1?La:La+(Lz-La)*(i/(n-1));
+      const s=Yz===Ya?0:Math.max(0,Math.min(1,(yOfL(Lt)-Ya)/(Yz-Ya)));
+      out.push([l2s(al[0]+(zl[0]-al[0])*s),l2s(al[1]+(zl[1]-al[1])*s),l2s(al[2]+(zl[2]-al[2])*s)]);
+    }
+    return out;
+  }
+
+  drawAll(){
+    if(!this.bases)return;
+    if(this._raf)return;
+    this._raf=requestAnimationFrame(()=>{
+      this._raf=null;
+      for(let i=0;i<3;i++)this.draw(i);
+      if(this.state.app.screen==="canvas")this.draw(3);
+      this.draw(4);
+      if(this.state.app.screen==="library")for(const s of this.state.saved)this.drawThumb(s);
+      if(this.state.deskShelf)for(const s of this.state.saved)this.drawThumb(s,this.deskThumbRefs);
+    });
+  }
+
+  renderExport(st,W,H,i){
+    const cf=this.cropFrac&&this.cropFrac[i];
+    let base;
+    if(!cf)base=this.getBase(W,H);
+    else{
+      const iw=this.img.width,ih=this.img.height;
+      const s=Math.max(W/iw,H/ih),dx=(W-iw*s)/2,dy=(H-ih*s)*0.32;
+      const sx=cf.fx*W,sy=cf.fy*H,sw=cf.fw*W,sh=cf.fh*H;
+      base=document.createElement("canvas");base.width=W;base.height=H;
+      const bc=base.getContext("2d");
+      bc.fillStyle="#201e1d";bc.fillRect(0,0,W,H);
+      bc.drawImage(this.img,(sx-dx)/s,(sy-dy)/s,sw/s,sh/s,0,0,W,H);
+    }
+    const cv=document.createElement("canvas");cv.width=W;cv.height=H;
+    const ctx=cv.getContext("2d");
+    if(st.mode==="original"){ctx.drawImage(base,0,0);this.drawGrid(ctx,st,W,H);return cv;}
+    const t=document.createElement("canvas");t.width=W;t.height=H;
+    const tc=t.getContext("2d");
+    tc.filter=`blur(${(1-st.detail)*16*(W/480)+0.4}px)`;
+    tc.drawImage(base,0,0);tc.filter="none";
+    const id=tc.getImageData(0,0,W,H),d=id.data,n=st.steps,r=this.ramp(st.pal,n);
+    const bands=new Uint8Array(W*H);
+    for(let p=0,q=0;q<bands.length;p+=4,q++){
+      const l=lstar(d[p],d[p+1],d[p+2])/100;
+      let b=(l*n)|0;if(b>=n)b=n-1;bands[q]=b;
+      const c=r[b];d[p]=c[0];d[p+1]=c[1];d[p+2]=c[2];d[p+3]=255;
+    }
+    if(st.mode==="skeleton"){
+      for(let p=0;p<d.length;p+=4){d[p]=243;d[p+1]=242;d[p+2]=242;}
+      const lw=Math.max(1,Math.round(W/480));
+      for(let y=0;y<H;y++){const row=y*W;
+        for(let x=0;x<W;x++){const q=row+x,b=bands[q];
+          if((x+1<W&&bands[q+1]!==b)||(y+1<H&&bands[q+W]!==b)){
+            for(let k=0;k<lw;k++){const p=(q+k)*4;d[p]=32;d[p+1]=30;d[p+2]=29;}
+          }}}
+    }
+    tc.putImageData(id,0,0);
+    if(st.mode==="skeleton"&&st.numbers){tc.save();tc.scale(1,1);this.drawNumbersScaled(tc,bands,W,H,W/480);tc.restore();}
+    ctx.drawImage(t,0,0);
+    if(st.mode==="split"){
+      const sx=st.split*W;
+      ctx.drawImage(base,0,0,sx,H,0,0,sx,H);
+      ctx.fillStyle="#ec3013";ctx.fillRect(sx-Math.round(W/480),0,Math.max(2,Math.round(W/240)),H);
+    }
+    this.drawGrid(ctx,st,W,H);
+    return cv;
+  }
+
+  drawNumbersScaled(ctx,bands,W,H,k){
+    const S=Math.max(8,Math.round(8*k)),gw=(W/S)|0,gh=(H/S)|0;
+    const sm=new Uint8Array(gw*gh);
+    for(let y=0;y<gh;y++)for(let x=0;x<gw;x++)sm[y*gw+x]=bands[(y*S)*W+x*S];
+    const seen=new Uint8Array(gw*gh),stack=[],out=[];
+    for(let i0=0;i0<sm.length;i0++){
+      if(seen[i0])continue;
+      const b=sm[i0];stack.length=0;stack.push(i0);seen[i0]=1;
+      let area=0,sx=0,sy=0;
+      while(stack.length){const q=stack.pop();area++;const x=q%gw,y=(q/gw)|0;sx+=x;sy+=y;
+        if(x>0&&!seen[q-1]&&sm[q-1]===b){seen[q-1]=1;stack.push(q-1);}
+        if(x<gw-1&&!seen[q+1]&&sm[q+1]===b){seen[q+1]=1;stack.push(q+1);}
+        if(y>0&&!seen[q-gw]&&sm[q-gw]===b){seen[q-gw]=1;stack.push(q-gw);}
+        if(y<gh-1&&!seen[q+gw]&&sm[q+gw]===b){seen[q+gw]=1;stack.push(q+gw);}}
+      if(area>(gw*gh)/150)out.push({b,x:(sx/area)*S,y:(sy/area)*S,area});
+    }
+    out.sort((a,b)=>b.area-a.area);
+    ctx.save();
+    ctx.font=`700 ${Math.round(21*k)}px Archivo, sans-serif`;
+    ctx.textAlign="center";ctx.textBaseline="middle";ctx.lineJoin="round";
+    for(const g of out.slice(0,16)){
+      const t=String(g.b+1);
+      ctx.lineWidth=7*k;ctx.strokeStyle="#f3f2f2";ctx.strokeText(t,g.x,g.y);
+      ctx.fillStyle="#201e1d";ctx.fillText(t,g.x,g.y);
+    }
+    ctx.restore();
+  }
+
+  exportSize(kind){return kind==="print"?[2480,3720]:[1200,1800];}
+
+  doExport(idx,kind,action,name,done){
+    const [W,H]=this.exportSize(kind);
+    const cv=this.renderExport(this.state.studies[idx],W,H,idx);
+    const file=(name||"askance").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")+`-${W}x${H}.png`;
+    if(action==="print"){
+      const w=window.open("","_blank");
+      if(w){w.document.write(`<title>${file}</title><style>@page{margin:12mm}body{margin:0}img{width:100%}</style><img src="${cv.toDataURL("image/png")}" onload="window.print()">`);w.document.close();done(`Sent ${W} × ${H} to print`);return;}
+      done("Print window blocked — saved instead");
+    }
+    if(action==="copy"&&cv.toBlob&&navigator.clipboard&&window.ClipboardItem){
+      cv.toBlob(b=>{navigator.clipboard.write([new ClipboardItem({"image/png":b})]).then(()=>done(`Copied ${W} × ${H} PNG`)).catch(()=>done("Clipboard blocked here"));},"image/png");
+      return;
+    }
+    const a=document.createElement("a");a.download=file;a.href=cv.toDataURL("image/png");a.click();
+    done(`Saved ${file}`);
+  }
+
+  drawThumb(s,store){
+    const ref=(store||this.thumbRefs)[s.id];const cv=ref&&ref.current;
+    if(!cv||!this.img)return;
+    const sig=[s.steps,s.pal,s.detail].join("|");
+    if(cv.dataset.sig===sig)return;
+    cv.dataset.sig=sig;
+    const steps=s.steps,pal=s.pal,detail=s.detail;
+    const W=cv.width,H=cv.height,c=cv.getContext("2d");
+    const t=document.createElement("canvas");t.width=W;t.height=H;
+    const tc=t.getContext("2d");
+    const sc=Math.max(W/this.img.width,H/this.img.height);
+    tc.filter=`blur(${(1-detail)*6+0.3}px)`;
+    tc.drawImage(this.img,(W-this.img.width*sc)/2,(H-this.img.height*sc)*0.32,this.img.width*sc,this.img.height*sc);
+    const id=tc.getImageData(0,0,W,H),d=id.data,r=this.ramp(pal,steps);
+    for(let p=0;p<d.length;p+=4){
+      const l=lstar(d[p],d[p+1],d[p+2])/100;
+      let b=(l*steps)|0;if(b>=steps)b=steps-1;
+      const q=r[b];d[p]=q[0];d[p+1]=q[1];d[p+2]=q[2];d[p+3]=255;
+    }
+    c.putImageData(id,0,0);
+  }
+
+  applyView(i){
+    const cv=this.cvs[i].current;if(!cv)return;
+    const L=this.view[i],R=this.rendered(i);
+    const k=L.z/R.z, tx=L.x-R.x*k, ty=L.y-R.y*k;
+    cv.style.transform=`translate(${tx}px,${ty}px) scale(${k})`;
+  }
+
+  rendered(i){
+    this._rend=this._rend||{};
+    return this._rend[i]||(this._rend[i]={z:1,x:0,y:0});
+  }
+
+  /* Commit the live view into pixels: re-run the engine on just the visible
+     crop, at full canvas resolution, so zooming resolves finer shapes. Band
+     boundaries are absolute L* thresholds, so the scale itself never moves. */
+  refine(i){
+    const v=this.view[i];
+    this._rend=this._rend||{};
+    this._rend[i]={z:v.z,x:v.x,y:v.y};
+    this._sig=this._sig||{};this._sig[i]=null;
+    if(this.pc)this.pc[i]=null;
+    this.draw(i);
+    this.applyView(i);
+  }
+
+  settle(i){
+    this._settle=this._settle||{};
+    clearTimeout(this._settle[i]);
+    this._settle[i]=setTimeout(()=>this.refine(i),180);
+  }
+
+  baseFor(i,W,H,cv){
+    const R=this.rendered(i);
+    if(R.z<=1.001||!this.img){if(this.cropFrac)this.cropFrac[i]=null;return this.getBase(W,H);}
+    const k=W/(cv.clientWidth||W);
+    const sw=W/R.z,sh=H/R.z;
+    const sx=W/2-(W/2+k*R.x)/R.z, sy=H/2-(H/2+k*R.y)/R.z;
+    const iw=this.img.width,ih=this.img.height;
+    const s=Math.max(W/iw,H/ih),dx=(W-iw*s)/2,dy=(H-ih*s)*0.32;
+    this.cropFrac=this.cropFrac||{};
+    this.cropFrac[i]={fx:sx/W,fy:sy/H,fw:sw/W,fh:sh/H};
+    const sig=[W,H,R.z.toFixed(3),R.x.toFixed(1),R.y.toFixed(1)].join("|");
+    this.cropCache=this.cropCache||{};
+    const c=this.cropCache[i];
+    if(c&&c.sig===sig)return c.cv;
+    const b=document.createElement("canvas");b.width=W;b.height=H;
+    const ctx=b.getContext("2d");
+    ctx.fillStyle="#201e1d";ctx.fillRect(0,0,W,H);
+    ctx.drawImage(this.img,(sx-dx)/s,(sy-dy)/s,sw/s,sh/s,0,0,W,H);
+    this.cropCache[i]={sig,cv:b};
+    return b;
+  }
+
+  draw(i){
+    const cv=this.cvs[i].current;if(!cv||!this.bases)return;
+    const st=this.state.studies[i];
+    const W=cv.width,H=cv.height;
+    const ctx=cv.getContext("2d");
+const rv=this.rendered(i);
+    const base=this.baseFor(i,W,H,cv),tmp=this.tmps[W+"x"+H];
+    this.applyView(i);
+    this._sig=this._sig||{};
+    const peek=!!this.peek[i];
+    const full=[st.steps,st.pal,st.detail,st.mode,st.numbers,st.split,peek,rv.z.toFixed(3),rv.x.toFixed(1),rv.y.toFixed(1)].join("|");
+    if(this._sig[i]===full)return;
+    this._sig[i]=full;
+    ctx.clearRect(0,0,W,H);
+    const showOriginalOnly=st.mode==="original"||peek;
+    if(showOriginalOnly){ctx.drawImage(base,0,0);return;}
+
+    const pSig=[st.steps,st.pal,st.detail,st.mode==="skeleton",st.numbers,rv.z.toFixed(3),rv.x.toFixed(1),rv.y.toFixed(1)].join("|");
+    this.pc=this.pc||{};
+    const cached=this.pc[i];
+    if(cached&&cached.sig===pSig){
+      if(st.mode==="split"){
+        ctx.drawImage(base,0,0);
+        const sx=st.split*W;
+        ctx.save();ctx.beginPath();ctx.rect(sx,0,W-sx,H);ctx.clip();ctx.drawImage(cached.cv,0,0);ctx.restore();
+      } else ctx.drawImage(cached.cv,0,0);
+      return;
+    }
+
+    const tc=tmp.getContext("2d");
+    tc.clearRect(0,0,W,H);
+    tc.filter=`blur(${(1-st.detail)*16+0.4}px)`;
+    tc.drawImage(base,0,0);
+    tc.filter="none";
+    const id=tc.getImageData(0,0,W,H);const d=id.data;
+    const n=st.steps,r=this.ramp(st.pal,n);
+    const bands=new Uint8Array(W*H);
+    for(let p=0,q=0;q<bands.length;p+=4,q++){
+      const l=lstar(d[p],d[p+1],d[p+2])/100;
+      let b=(l*n)|0; if(b>=n)b=n-1;
+      bands[q]=b;
+      const c=r[b];d[p]=c[0];d[p+1]=c[1];d[p+2]=c[2];d[p+3]=255;
+    }
+    if(st.mode==="skeleton"){
+      for(let p=0;p<d.length;p+=4){d[p]=243;d[p+1]=242;d[p+2]=242;}
+      for(let y=0;y<H;y++){
+        const row=y*W;
+        for(let x=0;x<W;x++){
+          const q=row+x,b=bands[q];
+          if((x+1<W&&bands[q+1]!==b)||(y+1<H&&bands[q+W]!==b)){const p=q*4;d[p]=32;d[p+1]=30;d[p+2]=29;}
+        }
+      }
+    }
+    tc.putImageData(id,0,0);
+    if(st.mode==="skeleton"&&st.numbers)this.drawNumbers(tc,bands,W,H);
+
+    const store=document.createElement("canvas");store.width=W;store.height=H;
+    store.getContext("2d").drawImage(tmp,0,0);
+    this.pc[i]={sig:pSig,cv:store};
+
+    if(st.mode==="split"){
+      ctx.drawImage(base,0,0);
+      const sx=st.split*W;
+      ctx.save();ctx.beginPath();ctx.rect(sx,0,W-sx,H);ctx.clip();ctx.drawImage(store,0,0);ctx.restore();
+    } else {
+      ctx.drawImage(store,0,0);
+    }
+  }
+
+  drawNumbers(ctx,bands,W,H){
+    const S=8,gw=(W/S)|0,gh=(H/S)|0;
+    const sm=new Uint8Array(gw*gh);
+    for(let y=0;y<gh;y++)for(let x=0;x<gw;x++)sm[y*gw+x]=bands[(y*S)*W+x*S];
+    const seen=new Uint8Array(gw*gh),stack=[],out=[];
+    for(let i0=0;i0<sm.length;i0++){
+      if(seen[i0])continue;
+      const b=sm[i0];stack.length=0;stack.push(i0);seen[i0]=1;
+      let area=0,sx=0,sy=0;
+      while(stack.length){
+        const q=stack.pop();area++;const x=q%gw,y=(q/gw)|0;sx+=x;sy+=y;
+        if(x>0&&!seen[q-1]&&sm[q-1]===b){seen[q-1]=1;stack.push(q-1);}
+        if(x<gw-1&&!seen[q+1]&&sm[q+1]===b){seen[q+1]=1;stack.push(q+1);}
+        if(y>0&&!seen[q-gw]&&sm[q-gw]===b){seen[q-gw]=1;stack.push(q-gw);}
+        if(y<gh-1&&!seen[q+gw]&&sm[q+gw]===b){seen[q+gw]=1;stack.push(q+gw);}
+      }
+      if(area>(gw*gh)/150)out.push({b,x:(sx/area)*S,y:(sy/area)*S,area});
+    }
+    out.sort((a,b)=>b.area-a.area);
+    ctx.save();
+    ctx.font="700 21px Archivo, sans-serif";
+    ctx.textAlign="center";ctx.textBaseline="middle";
+    ctx.lineJoin="round";
+    for(const g of out.slice(0,16)){
+      const t=String(g.b+1);
+      ctx.lineWidth=7;ctx.strokeStyle="#f3f2f2";ctx.strokeText(t,g.x,g.y);
+      ctx.fillStyle="#201e1d";ctx.fillText(t,g.x,g.y);
+    }
+    ctx.restore();
+  }
+
+  drawGrid(ctx,st,W,H){
+    if(st.grid==="off")return;
+    ctx.save();
+    ctx.strokeStyle="rgba(236,48,19,0.65)";ctx.lineWidth=2;
+    const n=st.gridN;
+    if(st.grid==="square"){
+      const cw=W/n,ch=H/Math.max(1,Math.round(H/cw));
+      for(let i=1;i<n;i++){ctx.beginPath();ctx.moveTo(i*cw,0);ctx.lineTo(i*cw,H);ctx.stroke();}
+      for(let y=ch;y<H;y+=ch){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+    } else {
+      const sp=(W/n)*1.414;
+      for(let k=-H;k<W+H;k+=sp){
+        ctx.beginPath();ctx.moveTo(k,0);ctx.lineTo(k+H,H);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(k,0);ctx.lineTo(k-H,H);ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  set(i,patch){
+    this.setState(s=>{const st=s.studies.slice();st[i]={...st[i],...patch};return{studies:st};});
+  }
+  setUi(i,patch){
+    this.setState(s=>{const u=s.ui.slice();u[i]={...u[i],...patch};return{ui:u};});
+  }
+
+  dragTrack(e,fn){
+    const el=e.currentTarget,r=el.getBoundingClientRect();
+    const move=ev=>fn(Math.min(1,Math.max(0,(ev.clientX-r.left)/r.width)));
+    move(e);
+    const up=()=>{window.removeEventListener("pointermove",move);window.removeEventListener("pointerup",up);};
+    window.addEventListener("pointermove",move);window.addEventListener("pointerup",up);
+  }
+  dragVert(e,fn){
+    const r=e.currentTarget.getBoundingClientRect();
+    const move=ev=>fn(Math.min(1,Math.max(0,1-(ev.clientY-r.top)/r.height)));
+    move(e);
+    const up=()=>{window.removeEventListener("pointermove",move);window.removeEventListener("pointerup",up);};
+    window.addEventListener("pointermove",move);window.addEventListener("pointerup",up);
+  }
+
+  makeH(i){
+    const set=p=>this.set(i,p);
+    const ptr=this._ptr||(this._ptr={});
+    const P=ptr[i]||(ptr[i]={});
+    const modes=m=>()=>set({mode:m});
+    return {
+      modeValue:modes("value"),modeOriginal:modes("original"),modeSplit:modes("split"),modeSkeleton:modes("skeleton"),
+      steps2:()=>set({steps:2}),steps3:()=>set({steps:3}),steps4:()=>set({steps:4}),
+      steps5:()=>set({steps:5}),steps6:()=>set({steps:6}),steps7:()=>set({steps:7}),
+      pal0:()=>set({pal:0}),pal1:()=>set({pal:1}),pal2:()=>set({pal:2}),pal3:()=>set({pal:3}),
+      gridOff:()=>set({grid:"off"}),gridSquare:()=>set({grid:"square"}),gridDiamond:()=>set({grid:"diamond"}),
+      gridMinus:()=>this.set(i,{gridN:Math.max(2,this.state.studies[i].gridN-1)}),
+      gridPlus:()=>this.set(i,{gridN:Math.min(10,this.state.studies[i].gridN+1)}),
+      toggleNumbers:()=>this.set(i,{numbers:!this.state.studies[i].numbers}),
+      toggleSheet:()=>this.setUi(i,{sheet:!this.state.ui[i].sheet}),
+      toolSteps:()=>this.setUi(i,{tool:this.state.ui[i].tool==="steps"?null:"steps"}),
+      toolDetail:()=>this.setUi(i,{tool:this.state.ui[i].tool==="detail"?null:"detail"}),
+      toolScale:()=>this.setUi(i,{tool:this.state.ui[i].tool==="scale"?null:"scale"}),
+      toolGrid:()=>this.setUi(i,{tool:this.state.ui[i].tool==="grid"?null:"grid"}),
+      paramSteps:()=>this.setUi(i,{param:"steps"}),paramDetail:()=>this.setUi(i,{param:"detail"}),
+      paramScale:()=>this.setUi(i,{param:"scale"}),paramGrid:()=>this.setUi(i,{param:"grid"}),
+      detailDown:e=>{e.stopPropagation();this.dragTrack(e,v=>set({detail:v}));},
+      splitDown:e=>{e.stopPropagation();
+        const host=e.currentTarget.parentElement,r=host.getBoundingClientRect();
+        const move=ev=>set({split:Math.min(1,Math.max(0,(ev.clientX-r.left)/r.width))});
+        const up=()=>{window.removeEventListener("pointermove",move);window.removeEventListener("pointerup",up);};
+        window.addEventListener("pointermove",move);window.addEventListener("pointerup",up);
+      },
+      railDown:e=>{e.stopPropagation();
+        const p=this.state.ui[i].param;
+        this.dragVert(e,v=>{
+          if(p==="steps")set({steps:2+Math.round(v*5)});
+          else if(p==="detail")set({detail:v});
+          else if(p==="scale")set({pal:Math.min(3,Math.floor(v*4))});
+          else set({grid:v<0.34?"off":v<0.67?"square":"diamond",gridN:2+Math.round(v*8)});
+        });
+      },
+      wheel:e=>{
+        e.preventDefault();
+        const v=this.view[i];
+        v.z=Math.min(6,Math.max(1,v.z*(e.deltaY<0?1.12:0.89)));
+        if(v.z===1){v.x=0;v.y=0;}
+        this.applyView(i);this.settle(i);
+      },
+      imgDown:e=>{
+        if(e.target.closest&&e.target.closest("[data-chrome]"))return;
+        if(i===3&&this.state.app.screen!=="canvas")return;
+        P.pts=P.pts||new Map();
+        P.pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+        if(P.pts.size===1){
+          P.start={x:e.clientX,y:e.clientY,vx:this.view[i].x,vy:this.view[i].y};
+          P.moved=false;P.t0=Date.now();
+          P.timer=setTimeout(()=>{if(!P.moved){this.peek[i]=true;this.draw(i);}},280);
+        } else if(P.pts.size===2){
+          clearTimeout(P.timer);
+          const a=[...P.pts.values()];
+          P.pinch=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);
+          P.z0=this.view[i].z;
+        }
+      },
+      imgMove:e=>{
+        if(!P.pts||!P.pts.has(e.pointerId))return;
+        P.pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+        const v=this.view[i];
+        if(P.pts.size>=2){
+          const a=[...P.pts.values()];
+          const d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);
+          v.z=Math.min(6,Math.max(1,P.z0*(d/P.pinch)));
+          if(v.z===1){v.x=0;v.y=0;}
+          this.applyView(i);return;
+        }
+        const dx=e.clientX-P.start.x,dy=e.clientY-P.start.y;
+        if(Math.abs(dx)+Math.abs(dy)>8){P.moved=true;clearTimeout(P.timer);}
+        if(v.z>1&&P.moved){
+          const lim=160*(v.z-1);
+          v.x=Math.max(-lim,Math.min(lim,P.start.vx+dx));
+          v.y=Math.max(-lim*2,Math.min(lim*2,P.start.vy+dy));
+          this.applyView(i);
+        }
+      },
+      imgUp:e=>{
+        const had=P.pts&&P.pts.has(e.pointerId);
+        if(P.pts)P.pts.delete(e.pointerId);
+        clearTimeout(P.timer);
+        if(this.peek[i]){this.peek[i]=false;this.draw(i);return;}
+        if(P.moved&&(!P.pts||P.pts.size===0))this.settle(i);
+        if(had&&!P.moved&&Date.now()-P.t0<280&&(!P.pts||P.pts.size===0)){
+          const host=e.currentTarget.getBoundingClientRect();
+          const px=e.clientX-host.left-host.width/2, py=e.clientY-host.top-host.height/2;
+          if(P.tapAt&&Date.now()-P.tapAt<300){
+            P.tapAt=0;clearTimeout(P.tapTimer);
+            const v=this.view[i];
+            this.zoomAt(i,px,py,v.z<1.5?2.4:(v.z<3?4:1));
+            return;
+          }
+          P.tapAt=Date.now();
+          clearTimeout(P.tapTimer);
+          P.tapTimer=setTimeout(()=>{
+            P.tapAt=0;
+            const u=this.state.ui[i];
+            if(i===0)this.setUi(i,u.chrome===false?{chrome:true}:{chrome:false,sheet:false});
+            else this.setUi(i,{chrome:u.chrome===false});
+          },280);
+        }
+      }
+    };
+  }
+
+  derived(i){
+    const s=this.state.studies[i],u=this.state.ui[i];
+    const modeIdx={value:0,original:1,split:2,skeleton:3}[s.mode];
+    const gridIdx={off:0,square:1,diamond:2}[s.grid];
+    const railVal=u.param==="steps"?(s.steps-2)/5:u.param==="detail"?s.detail:u.param==="scale"?(s.pal+0.5)/4:(gridIdx+0.5)/3;
+    const ticks=[];
+    for(let k=0;k<22;k++)ticks.push(React.createElement("div",{key:k,style:{position:"absolute",left:0,top:(k*100/22)+"%",width:k%5===0?"18px":"9px",height:"2px",background:"rgba(243,242,242,0.35)"}}));
+    const cw=([320,320,320,320,496][i]||320)/s.gridN;
+    const RULE="rgba(236,48,19,.65)";
+    return {
+      gridBg:s.grid==="off"?"none":s.grid==="square"
+        ?`repeating-linear-gradient(to right,${RULE} 0 2px,transparent 2px ${cw}px),repeating-linear-gradient(to bottom,${RULE} 0 2px,transparent 2px ${cw}px)`
+        :`repeating-linear-gradient(45deg,${RULE} 0 2px,transparent 2px ${cw}px),repeating-linear-gradient(-45deg,${RULE} 0 2px,transparent 2px ${cw}px)`,
+      summary:`${s.steps} VALUES · ${s.grid==="off"?"NO GRID":s.grid.toUpperCase()+" "+s.gridN} · DETAIL ${Math.round(s.detail*100)}`,
+      caret:u.sheet?"▼":"▲",
+      detailNum:Math.round(s.detail*100),
+      palName:PALS[s.pal][2],
+      gridLabel:s.grid==="off"?"OFF":s.gridN,
+      stepsLeft:((s.steps-2)*16.666)+"%",
+      modeLeft:(modeIdx*25)+"%",
+      gridLeft:(gridIdx*33.333)+"%",
+      gridLeftPx:(gridIdx*52)+"px",
+      detailPct:(s.detail*100)+"%",
+      splitPct:(s.split*100)+"%",
+      sheetY:u.chrome===false?"110%":"0px",
+      chromeOpacity:u.chrome===false?0.001:1,
+      chromePE:u.chrome===false?"none":"auto",
+      sheetMax:u.sheet?"460px":"0px",
+      numX:s.numbers?"28px":"2px",
+      tSteps:u.tool==="steps"?"#ec3013":"transparent",
+      tDetail:u.tool==="detail"?"#ec3013":"transparent",
+      tScale:u.tool==="scale"?"#ec3013":"transparent",
+      tGrid:u.tool==="grid"?"#ec3013":"transparent",
+      mValue:s.mode==="value"?"#ec3013":"transparent",
+      mOriginal:s.mode==="original"?"#ec3013":"transparent",
+      mSplit:s.mode==="split"?"#ec3013":"transparent",
+      mSkeleton:s.mode==="skeleton"?"#ec3013":"transparent",
+      showSteps:u.tool==="steps",showDetail:u.tool==="detail",showScale:u.tool==="scale",showGrid:u.tool==="grid",
+      railPct:(railVal*100)+"%",
+      railName:u.param==="steps"?"VALUES":u.param==="detail"?"DETAIL":u.param==="scale"?"SCALE":"GRID",
+      ticks
+    };
+  }
+
+  renderVals(){
+    const S=this.state.studies,a=this.state.app;
+    const mk=i=>({...S[i],isSplit:S[i].mode==="split",isSkeleton:S[i].mode==="skeleton"});
+    this._h=this._h||[this.makeH(0),this.makeH(1),this.makeH(2),this.makeH(3),this.makeH(4)];
+    const OB=[
+      ["Value before colour.","Askance flattens a photograph into a handful of values, so you can see the shapes light actually makes. The steps are spaced the way the eye reads them, not the way a camera measures them — so they line up with the value scale on your desk.","Next"],
+      ["Look askance.","Hold the image to peek at the photo. Split it down the middle. Strip it back to edges and number every value.","Next"],
+      ["Grid when you want it.","Square or diamond, as fine as you like — then get it out of the way with a single tap.","Start a study"]
+    ];
+    const ob=OB[a.ob]||OB[0];
+    const b3={...this.derived(3),
+      isCanvas:a.screen==="canvas",isLibrary:a.screen==="library",isOnboard:a.screen==="onboard",
+      title:a.title,
+      obTitle:ob[0],obBody:ob[1],obCta:ob[2],
+      ob0:a.ob>=0?"#ec3013":"rgba(243,242,242,.25)",
+      ob1:a.ob>=1?"#ec3013":"rgba(243,242,242,.25)",
+      ob2:a.ob>=2?"#ec3013":"rgba(243,242,242,.25)",
+      numBg:S[3].numbers?"#ec3013":"transparent"
+    };
+    const setApp=p=>this.setState(s=>({app:{...s.app,...p}}));
+    const sh=this.state.share;
+    const setSh=p=>this.setState(s=>({share:{...s.share,...p}}));
+    const pro=this.state.pro;
+    const buy=()=>{
+      if(this.state.buying)return;
+      this.setState({buying:true});
+      setTimeout(()=>this.setState({pro:true,buying:false,share:{...this.state.share,msg:"Unlocked — thank you"}}),900);
+    };
+    const gate=fn=>()=>{if(!pro){buy();return;}fn();};
+    const run=(idx,action,name)=>this.doExport(idx,sh.size,action,name,msg=>setSh({msg}));
+    const share={
+      locked:!pro,
+      lockDim:pro?1:0.4,
+      buyLabel:this.state.buying?"Confirming…":"Unlock — £3.99",
+      unlock:buy,
+      restore:()=>{this.setState({pro:true,share:{...this.state.share,msg:"Purchase restored"}});},
+      reset:()=>this.setState({pro:false,share:{...this.state.share,msg:""}}),
+      open3:()=>setSh({on:3,msg:""}),
+      open4:()=>setSh({on:4,msg:""}),
+      close:()=>setSh({on:null,msg:""}),
+      sizeScreen:()=>setSh({size:"screen",msg:""}),
+      sizePrint:()=>setSh({size:"print",msg:""}),
+      save:gate(()=>run(sh.on,"save",sh.on===4?this.state.deskName:this.state.app.title)),
+      print:gate(()=>run(sh.on,"print",sh.on===4?this.state.deskName:this.state.app.title)),
+      copy:gate(()=>run(sh.on,"copy",sh.on===4?this.state.deskName:this.state.app.title)),
+      shelf:gate(()=>{
+        if(sh.on===4){saveCurrent(4,this.state.deskName);setSh({msg:"Saved to the shelf"});}
+        else{saveCurrent(3,this.state.app.title==="UNTITLED STUDY"?"Untitled study":this.state.app.title.charAt(0)+this.state.app.title.slice(1).toLowerCase());setSh({on:null,msg:""});setApp({screen:"library",saved:true});}
+      }),
+      msg:sh.msg,
+      isPhone:sh.on===3,isDesk:sh.on===4,
+      screenBg:sh.size==="screen"?"#ec3013":"transparent",
+      printBg:sh.size==="print"?"#ec3013":"transparent",
+      dims:sh.size==="print"?"2480 × 3720 px · 300 dpi":"1200 × 1800 px"
+    };
+    const open=it=>{this.set(3,{steps:it.steps,pal:it.pal,detail:it.detail,mode:it.mode,grid:it.grid,gridN:it.gridN});setApp({screen:"canvas",title:it.name.toUpperCase(),openId:it.id,saved:true});};
+    const items=this.state.saved.map(it=>({...it,
+      ref:this.thumbRefs[it.id]||(this.thumbRefs[it.id]=React.createRef()),
+      meta:`${it.steps} values · ${PALS[it.pal][2].toLowerCase()} · ${it.date}`,
+      open:()=>open(it)
+    }));
+    const saveCurrent=(idx,name)=>{
+      const st=this.state.studies[idx];
+      const entry={steps:st.steps,pal:st.pal,detail:st.detail,mode:st.mode,grid:st.grid,gridN:st.gridN};
+      this.setState(s=>{
+        const list=s.saved.slice();
+        const openId=idx===4?s.deskId:(s.app.saved?s.app.openId:null);
+        const at=openId?list.findIndex(x=>x.id===openId):-1;
+        if(at>=0){list[at]={...list[at],...entry};return {saved:list};}
+        const id="s"+Date.now();
+        list.unshift({id,name,date:"today",...entry});
+        return idx===4?{saved:list,deskId:id}:{saved:list};
+      });
+    };
+    const deskOpen=it=>{this.set(4,{steps:it.steps,pal:it.pal,detail:it.detail,mode:it.mode,grid:it.grid,gridN:it.gridN});this.setState({deskName:it.name,deskId:it.id,deskShelf:false});};
+    const deskItems=this.state.saved.map(it=>({...it,
+      ref:this.deskThumbRefs[it.id]||(this.deskThumbRefs[it.id]=React.createRef()),
+      meta:`${it.steps} values · ${PALS[it.pal][2].toLowerCase()} · ${it.date}`,
+      open:()=>deskOpen(it)
+    }));
+    return {
+      share,
+      items,
+      deskItems,
+      deskShelf:this.state.deskShelf,
+      shelfOpen:()=>this.setState({deskShelf:true}),
+      shelfClose:()=>this.setState({deskShelf:false}),
+      deskNew:()=>{this.set(4,{...DEF});this.setState({deskName:"Untitled study",deskId:null,deskShelf:false});},
+      s4:mk(4),b4:{...this.derived(4),name:this.state.deskName,numBg:S[4].numbers?"#ec3013":"transparent",count:this.state.saved.length},
+      h4:this._h[4],c4:this.cvs[4],
+      saveDesk:()=>saveCurrent(4,this.state.deskName),
+      c0:this.cvs[0],c1:this.cvs[1],c2:this.cvs[2],c3:this.cvs[3],
+      s0:mk(0),s1:mk(1),s2:mk(2),s3:mk(3),
+      b0:this.derived(0),b1:this.derived(1),b2:this.derived(2),b3,
+      h0:this._h[0],h1:this._h[1],h2:this._h[2],h3:this._h[3],
+      nav:this._nav||(this._nav={
+        toLibrary:()=>setApp({screen:"library",ob:0}),
+        toOnboard:()=>setApp({screen:"onboard",ob:0}),
+        obNext:()=>{const o=this.state.app.ob;if(o>=2)setApp({screen:"library",ob:0});else setApp({ob:o+1});},
+        newStudy:()=>{this.set(3,{...DEF});setApp({screen:"canvas",title:"UNTITLED STUDY",openId:null,saved:false});},
+        save:()=>{saveCurrent(3,this.state.app.title==="UNTITLED STUDY"?"Untitled study":this.state.app.title.charAt(0)+this.state.app.title.slice(1).toLowerCase());setApp({screen:"library",saved:true});}
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>
