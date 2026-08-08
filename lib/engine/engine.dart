@@ -54,12 +54,21 @@ Rect coverRect(Size source, Size output) {
   );
 }
 
-/// Pan/zoom over the cover-cropped frame. Translation is in output pixels and
-/// is applied after scaling about the output origin.
+/// Pan/zoom over the cover-cropped frame.
+///
+/// [offset] is a *fraction* of the output size, not a pixel count, so the same
+/// transform describes the same crop at any resolution. That matters because
+/// the same view is applied at three different scales at once: the photograph
+/// is drawn in logical pixels, the blur pass renders in device pixels, and an
+/// export renders at 1200 or 2480 wide. A pixel offset would make those three
+/// disagree the moment you panned or zoomed — visible as the two halves of a
+/// split sliding apart.
 class ViewTransform {
   const ViewTransform({this.zoom = 1, this.offset = Offset.zero});
 
   final double zoom;
+
+  /// Pan, as a fraction of the output width and height.
   final Offset offset;
 
   static const double minZoom = 1;
@@ -70,8 +79,8 @@ class ViewTransform {
   Rect destination(Size source, Size output) {
     final base = coverRect(source, output);
     final scaled = Rect.fromLTWH(
-      base.left * zoom + offset.dx,
-      base.top * zoom + offset.dy,
+      base.left * zoom + offset.dx * output.width,
+      base.top * zoom + offset.dy * output.height,
       base.width * zoom,
       base.height * zoom,
     );
@@ -80,9 +89,13 @@ class ViewTransform {
 
   /// The offset that [destination] actually used, after clamping.
   Offset clampedOffset(Size source, Size output) {
+    if (output.isEmpty) return offset;
     final base = coverRect(source, output);
     final dest = destination(source, output);
-    return Offset(dest.left - base.left * zoom, dest.top - base.top * zoom);
+    return Offset(
+      (dest.left - base.left * zoom) / output.width,
+      (dest.top - base.top * zoom) / output.height,
+    );
   }
 
   static Rect _clampToCover(Rect r, Size output) {
@@ -105,20 +118,27 @@ class ViewTransform {
   ViewTransform copyWith({double? zoom, Offset? offset}) =>
       ViewTransform(zoom: zoom ?? this.zoom, offset: offset ?? this.offset);
 
-  /// Zoom to [target] keeping the output-space point [focus] under the finger.
+  /// Zoom to [target] keeping the point under the finger fixed. [focus] is in
+  /// output-space pixels, matching the size the gesture was measured in.
   ViewTransform zoomedAt(
     Offset focus,
     double target,
     Size source,
     Size output,
   ) {
+    if (output.isEmpty) return this;
     final next = target.clamp(minZoom, maxZoom);
     final k = next / zoom;
-    final o = Offset(
-      focus.dx - (focus.dx - offset.dx) * k,
-      focus.dy - (focus.dy - offset.dy) * k,
+    // The focal point has to be a fraction too, or it is compared against an
+    // offset in different units.
+    final f = Offset(focus.dx / output.width, focus.dy / output.height);
+    final candidate = ViewTransform(
+      zoom: next,
+      offset: Offset(
+        f.dx - (f.dx - offset.dx) * k,
+        f.dy - (f.dy - offset.dy) * k,
+      ),
     );
-    final candidate = ViewTransform(zoom: next, offset: o);
     return candidate.copyWith(offset: candidate.clampedOffset(source, output));
   }
 

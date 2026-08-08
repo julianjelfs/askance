@@ -65,8 +65,9 @@ class IndexedDbStudyRepository implements StudyRepository {
       return decoded
           .whereType<Map>()
           .map((e) => Study.fromJson(e.cast<String, Object?>()))
+          .nonNulls
           .toList();
-    } on FormatException {
+    } catch (e) {
       return const [];
     }
   }

@@ -40,8 +40,9 @@ class FileStudyRepository implements StudyRepository {
       return raw
           .whereType<Map>()
           .map((e) => Study.fromJson(e.cast<String, Object?>()))
+          .nonNulls
           .toList();
-    } on FormatException {
+    } catch (e) {
       // A corrupt manifest should cost the shelf, not the app.
       return const [];
     }

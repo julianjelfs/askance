@@ -69,23 +69,20 @@ class StudySettings {
     'splitPosition': splitPosition,
   };
 
+  /// Tolerant by design: a manifest written by an older build, or one that has
+  /// been hand-edited, should cost the affected field rather than the shelf.
   static StudySettings fromJson(Map<String, Object?> json) => StudySettings(
-    steps: (json['steps'] as num?)?.toInt().clamp(minSteps, maxSteps) ?? 3,
+    steps: _int(json['steps'], 3).clamp(minSteps, maxSteps),
     scale: _enumByName(ValueScale.values, json['scale'], ValueScale.graphite),
-    detail: ((json['detail'] as num?)?.toDouble() ?? 0.5).clamp(0.0, 1.0),
+    detail: _double(json['detail'], 0.5).clamp(0.0, 1.0),
     mode: _enumByName(ViewMode.values, json['mode'], ViewMode.value),
     grid: _enumByName(GridMode.values, json['grid'], GridMode.off),
-    gridDivisions:
-        (json['gridDivisions'] as num?)?.toInt().clamp(
-          minDivisions,
-          maxDivisions,
-        ) ??
-        4,
-    numbers: json['numbers'] as bool? ?? true,
-    splitPosition: ((json['splitPosition'] as num?)?.toDouble() ?? 0.5).clamp(
-      0.0,
-      1.0,
-    ),
+    gridDivisions: _int(
+      json['gridDivisions'],
+      4,
+    ).clamp(minDivisions, maxDivisions),
+    numbers: json['numbers'] is bool ? json['numbers']! as bool : true,
+    splitPosition: _double(json['splitPosition'], 0.5).clamp(0.0, 1.0),
   );
 
   @override
@@ -168,16 +165,32 @@ class Study {
     'settings': settings.toJson(),
   };
 
-  static Study fromJson(Map<String, Object?> json) => Study(
-    id: json['id'] as String,
-    name: json['name'] as String? ?? 'Untitled study',
-    date: DateTime.tryParse(json['date'] as String? ?? '') ?? DateTime.now(),
-    imageKey: json['imageKey'] as String,
-    settings: StudySettings.fromJson(
-      (json['settings'] as Map?)?.cast<String, Object?>() ?? const {},
-    ),
-  );
+  /// Returns null for an entry too damaged to be a study — one with no id or
+  /// no source image. The shelf drops those rather than failing to load.
+  static Study? fromJson(Map<String, Object?> json) {
+    final id = json['id'];
+    final imageKey = json['imageKey'];
+    if (id is! String || id.isEmpty) return null;
+    if (imageKey is! String || imageKey.isEmpty) return null;
+    final name = json['name'];
+    final date = json['date'];
+    return Study(
+      id: id,
+      name: name is String && name.trim().isNotEmpty ? name : 'Untitled study',
+      date: (date is String ? DateTime.tryParse(date) : null) ?? DateTime.now(),
+      imageKey: imageKey,
+      settings: StudySettings.fromJson(
+        (json['settings'] as Map?)?.cast<String, Object?>() ?? const {},
+      ),
+    );
+  }
 }
+
+int _int(Object? value, int fallback) =>
+    value is num ? value.toInt() : fallback;
+
+double _double(Object? value, double fallback) =>
+    value is num ? value.toDouble() : fallback;
 
 T _enumByName<T extends Enum>(List<T> values, Object? name, T fallback) {
   for (final v in values) {

@@ -145,10 +145,6 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
       source: session.image!,
       settings: session.settings,
       view: session.view,
-      viewportPx: Size(
-        session.viewportSize.width * session.devicePixelRatio,
-        session.viewportSize.height * session.devicePixelRatio,
-      ),
       target: _size,
       splitPosition: session.splitPosition,
     );

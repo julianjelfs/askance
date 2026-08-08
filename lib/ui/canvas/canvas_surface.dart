@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 
@@ -44,8 +46,12 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
   Offset _focalStart = Offset.zero;
   Size _size = Size.zero;
 
+  Timer? _pendingTap;
+  Offset _lastTapPosition = Offset.zero;
+
   @override
   void dispose() {
+    _pendingTap?.cancel();
     _disposer.disposeAll();
     _blur.dispose();
     super.dispose();
@@ -67,18 +73,49 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
       ViewTransform.minZoom,
       ViewTransform.maxZoom,
     );
+    if (_size.isEmpty) return;
     final k = zoom / _gestureStart.zoom;
+    // Work in pixels for the gesture, then store the result as a fraction of
+    // the viewport so every resolution reads the same crop.
+    final startPx = Offset(
+      _gestureStart.offset.dx * _size.width,
+      _gestureStart.offset.dy * _size.height,
+    );
     // Keep the point under the fingers fixed, then follow the pan.
-    final offset =
+    final pannedPx =
         Offset(
-          _focalStart.dx - (_focalStart.dx - _gestureStart.offset.dx) * k,
-          _focalStart.dy - (_focalStart.dy - _gestureStart.offset.dy) * k,
+          _focalStart.dx - (_focalStart.dx - startPx.dx) * k,
+          _focalStart.dy - (_focalStart.dy - startPx.dy) * k,
         ) +
         (details.localFocalPoint - _focalStart);
-    final candidate = ViewTransform(zoom: zoom, offset: offset);
+    final candidate = ViewTransform(
+      zoom: zoom,
+      offset: Offset(
+        pannedPx.dx / _size.width,
+        pannedPx.dy / _size.height,
+      ),
+    );
     session.setView(
       candidate.copyWith(offset: candidate.clampedOffset(_sourceSize, _size)),
     );
+  }
+
+  void _onTapUp(TapUpDetails details) {
+    final position = details.localPosition;
+    final pending = _pendingTap;
+    if (pending != null && (position - _lastTapPosition).distance < 32) {
+      pending.cancel();
+      _pendingTap = null;
+      widget.session.cycleZoom(position);
+      return;
+    }
+    _lastTapPosition = position;
+    _pendingTap?.cancel();
+    _pendingTap = Timer(AskanceMotion.doubleTapWindow, () {
+      _pendingTap = null;
+      widget.onTap?.call();
+      if (widget.allowChromeToggle) widget.session.toggleChrome();
+    });
   }
 
   void _onScroll(PointerSignalEvent event) {
@@ -121,22 +158,15 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
           child: RawGestureDetector(
             behavior: HitTestBehavior.opaque,
             gestures: {
+              // Tap and double tap are timed here rather than left to a
+              // DoubleTapGestureRecognizer, because the scale recognizer wins
+              // the arena first and the double tap never fires. The single tap
+              // is held for the design's 300ms double-tap window so a second
+              // tap can claim it.
               TapGestureRecognizer:
                   GestureRecognizerFactoryWithHandlers<TapGestureRecognizer>(
                     TapGestureRecognizer.new,
-                    (instance) => instance.onTap = () {
-                      widget.onTap?.call();
-                      if (widget.allowChromeToggle) session.toggleChrome();
-                    },
-                  ),
-              DoubleTapGestureRecognizer:
-                  GestureRecognizerFactoryWithHandlers<
-                    DoubleTapGestureRecognizer
-                  >(
-                    DoubleTapGestureRecognizer.new,
-                    (instance) =>
-                        instance.onDoubleTapDown = (details) =>
-                            session.cycleZoom(details.localPosition),
+                    (instance) => instance.onTapUp = _onTapUp,
                   ),
               LongPressGestureRecognizer: peekRecognizer(
                 onStart: () => session.setPeeking(true),

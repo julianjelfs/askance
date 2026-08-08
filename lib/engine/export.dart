@@ -35,23 +35,14 @@ Future<Uint8List?> renderExport({
   required ui.Image source,
   required StudySettings settings,
   required ViewTransform view,
-  required Size viewportPx,
   required ExportSize target,
   required double splitPosition,
 }) async {
   final size = target.size;
 
-  // The on-screen offset is in viewport pixels; the same crop at export size
-  // means scaling it by the ratio of the two frames.
-  final exportView = viewportPx.isEmpty
-      ? view
-      : ViewTransform(
-          zoom: view.zoom,
-          offset: Offset(
-            view.offset.dx * size.width / viewportPx.width,
-            view.offset.dy * size.height / viewportPx.height,
-          ),
-        );
+  // The view is resolution independent, so the same transform describes the
+  // same crop at export size with nothing to convert.
+  final exportView = view;
 
   RegionOverlay? overlay;
   if (settings.mode == ViewMode.skeleton && settings.numbers) {
