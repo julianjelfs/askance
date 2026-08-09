@@ -15,11 +15,22 @@ import '../widgets/controls.dart';
 import '../widgets/glyphs.dart';
 import 'image_output.dart';
 
+/// What the sheet was closed with, when the caller needs to know.
+enum ShareOutcome { kept, discarded }
+
 /// A bottom sheet on phone, a 360px centred dialog on desktop. One action on
 /// each surface: SHARE. There is no separate save.
-Future<void> showShareSheet(BuildContext context, WidgetRef ref) {
+///
+/// [offerDiscard] turns it into the question asked on the way out of a study
+/// that has never been kept: keep it, or throw it away. Dismissing the sheet
+/// in that mode answers neither, and leaves you on the canvas.
+Future<ShareOutcome?> showShareSheet(
+  BuildContext context,
+  WidgetRef ref, {
+  bool offerDiscard = false,
+}) {
   final wide = MediaQuery.sizeOf(context).width >= kDesktopBreakpoint;
-  return showGeneralDialog(
+  return showGeneralDialog<ShareOutcome>(
     context: context,
     barrierDismissible: true,
     barrierLabel: 'Share this study',
@@ -31,7 +42,7 @@ Future<void> showShareSheet(BuildContext context, WidgetRef ref) {
         parent: animation,
         curve: AskanceMotion.slide,
       );
-      final sheet = ShareSheet(wide: wide);
+      final sheet = ShareSheet(wide: wide, offerDiscard: offerDiscard);
       if (wide) {
         return Center(
           child: FadeTransition(
@@ -58,9 +69,12 @@ Future<void> showShareSheet(BuildContext context, WidgetRef ref) {
 }
 
 class ShareSheet extends ConsumerStatefulWidget {
-  const ShareSheet({super.key, required this.wide});
+  const ShareSheet({super.key, required this.wide, this.offerDiscard = false});
 
   final bool wide;
+
+  /// Show the way out for a study that has never been kept.
+  final bool offerDiscard;
 
   @override
   ConsumerState<ShareSheet> createState() => _ShareSheetState();
@@ -125,9 +139,9 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
       if (widget.wide) {
         _report('Saved to the shelf');
       } else {
-        Navigator.of(context)
-          ..pop()
-          ..maybePop();
+        // The caller decides what to do next; on phone that is a return to
+        // the shelf, whether the sheet was opened from SHARE or on the way out.
+        Navigator.of(context).pop(ShareOutcome.kept);
       }
     } catch (e) {
       _report('Could not keep this study');
@@ -135,6 +149,8 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
       if (mounted) setState(() => _busy = false);
     }
   }
+
+  void _discard() => Navigator.of(context).pop(ShareOutcome.discarded);
 
   Future<Uint8List?> _render() async {
     final shader = ref.read(shaderProvider).valueOrNull;
@@ -229,7 +245,11 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
               children: [
                 Expanded(
                   child: Text(
-                    'Share this study',
+                    // Arriving here by pressing back is a different question
+                    // from arriving by pressing SHARE.
+                    widget.offerDiscard
+                        ? 'Keep this study?'
+                        : 'Share this study',
                     style: AskanceText.sheetTitle().by(s),
                   ),
                 ),
@@ -273,6 +293,27 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
               onPressed: _busy ? null : _keep,
               opacity: optionOpacity,
             ),
+            if (widget.offerDiscard) ...[
+              SizedBox(height: 8 * s),
+              // Free, and never dimmed: throwing work away is not a feature
+              // anyone should have to pay for.
+              ActionButton(
+                label: 'Discard',
+                trailing: '×',
+                solid: false,
+                onDark: true,
+                onPressed: _busy ? null : _discard,
+              ),
+              SizedBox(height: 12 * s),
+              Text(
+                'This study is not on the shelf yet. Going back without '
+                'keeping it loses the photograph you picked.',
+                style: AskanceText.caption(
+                  11,
+                  color: AskanceColors.mutedDark,
+                ).by(s),
+              ),
+            ],
             SizedBox(height: 18 * s),
 
             Text('SIZE', style: AskanceText.sectionLabel().by(s)),

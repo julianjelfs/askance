@@ -62,6 +62,7 @@ class _CanvasBody extends ConsumerWidget {
       listenable: routeAnimation,
       builder: (context, _) => _body(
         context,
+        ref,
         s,
         padding,
         chromeVisible,
@@ -72,16 +73,30 @@ class _CanvasBody extends ConsumerWidget {
 
   Widget _body(
     BuildContext context,
+    WidgetRef ref,
     double s,
     EdgeInsets padding,
     bool chromeVisible, {
     required bool flying,
   }) {
+    // A study that has never been kept has nowhere to go back to: its
+    // photograph is only held in this session. Rather than lose it silently,
+    // ask on the way out.
+    final unsaved = session.studyId == null && session.hasImage;
+
     return PopScope(
+      canPop: !unsaved,
       // Settings persist on a short debounce, so leaving immediately after a
       // change would otherwise drop it.
-      onPopInvokedWithResult: (didPop, _) {
-        if (didPop) session.flushPersist();
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) {
+          session.flushPersist();
+          return;
+        }
+        final outcome = await showShareSheet(context, ref, offerDiscard: true);
+        // Dismissing the sheet answers neither question, and stays put.
+        if (outcome == null || !context.mounted) return;
+        Navigator.of(context).pop();
       },
       child: Stack(
         fit: StackFit.expand,
@@ -267,7 +282,14 @@ class _TopBarState extends ConsumerState<_TopBar> {
             ),
             GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onTap: () => showShareSheet(context, ref),
+              onTap: () async {
+                final outcome = await showShareSheet(context, ref);
+                // Keeping a study from the canvas returns to the shelf, as it
+                // did before the sheet started reporting what happened.
+                if (outcome == ShareOutcome.kept && context.mounted) {
+                  Navigator.of(context).maybePop();
+                }
+              },
               child: SizedBox(
                 width: 42 * s,
                 height: 46 * s,
