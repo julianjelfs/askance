@@ -7,6 +7,7 @@ import '../../theme.dart';
 import '../canvas/canvas_screen.dart';
 import '../onboarding/onboarding_screen.dart';
 import '../pick_image.dart';
+import '../widgets/askance_mark.dart';
 import '../widgets/controls.dart';
 import 'study_card.dart';
 
@@ -130,6 +131,8 @@ class _TitleRow extends StatelessWidget {
         height: 56 * s,
         child: Row(
           children: [
+            AskanceMark(size: 26 * s),
+            SizedBox(width: 10 * s),
             Expanded(
               child: Text('Askance', style: AskanceText.screenTitle().by(s)),
             ),
@@ -238,10 +241,15 @@ Future<void> openStudy(BuildContext context, WidgetRef ref, Study study) async {
 }
 
 /// The design has no page transitions; screens replace each other outright.
+///
+/// [heroDuration] gives a [Hero] room to fly — opening a study grows its shelf
+/// thumbnail into the full-bleed canvas — while the page itself only fades, so
+/// nothing slides.
 class NoTransitionRoute<T> extends PageRoute<T> {
-  NoTransitionRoute({required this.builder});
+  NoTransitionRoute({required this.builder, this.heroDuration = Duration.zero});
 
   final WidgetBuilder builder;
+  final Duration heroDuration;
 
   @override
   Color? get barrierColor => null;
@@ -253,7 +261,7 @@ class NoTransitionRoute<T> extends PageRoute<T> {
   bool get maintainState => true;
 
   @override
-  Duration get transitionDuration => Duration.zero;
+  Duration get transitionDuration => heroDuration;
 
   @override
   Widget buildPage(
@@ -261,4 +269,29 @@ class NoTransitionRoute<T> extends PageRoute<T> {
     Animation<double> animation,
     Animation<double> secondaryAnimation,
   ) => builder(context);
+
+  @override
+  Widget buildTransitions(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    if (heroDuration == Duration.zero) return child;
+    // The canvas resolves in under the flying thumbnail, so the two arrive
+    // together rather than the destination being visible from the first frame.
+    return FadeTransition(
+      opacity: CurvedAnimation(
+        parent: animation,
+        curve: const Interval(0.35, 1),
+      ),
+      child: child,
+    );
+  }
 }
+
+/// Ties a shelf thumbnail to the canvas it opens into.
+String studyHeroTag(String studyId) => 'study-$studyId';
+
+/// Long enough to read as growth rather than a cut.
+const Duration kStudyOpenDuration = Duration(milliseconds: 420);

@@ -28,12 +28,19 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  # Lets the autosave debounce be tested without waiting in real time.
+  fake_async: ^1.3.2
 
 flutter:
   uses-material-design: true
 
   shaders:
     - shaders/askance.frag
+
+  assets:
+    # Onboarding shows the engine working on a real photograph rather than
+    # describing it. Filipp Romanovski, via Unsplash.
+    - assets/onboarding-portrait.jpg
 
   fonts:
     - family: Archivo

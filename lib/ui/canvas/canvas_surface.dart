@@ -90,10 +90,7 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
         (details.localFocalPoint - _focalStart);
     final candidate = ViewTransform(
       zoom: zoom,
-      offset: Offset(
-        pannedPx.dx / _size.width,
-        pannedPx.dy / _size.height,
-      ),
+      offset: Offset(pannedPx.dx / _size.width, pannedPx.dy / _size.height),
     );
     session.setView(
       candidate.copyWith(offset: candidate.clampedOffset(_sourceSize, _size)),

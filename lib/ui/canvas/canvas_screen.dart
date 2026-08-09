@@ -9,6 +9,7 @@ import '../../state/canvas_session.dart';
 import '../../state/providers.dart';
 import '../../theme.dart';
 import '../share/share_sheet.dart';
+import '../shelf/shelf_screen.dart';
 import '../widgets/controls.dart';
 import 'canvas_surface.dart';
 import 'tool_panel.dart';
@@ -50,53 +51,68 @@ class _CanvasBody extends ConsumerWidget {
     final padding = MediaQuery.paddingOf(context);
     final chromeVisible = session.chromeVisible;
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        CanvasSurface(session: session, shader: shader),
+    return PopScope(
+      // Settings persist on a short debounce, so leaving immediately after a
+      // change would otherwise drop it.
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) session.flushPersist();
+      },
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // A study opened from the shelf grows out of its thumbnail. A study
+          // that has never been saved has no thumbnail to grow from.
+          if (session.studyId case final id?)
+            Hero(
+              tag: studyHeroTag(id),
+              child: CanvasSurface(session: session, shader: shader),
+            )
+          else
+            CanvasSurface(session: session, shader: shader),
 
-        if (session.settings.mode == ViewMode.split && !session.peeking)
-          SplitHandle(session: session),
+          if (session.settings.mode == ViewMode.split && !session.peeking)
+            SplitHandle(session: session),
 
-        // Chrome fades out entirely on a single tap, and stops taking hits
-        // while it is gone.
-        IgnorePointer(
-          ignoring: !chromeVisible,
-          child: AnimatedOpacity(
-            opacity: chromeVisible ? 1 : 0,
-            duration: AskanceMotion.chromeFade,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: _TopBar(session: session, topInset: padding.top),
-                ),
-                Positioned(
-                  top: padding.top + 60 * s,
-                  right: 14 * s,
-                  child: _ModeRail(session: session),
-                ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (session.openTool != null)
-                        ToolPanel(session: session, tool: session.openTool!),
-                      _ToolBar(session: session, bottomInset: padding.bottom),
-                    ],
+          // Chrome fades out entirely on a single tap, and stops taking hits
+          // while it is gone.
+          IgnorePointer(
+            ignoring: !chromeVisible,
+            child: AnimatedOpacity(
+              opacity: chromeVisible ? 1 : 0,
+              duration: AskanceMotion.chromeFade,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: _TopBar(session: session, topInset: padding.top),
                   ),
-                ),
-              ],
+                  Positioned(
+                    top: padding.top + 60 * s,
+                    right: 14 * s,
+                    child: _ModeRail(session: session),
+                  ),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (session.openTool != null)
+                          ToolPanel(session: session, tool: session.openTool!),
+                        _ToolBar(session: session, bottomInset: padding.bottom),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -135,11 +151,8 @@ class _TopBarState extends ConsumerState<_TopBar> {
 
   void _commit() {
     final name = _controller.text.trim();
+    // A saved study writes its own name back; nothing else to do here.
     widget.session.rename(name.isEmpty ? 'Untitled study' : name);
-    final id = widget.session.studyId;
-    if (id != null) {
-      ref.read(studiesProvider.notifier).rename(id, widget.session.name);
-    }
     setState(() => _editing = false);
   }
 
@@ -173,7 +186,10 @@ class _TopBarState extends ConsumerState<_TopBar> {
           children: [
             GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onTap: () => Navigator.of(context).maybePop(),
+              onTap: () {
+                widget.session.flushPersist();
+                Navigator.of(context).maybePop();
+              },
               child: SizedBox(
                 width: 42 * s,
                 height: 32 * s,

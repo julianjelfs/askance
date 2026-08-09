@@ -11,6 +11,7 @@ import '../../model/study.dart';
 import '../../state/providers.dart';
 import '../../theme.dart';
 import '../widgets/controls.dart';
+import 'shelf_screen.dart';
 
 /// Decoded source images, cached per study so a shelf of thumbnails decodes
 /// each photograph once.
@@ -71,7 +72,25 @@ class _StudyCardState extends ConsumerState<StudyCard> {
               children: [
                 AspectRatio(
                   aspectRatio: 4 / 5,
-                  child: StudyThumbnail(study: study),
+                  // Grows into the canvas when the card is opened.
+                  child: Hero(
+                    tag: studyHeroTag(study.id),
+                    // The thumbnail is already a cheap static render; flying
+                    // the live canvas instead would re-blur every frame.
+                    flightShuttleBuilder:
+                        (
+                          context,
+                          animation,
+                          direction,
+                          fromContext,
+                          toContext,
+                        ) =>
+                            (direction == HeroFlightDirection.push
+                                    ? fromContext
+                                    : toContext)
+                                .widget,
+                    child: StudyThumbnail(study: study),
+                  ),
                 ),
                 const Rule(color: AskanceColors.dividerLight),
                 Padding(

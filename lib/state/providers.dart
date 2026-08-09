@@ -23,6 +23,10 @@ final purchaseServiceProvider = Provider<PurchaseService>((ref) {
 
 final sessionProvider = Provider<CanvasSession>((ref) {
   final session = CanvasSession();
+  // A study that is already on the shelf keeps itself up to date; there is no
+  // second save step once it exists.
+  session.onPersist = (id, settings, name) =>
+      ref.read(studiesProvider.notifier).updateSettings(id, settings, name);
   ref.onDispose(session.dispose);
   return session;
 });
@@ -114,13 +118,27 @@ class StudiesNotifier extends AsyncNotifier<List<Study>> {
     return study;
   }
 
-  Future<void> rename(String id, String name) async {
-    final repo = ref.read(repositoryProvider);
-    final next = [
-      for (final s in state.valueOrNull ?? const <Study>[])
-        if (s.id == id) s.copyWith(name: name) else s,
-    ];
-    await repo.saveStudies(next);
+  /// Writes settled settings back to a study that is already on the shelf.
+  ///
+  /// The date is deliberately left alone: adjusting a study is not the same as
+  /// making one, and bumping it would silently reorder the shelf under the
+  /// user while they were working.
+  Future<void> updateSettings(
+    String id,
+    StudySettings settings,
+    String name,
+  ) async {
+    final existing = state.valueOrNull ?? const <Study>[];
+    final index = existing.indexWhere((s) => s.id == id);
+    if (index < 0) return;
+
+    final trimmed = name.trim().isEmpty ? 'Untitled study' : name.trim();
+    final current = existing[index];
+    if (current.settings == settings && current.name == trimmed) return;
+
+    final next = [...existing];
+    next[index] = current.copyWith(settings: settings, name: trimmed);
+    await ref.read(repositoryProvider).saveStudies(next);
     state = AsyncData(next);
   }
 

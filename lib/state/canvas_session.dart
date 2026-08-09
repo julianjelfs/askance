@@ -42,6 +42,15 @@ class CanvasSession extends ChangeNotifier {
   Size viewportSize = Size.zero;
   double devicePixelRatio = 1;
 
+  /// Called when a study that is already on the shelf has settled on new
+  /// settings, so they can be written back without the user saving again.
+  ///
+  /// The study id and settings are passed by value rather than read back off
+  /// the session, so a write scheduled for one study can never land on
+  /// whichever study happens to be open by the time it fires.
+  void Function(String studyId, StudySettings settings, String name)? onPersist;
+
+  Timer? _persistDebounce;
   Timer? _regionDebounce;
   int _regionRequest = 0;
 
@@ -58,6 +67,7 @@ class CanvasSession extends ChangeNotifier {
   }
 
   void openStudy(Study study) {
+    flushPersist();
     studyId = study.id;
     name = study.name;
     imageKey = study.imageKey;
@@ -71,6 +81,7 @@ class CanvasSession extends ChangeNotifier {
   }
 
   void startFreshStudy() {
+    flushPersist();
     studyId = null;
     name = 'Untitled study';
     settings = const StudySettings();
@@ -98,6 +109,7 @@ class CanvasSession extends ChangeNotifier {
       steps: steps.clamp(StudySettings.minSteps, StudySettings.maxSteps),
     );
     _scheduleRegions();
+    _persistSoon();
     notifyListeners();
   }
 
@@ -106,12 +118,14 @@ class CanvasSession extends ChangeNotifier {
     if (next == settings.detail) return;
     settings = settings.copyWith(detail: next);
     _scheduleRegions();
+    _persistSoon();
     notifyListeners();
   }
 
   void setScale(ValueScale scale) {
     if (scale == settings.scale) return;
     settings = settings.copyWith(scale: scale);
+    _persistSoon();
     notifyListeners();
   }
 
@@ -119,12 +133,14 @@ class CanvasSession extends ChangeNotifier {
     if (mode == settings.mode) return;
     settings = settings.copyWith(mode: mode);
     if (mode == ViewMode.skeleton) _scheduleRegions();
+    _persistSoon();
     notifyListeners();
   }
 
   void setGrid(GridMode grid) {
     if (grid == settings.grid) return;
     settings = settings.copyWith(grid: grid);
+    _persistSoon();
     notifyListeners();
   }
 
@@ -135,17 +151,20 @@ class CanvasSession extends ChangeNotifier {
     );
     if (next == settings.gridDivisions) return;
     settings = settings.copyWith(gridDivisions: next);
+    _persistSoon();
     notifyListeners();
   }
 
   void toggleNumbers() {
     settings = settings.copyWith(numbers: !settings.numbers);
     if (settings.numbers) _scheduleRegions();
+    _persistSoon();
     notifyListeners();
   }
 
   void rename(String value) {
     name = value;
+    _persistSoon();
     notifyListeners();
   }
 
@@ -153,7 +172,10 @@ class CanvasSession extends ChangeNotifier {
 
   void setSplitPosition(double value, {bool settle = false}) {
     splitPosition = value.clamp(0.0, 1.0);
-    if (settle) settings = settings.copyWith(splitPosition: splitPosition);
+    if (settle) {
+      settings = settings.copyWith(splitPosition: splitPosition);
+      _persistSoon();
+    }
     notifyListeners();
   }
 
@@ -213,6 +235,31 @@ class CanvasSession extends ChangeNotifier {
       ? Size.zero
       : Size(image!.width.toDouble(), image!.height.toDouble());
 
+  // --- keeping a saved study up to date -----------------------------------
+
+  /// Nothing to write until a study has been kept on the shelf; an unsaved
+  /// study is still just a view of a photograph.
+  void _persistSoon() {
+    if (studyId == null) return;
+    _persistDebounce?.cancel();
+    _persistDebounce = Timer(const Duration(milliseconds: 400), _persistNow);
+  }
+
+  /// Writes any pending change immediately. Called before the open study is
+  /// swapped out and when the canvas is left, so a change made in the last few
+  /// hundred milliseconds is not lost.
+  void flushPersist() {
+    _persistDebounce?.cancel();
+    _persistDebounce = null;
+    _persistNow();
+  }
+
+  void _persistNow() {
+    final id = studyId;
+    if (id == null) return;
+    onPersist?.call(id, settings.copyWith(splitPosition: splitPosition), name);
+  }
+
   // --- value numbers ------------------------------------------------------
 
   void _scheduleRegions() {
@@ -250,6 +297,7 @@ class CanvasSession extends ChangeNotifier {
 
   @override
   void dispose() {
+    _persistDebounce?.cancel();
     _regionDebounce?.cancel();
     image?.dispose();
     super.dispose();

@@ -13,6 +13,7 @@ import '../canvas/tool_panel.dart';
 import '../onboarding/onboarding_screen.dart';
 import '../share/share_sheet.dart';
 import '../shelf/shelf_screen.dart';
+import '../widgets/askance_mark.dart';
 import '../widgets/controls.dart';
 import '../widgets/glyphs.dart';
 
@@ -167,11 +168,8 @@ class _RailState extends ConsumerState<_Rail> {
 
   void _commit() {
     final name = _controller.text.trim();
+    // A saved study writes its own name back; nothing else to do here.
     widget.session.rename(name.isEmpty ? 'Untitled study' : name);
-    final id = widget.session.studyId;
-    if (id != null) {
-      ref.read(studiesProvider.notifier).rename(id, widget.session.name);
-    }
     setState(() => _editingName = false);
   }
 
@@ -239,6 +237,8 @@ class _RailState extends ConsumerState<_Rail> {
     padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
     child: Row(
       children: [
+        const AskanceMark(size: 22),
+        const SizedBox(width: 9),
         Expanded(
           child: Text(
             'Askance',

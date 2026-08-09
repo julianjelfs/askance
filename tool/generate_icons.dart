@@ -13,26 +13,19 @@
 // every size.
 
 import 'dart:io';
-import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:askance/ui/widgets/askance_mark.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-// Straight from design/logo/askance-icon-dark.svg.
+// The ground behind the mark; the mark itself comes from lib/, so the icons
+// and the app header cannot drift apart.
 const _ink = Color(0xFF201E1D);
-const _light = Color(0xFFF8F4F4);
-// rgb(122,120,120): the Graphite three-step middle band the README pins down.
-const _mid = Color(0xFF7A7878);
-const _dark = Color(0xFF111010);
-const _accent = Color(0xFFEC3013);
 
 /// Disc diameter as a fraction of the frame, from the source SVG: r 332 of 1024.
 const _sourceDiscFraction = 664 / 1024;
-
-/// Rule width as a fraction of the disc diameter: 47 of 664.
-const _ruleFraction = 47 / 664;
 
 /// Below this the source proportions stop reading and the disc is scaled up.
 /// A 16px favicon drawn at the source ratio is a 10px disc carrying three
@@ -94,42 +87,13 @@ void _paintIcon(
   }
 
   final discFraction = discFractionOverride ?? _discFractionFor(size);
-  final radius = size * discFraction / 2;
-  final centre = Offset(size / 2, size / 2);
-  final disc = Rect.fromCircle(center: centre, radius: radius);
-
-  canvas.save();
-  canvas.clipPath(Path()..addOval(disc));
-
-  // Left half: the photograph, still continuous.
-  canvas.drawRect(
-    Rect.fromLTWH(disc.left, disc.top, radius, disc.height),
-    Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [_light, _mid, _dark],
-        stops: [0, 0.5, 1],
-      ).createShader(disc),
+  paintAskanceMark(
+    canvas,
+    Rect.fromCircle(
+      center: Offset(size / 2, size / 2),
+      radius: size * discFraction / 2,
+    ),
   );
-
-  // Right half: the same passage flattened into three values.
-  final band = disc.height / 3;
-  for (final (index, colour) in [_light, _mid, _dark].indexed) {
-    canvas.drawRect(
-      Rect.fromLTWH(centre.dx, disc.top + band * index, radius, band + 0.5),
-      Paint()..color = colour,
-    );
-  }
-
-  // The split rule, never thinner than a pixel however small the icon gets.
-  final ruleWidth = math.max(radius * 2 * _ruleFraction, 1.0);
-  canvas.drawRect(
-    Rect.fromLTWH(centre.dx - ruleWidth / 2, disc.top, ruleWidth, disc.height),
-    Paint()..color = _accent,
-  );
-
-  canvas.restore();
 }
 
 Future<void> _write(

@@ -12,7 +12,12 @@ import 'package:flutter/widgets.dart';
 enum Glyph { star, arrowUpRight, copy, splitGrip, command }
 
 class GlyphIcon extends StatelessWidget {
-  const GlyphIcon(this.glyph, {super.key, required this.size, required this.color});
+  const GlyphIcon(
+    this.glyph, {
+    super.key,
+    required this.size,
+    required this.color,
+  });
 
   final Glyph glyph;
   final double size;
@@ -54,8 +59,11 @@ class _GlyphPainter extends CustomPainter {
     for (var i = 0; i < 10; i++) {
       final radius = i.isEven ? r : r * 0.42;
       final angle = -math.pi / 2 + i * math.pi / 5;
-      final point = centre + Offset(math.cos(angle) * radius, math.sin(angle) * radius);
-      i == 0 ? path.moveTo(point.dx, point.dy) : path.lineTo(point.dx, point.dy);
+      final point =
+          centre + Offset(math.cos(angle) * radius, math.sin(angle) * radius);
+      i == 0
+          ? path.moveTo(point.dx, point.dy)
+          : path.lineTo(point.dx, point.dy);
     }
     canvas.drawPath(path..close(), Paint()..color = color);
   }
@@ -85,8 +93,14 @@ class _GlyphPainter extends CustomPainter {
       ..color = color
       ..style = PaintingStyle.stroke
       ..strokeWidth = u * 0.11;
-    canvas.drawRect(Rect.fromLTWH(u * 0.08, u * 0.08, u * 0.62, u * 0.62), stroke);
-    canvas.drawRect(Rect.fromLTWH(u * 0.3, u * 0.3, u * 0.62, u * 0.62), stroke);
+    canvas.drawRect(
+      Rect.fromLTWH(u * 0.08, u * 0.08, u * 0.62, u * 0.62),
+      stroke,
+    );
+    canvas.drawRect(
+      Rect.fromLTWH(u * 0.3, u * 0.3, u * 0.62, u * 0.62),
+      stroke,
+    );
   }
 
   void _splitGrip(Canvas canvas, Size size) {
