@@ -72,23 +72,11 @@ class _StudyCardState extends ConsumerState<StudyCard> {
               children: [
                 AspectRatio(
                   aspectRatio: 4 / 5,
-                  // Grows into the canvas when the card is opened.
+                  // Grows into the canvas when the card is opened. The
+                  // default shuttle flies the destination's own child, so the
+                  // flight lands on exactly what the canvas will show.
                   child: Hero(
                     tag: studyHeroTag(study.id),
-                    // The thumbnail is already a cheap static render; flying
-                    // the live canvas instead would re-blur every frame.
-                    flightShuttleBuilder:
-                        (
-                          context,
-                          animation,
-                          direction,
-                          fromContext,
-                          toContext,
-                        ) =>
-                            (direction == HeroFlightDirection.push
-                                    ? fromContext
-                                    : toContext)
-                                .widget,
                     child: StudyThumbnail(study: study),
                   ),
                 ),
