@@ -26,12 +26,14 @@ enum ViewMode {
 /// Stored by name, so the labels can be reworded without stranding studies.
 enum Smoothing {
   /// A Gaussian in screen space: everything softens equally and small shapes
-  /// dissolve, the way squinting loses detail. Boundaries drift as it deepens.
-  gaussian('SOFT'),
+  /// dissolve, the way squinting loses detail. Boundaries drift as it deepens,
+  /// and what it leaves behind is smooth.
+  gaussian('SMOOTH'),
 
   /// Kuwahara: flattens within a region and leaves the edge between regions
-  /// where it is, so shapes go flat rather than melting together.
-  kuwahara('FLAT');
+  /// where it is. Shapes go blocky and abrupt rather than melting together —
+  /// coarser, and the coarser the lower the detail is set.
+  kuwahara('ROUGH');
 
   const Smoothing(this.label);
 
