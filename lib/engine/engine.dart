@@ -69,8 +69,18 @@ const double kKuwaharaMinRadius = 5;
 const double kKuwaharaFloorFade = 0.25;
 
 /// Widest window the shader itself will run, in the pixels it is handed.
-/// Matches KUWAHARA_MAX there; anything wider is had by shrinking the picture.
-const double kKuwaharaWindow = 12;
+/// Matches KUWAHARA_MAX there; anything wider is had by shrinking the picture
+/// the pass runs on, which is far cheaper than widening the window — the tap
+/// count goes with the square of the window and with the area of the picture
+/// at once. Measured full-screen on a Pixel 9a, at detail 30:
+///
+///     window      12     6      4
+///     cost      74ms   33ms   19ms
+///
+/// 4 is fast enough to be free but reduces so far at the coarse end that the
+/// bands come back visibly stair-stepped, which is what this whole approach
+/// exists to avoid. 6 keeps them clean.
+const double kKuwaharaWindow = 6;
 
 /// Times the smoothing pass to logcat. For measuring the dial above; the
 /// integration test is what actually reads it.
@@ -289,15 +299,61 @@ Future<ui.Image> renderBlurredSource({
   // whole, and the blur would pull that transparency inwards as a dark fringe
   // along the edges of the picture.
   final area = view.visible(sourceSize, outputPx);
-  final w = math.max(1, area.width.round());
-  final h = math.max(1, area.height.round());
+  final sigma = blurSigma(detail, outputPx.width);
+
+  // How wide a window the flattening pass wants, if it is going to run. Worked
+  // out at the reference width and scaled like the sigma: in output pixels it
+  // would not survive a change of resolution, and computeRegions runs this
+  // whole pipeline small expecting the shapes the screen has.
+  final flattenRadius = smoothing == Smoothing.gaussian
+      ? 0.0
+      : blurSigma(detail, kReferenceWidth).clamp(
+              // A ceiling below the floor means the ceiling: the floor keeps
+              // the mode recognisable, it does not override a set limit.
+              math.min(
+                kKuwaharaMinRadius *
+                    ((1 - detail) / kKuwaharaFloorFade).clamp(0.0, 1.0),
+                quadrantRadius,
+              ),
+              quadrantRadius,
+            ) *
+            (outputPx.width / kReferenceWidth);
+
+  // A window wider than the shader will run is had by working smaller instead.
+  // The whole pass then renders at that size — there is no point blurring at
+  // full resolution only to throw most of it away, and every offscreen this
+  // pass rasterises is a GPU round trip the gesture has to wait behind.
+  //
+  // Nothing is lost by it. A reduction only happens when the sigma is at least
+  // as large as the window, so the blur has already taken out everything finer
+  // than the pixels being dropped.
+  final reduction = math.max(1.0, flattenRadius / kKuwaharaWindow);
+  final w = math.max(1, (area.width / reduction).round());
+  final h = math.max(1, (area.height / reduction).round());
 
   final recorder = ui.PictureRecorder();
   final canvas = ui.Canvas(
     recorder,
     Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble()),
   );
-  final sigma = blurSigma(detail, outputPx.width);
+  // The offscreen is whole pixels but the area it stands for is not, and the
+  // value shader stretches it across that area whatever size it came out. So
+  // place the photograph by the scale those rounded dimensions actually imply,
+  // per axis, rather than by the nominal reduction.
+  //
+  // Rounding each axis independently and then scaling both by the same number
+  // left the grid a fraction of a percent out of square, which is a few pixels
+  // of skew across a frame — and it changes every time the rounding tips over,
+  // so a pinch shears the picture back and forth as it goes.
+  final scaleX = w / area.width;
+  final scaleY = h / area.height;
+  final local = dest.shift(-area.topLeft);
+  final placed = Rect.fromLTRB(
+    local.left * scaleX,
+    local.top * scaleY,
+    local.right * scaleX,
+    local.bottom * scaleY,
+  );
 
 
   // The blur must run over the *magnified* pixels, in output space, and this
@@ -319,15 +375,15 @@ Future<ui.Image> renderBlurredSource({
       // Clamp rather than decal: a decal blur pulls transparency in from
       // outside the layer and leaves a dark rim once premultiplied.
       ..imageFilter = ui.ImageFilter.blur(
-        sigmaX: sigma,
-        sigmaY: sigma,
+        sigmaX: sigma * scaleX,
+        sigmaY: sigma * scaleY,
         tileMode: TileMode.clamp,
       ),
   );
   canvas.drawImageRect(
     source,
     Offset.zero & sourceSize,
-    dest.shift(-area.topLeft),
+    placed,
     Paint()..filterQuality = FilterQuality.medium,
   );
   canvas.restore();
@@ -344,23 +400,10 @@ Future<ui.Image> renderBlurredSource({
   // definite edges. Giving it the merging to do as well was the mistake — it
   // preserves edges by design, so widening its window coarsened the shapes
   // without ever reducing how many there were.
-  // The window follows the blur it is undoing, between a floor and a ceiling,
-  // and is worked out at the reference width before being scaled up like the
-  // sigma is. Sized in output pixels instead it would not survive a change of
-  // resolution, and computeRegions runs this whole pipeline small expecting
-  // the shapes the screen has.
-  final floor =
-      kKuwaharaMinRadius *
-      ((1 - detail) / kKuwaharaFloorFade).clamp(0.0, 1.0);
-  final radius =
-      blurSigma(detail, kReferenceWidth).clamp(
-        // A ceiling below the floor means the ceiling: the floor is there to
-        // keep the mode recognisable, not to override a deliberate limit.
-        math.min(floor, quadrantRadius),
-        quadrantRadius,
-      ) *
-      (outputPx.width / kReferenceWidth);
-  final flattened = await _kuwahara(blurred: image, quadrantRadius: radius);
+  final flattened = await _kuwahara(
+    blurred: image,
+    quadrantRadius: flattenRadius / reduction,
+  );
   image.dispose();
   return flattened;
 }
@@ -372,6 +415,10 @@ Future<ui.Image> renderBlurredSource({
 /// Runs over the already-blurred image, so it inherits whatever the detail
 /// setting merged and only decides how the result reads. The window can stay
 /// narrow because it is no longer being asked to reach across features.
+///
+/// The caller has already rendered that image small enough for the window to
+/// fit inside [kKuwaharaWindow], so this is a single pass over what it is
+/// given.
 Future<ui.Image> _kuwahara({
   required ui.Image blurred,
   required double quadrantRadius,
@@ -380,40 +427,16 @@ Future<ui.Image> _kuwahara({
     'shaders/kuwahara.frag',
   ));
   final clock = Stopwatch()..start();
-
-  // The shader's loop is bounded, and the tap count goes with the square of
-  // the window besides, so a window wider than that is had by shrinking the
-  // picture instead. The result comes back at the reduced size and the value
-  // shader magnifies it on the way in, which is no loss: this only happens at
-  // the coarse settings, where nothing that small survives anyway. At most a
-  // little over 2x, so none of the stair-stepping a deep reduction gives.
-  final reduction = math.max(1.0, quadrantRadius / kKuwaharaWindow);
-  final width = math.max(2, (blurred.width / reduction).round());
-  final height = math.max(2, (blurred.height / reduction).round());
+  final width = blurred.width;
+  final height = blurred.height;
   final size = Size(width.toDouble(), height.toDouble());
-  final radius = quadrantRadius / reduction;
-
-  final ui.Image input;
-  if (reduction > 1) {
-    final recorder = ui.PictureRecorder();
-    ui.Canvas(recorder, Offset.zero & size).drawImageRect(
-      blurred,
-      Offset.zero & Size(blurred.width.toDouble(), blurred.height.toDouble()),
-      Offset.zero & size,
-      Paint()..filterQuality = FilterQuality.medium,
-    );
-    final picture = recorder.endRecording();
-    input = await picture.toImage(width, height);
-    picture.dispose();
-  } else {
-    input = blurred;
-  }
+  final radius = math.min(quadrantRadius, kKuwaharaWindow);
 
   final shader = program.fragmentShader()
     ..setFloat(0, size.width)
     ..setFloat(1, size.height)
     ..setFloat(2, radius)
-    ..setImageSampler(0, input);
+    ..setImageSampler(0, blurred);
 
   final recorder = ui.PictureRecorder();
   ui.Canvas(
@@ -424,7 +447,6 @@ Future<ui.Image> _kuwahara({
   final flattened = await picture.toImage(width, height);
   picture.dispose();
   shader.dispose();
-  if (!identical(input, blurred)) input.dispose();
 
   if (kMeasureSmoothing) {
     final taps = 4 * math.pow(radius + 1, 2) * width * height;
