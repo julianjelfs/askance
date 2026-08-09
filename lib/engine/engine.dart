@@ -29,33 +29,29 @@ enum Smoothing {
   /// A Gaussian in screen space: everything softens equally and small shapes
   /// dissolve, the way squinting loses detail. Boundaries drift as it deepens,
   /// and what it leaves behind is smooth.
-  gaussian('SMOOTH'),
+  gaussian('SMOOTH', geometricRamp: true),
 
-  /// Kuwahara: flattens within a region and leaves the edge between regions
-  /// where it is. Shapes go blocky and abrupt rather than melting together —
-  /// coarser, and the coarser the lower the detail is set.
-  kuwahara('ROUGH');
+  /// The same blur, followed by a Kuwahara pass that turns the gradients it
+  /// left back into flat patches with definite edges. The blur decides what
+  /// merges; this only decides how the result reads.
+  kuwahara('ROUGH', geometricRamp: false);
 
-  const Smoothing(this.label);
+  const Smoothing(this.label, {required this.geometricRamp});
+
+  /// Whether the detail control ramps the sigma geometrically rather than
+  /// linearly, which is what makes the slider mean the same thing in both
+  /// modes — see [blurSigma].
+  final bool geometricRamp;
 
   final String label;
 }
 
-/// Quadrant radius for the Kuwahara pass, in the pixels of the downscaled copy
-/// it runs on. The shader's loops are unrolled to this.
-/// Half-width of the Kuwahara quadrant, on the reduced copy the pass runs on.
+/// Half-width of the Kuwahara quadrant, in output pixels.
 ///
-/// This is the quality dial, and it is not free at either end: the window is a
-/// square per quadrant, so the tap count goes with the square of it, while the
-/// copy it runs on shrinks with the square of the reduction it allows. Rendering
-/// the reference portrait full-screen on a Pixel 9a at the coarsest detail:
-///
-///     radius   4      8      12     full resolution
-///     cost     29ms   37ms   72ms   268ms
-///
-/// 4 leaves the copy so small that magnifying it back gives visibly
-/// stair-stepped bands. 12 is close enough to the unreduced result to be hard
-/// to tell apart, for a quarter of its cost. Above that the returns stop.
+/// The window is a square per quadrant, so the tap count goes with the square
+/// of this. It has to be wide enough to span the gradients the blur leaves or
+/// there is nothing for it to snap to an edge; beyond that it only costs.
+/// Measured full-screen on a Pixel 9a, this is around 50ms.
 ///
 /// Must not exceed KUWAHARA_MAX in the shader, which bounds the loop.
 const double kKuwaharaRadius = 12;
@@ -67,10 +63,41 @@ const bool kMeasureSmoothing = false;
 /// The width the blur and line-weight constants were tuned at.
 const double kReferenceWidth = 480;
 
-/// Gaussian sigma for the "detail" control. The renderWidth term keeps shapes
-/// the same size at any output resolution.
-double blurSigma(double detail, double renderWidth) =>
-    (1 - detail) * 16 * (renderWidth / kReferenceWidth) + 0.4;
+/// Sigma for the "detail" control. The renderWidth term keeps shapes the same
+/// size at any output resolution.
+///
+/// The two modes ramp differently on purpose, so that one setting means one
+/// amount of detail whichever is selected. Counting the shapes left in the
+/// reference portrait at four values, across the slider:
+///
+///     detail    0   15   30   45   60   75   90  100
+///     SMOOTH    9    9   11   19   24   37   44   51
+///     ROUGH    11   12   14   20   35   38   45   41
+///
+/// A Gaussian needs the geometric ramp to get there. Blur reads
+/// logarithmically — twice the sigma is not twice the effect — so ramping it
+/// linearly spent the first half of the slider doing nothing at all: 9 shapes
+/// at detail 0 and still 9 at detail 45. Kuwahara needs the linear one,
+/// because preserving edges already makes its response to sigma compressive,
+/// and ramping it geometrically as well overshoots into blobs by detail 30.
+///
+/// Both ends are the same either way; only the travel between them differs.
+double blurSigma(
+  double detail,
+  double renderWidth, [
+  Smoothing smoothing = Smoothing.gaussian,
+]) {
+  const ceiling = 16.4, floor = 0.4;
+  // Both ramps run between the same two sigmas and differ only in how they
+  // travel. Whichever it is, the result stays strictly proportional to the
+  // render width: computeRegions runs the whole pipeline small and relies on
+  // getting the same shapes as the screen, so a sigma that drifted with
+  // resolution would put the numbers on regions that are not there.
+  final base = smoothing.geometricRamp
+      ? ceiling * math.pow(floor / ceiling, detail)
+      : ceiling - detail * (ceiling - floor);
+  return base * (renderWidth / kReferenceWidth);
+}
 
 /// Skeleton stroke weight, in output pixels.
 double skeletonLineWidth(double renderWidth) =>
@@ -271,18 +298,8 @@ Future<ui.Image> renderBlurredSource({
     recorder,
     Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble()),
   );
-  final sigma = blurSigma(detail, outputPx.width);
+  final sigma = blurSigma(detail, outputPx.width, smoothing);
 
-  if (smoothing != Smoothing.gaussian) {
-    return _kuwahara(
-      source: source,
-      sourceSize: sourceSize,
-      dest: dest,
-      area: area,
-      radiusInOutputPx: sigma,
-      quadrantRadius: quadrantRadius,
-    );
-  }
 
   // The blur must run over the *magnified* pixels, in output space, and this
   // has to be spelled out with a layer rather than hung off the paint.
@@ -319,81 +336,59 @@ Future<ui.Image> renderBlurredSource({
   final picture = recorder.endRecording();
   final image = await picture.toImage(w, h);
   picture.dispose();
-  return image;
+
+  if (smoothing == Smoothing.gaussian) return image;
+
+  // Both modes merge by the same blur, so the detail slider means the same
+  // thing in each. All Kuwahara does is decide the character of what is left:
+  // it turns the soft gradients the blur produced back into flat patches with
+  // definite edges. Giving it the merging to do as well was the mistake — it
+  // preserves edges by design, so widening its window coarsened the shapes
+  // without ever reducing how many there were.
+  final flattened = await _kuwahara(blurred: image, quadrantRadius: quadrantRadius);
+  image.dispose();
+  return flattened;
 }
 
-/// Simplifies by flattening regions rather than by softening everything.
+/// Turns the soft gradients a blur leaves into flat patches with definite
+/// edges, by replacing each pixel with the mean of whichever of four
+/// overlapping quadrants around it is flattest.
 ///
-/// Runs on a copy scaled down so that a fixed, cheap quadrant radius covers
-/// the same ground the Gaussian's sigma would have. The result is returned at
-/// that reduced size: the value shader samples it with normalised coordinates,
-/// so it is magnified back on the way in, which costs nothing and is no loss
-/// when the whole point is that the shapes are coarse.
+/// Runs over the already-blurred image, so it inherits whatever the detail
+/// setting merged and only decides how the result reads. The window can stay
+/// narrow because it is no longer being asked to reach across features.
 Future<ui.Image> _kuwahara({
-  required ui.Image source,
-  required Size sourceSize,
-  required Rect dest,
-  required Rect area,
-  required double radiusInOutputPx,
+  required ui.Image blurred,
   double quadrantRadius = kKuwaharaRadius,
 }) async {
   final program = await (_kuwaharaProgram ??= ui.FragmentProgram.fromAsset(
     'shaders/kuwahara.frag',
   ));
   final clock = Stopwatch()..start();
-
-  // Two ways to cover the same ground: shrink the picture and keep the window
-  // small, or leave the picture alone and grow the window. They agree in
-  // principle; they differ by orders of magnitude in what they cost.
-  // Scaled down far enough that the fixed window covers the ground the sigma
-  // would have, which is what makes the pass affordable at all.
-  final scale = math.max(1.0, radiusInOutputPx / quadrantRadius);
-  final radius = quadrantRadius;
-  final w = math.max(2, (area.width / scale).round());
-  final h = math.max(2, (area.height / scale).round());
-  final small = Size(w.toDouble(), h.toDouble());
-
-  // Scaled down first, which does most of the simplifying on its own and
-  // leaves the shader a small window to work in.
-  final reduceRecorder = ui.PictureRecorder();
-  ui.Canvas(reduceRecorder, Offset.zero & small).drawImageRect(
-    source,
-    Offset.zero & sourceSize,
-    Rect.fromLTWH(
-      (dest.left - area.left) / scale,
-      (dest.top - area.top) / scale,
-      dest.width / scale,
-      dest.height / scale,
-    ),
-    Paint()..filterQuality = FilterQuality.medium,
-  );
-  final reducePicture = reduceRecorder.endRecording();
-  final reduced = await reducePicture.toImage(w, h);
-  reducePicture.dispose();
+  final size = Size(blurred.width.toDouble(), blurred.height.toDouble());
 
   final shader = program.fragmentShader()
-    ..setFloat(0, small.width)
-    ..setFloat(1, small.height)
-    ..setFloat(2, radius)
-    ..setImageSampler(0, reduced);
+    ..setFloat(0, size.width)
+    ..setFloat(1, size.height)
+    ..setFloat(2, quadrantRadius)
+    ..setImageSampler(0, blurred);
 
   final recorder = ui.PictureRecorder();
   ui.Canvas(
     recorder,
-    Offset.zero & small,
-  ).drawRect(Offset.zero & small, Paint()..shader = shader);
+    Offset.zero & size,
+  ).drawRect(Offset.zero & size, Paint()..shader = shader);
   final picture = recorder.endRecording();
-  final flattened = await picture.toImage(w, h);
+  final flattened = await picture.toImage(blurred.width, blurred.height);
   picture.dispose();
   shader.dispose();
-  reduced.dispose();
 
   if (kMeasureSmoothing) {
-    final taps = 4 * math.pow(radius + 1, 2) * w * h;
+    final taps = 4 * math.pow(quadrantRadius + 1, 2) * blurred.width * blurred.height;
     debugPrint(
-      '[askance] ROUGH ${w}x$h r=${radius.toStringAsFixed(1)} '
-      '${(taps / 1e6).toStringAsFixed(0)}M taps '
-      '${clock.elapsedMilliseconds}ms',
+      '[askance] ROUGH ${blurred.width}x${blurred.height} '
+      'r=${quadrantRadius.toStringAsFixed(1)} '
+      '${(taps / 1e6).toStringAsFixed(0)}M taps ${clock.elapsedMilliseconds}ms',
     );
   }
   return flattened;

@@ -8,18 +8,33 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('blur sigma', () {
-    test('matches the specified formula', () {
-      expect(blurSigma(0, 480), closeTo(16.4, 1e-9));
-      expect(blurSigma(1, 480), closeTo(0.4, 1e-9));
-      expect(blurSigma(0.5, 480), closeTo(8.4, 1e-9));
+    test('both ramps span the same two sigmas', () {
+      for (final smoothing in Smoothing.values) {
+        expect(blurSigma(0, 480, smoothing), closeTo(16.4, 1e-9));
+        expect(blurSigma(1, 480, smoothing), closeTo(0.4, 1e-9));
+      }
+    });
+
+    test('they differ in how they travel between them', () {
+      // The Gaussian's spends far less of the slider at heavy blur, because
+      // blur reads logarithmically and a linear ramp wasted half the travel.
+      expect(blurSigma(0.5, 480, Smoothing.gaussian), closeTo(2.561, 1e-3));
+      expect(blurSigma(0.5, 480, Smoothing.kuwahara), closeTo(8.4, 1e-9));
     });
 
     test('scales with render width so shapes stay the same size', () {
-      // The whole point of the renderWidth term: doubling the output doubles
-      // the blur, so the shapes it produces are identical.
-      final small = blurSigma(0.5, 480) - 0.4;
-      final large = blurSigma(0.5, 960) - 0.4;
-      expect(large / small, closeTo(2, 1e-9));
+      // computeRegions runs the pipeline small and needs the same shapes the
+      // screen has, which only holds if this is strictly proportional.
+      for (final smoothing in Smoothing.values) {
+        for (final detail in [0.0, 0.25, 0.5, 0.75, 1.0]) {
+          expect(
+            blurSigma(detail, 960, smoothing) /
+                blurSigma(detail, 480, smoothing),
+            closeTo(2, 1e-9),
+            reason: 'sigma drifted with resolution at detail $detail',
+          );
+        }
+      }
     });
   });
 

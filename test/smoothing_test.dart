@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:askance/engine/engine.dart';
+import 'package:askance/engine/regions.dart';
 import 'package:askance/model/study.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -114,40 +115,74 @@ void main() {
     }
   });
 
-  /// The pass shrinks the picture only as far as it must to bring the ground
-  /// the sigma covers within the fixed window. How far that is depends on the
-  /// window, which is the quality dial.
-  test('it reduces only when the window cannot reach far enough', () async {
-    final source = await edgeWithNoise(256);
-    const output = Size(256, 256);
-    // At this size and detail the sigma is about 7px.
-    Future<int> widthAtRadius(double radius) async {
-      final flat = await renderBlurredSource(
+  /// Fine structure across the whole tonal range, so that how much survives
+  /// is a fair measure of how much the detail control merged. The edge source
+  /// above cannot serve: its noise never crosses a band boundary, so nothing
+  /// registers however little is blurred away.
+  Future<ui.Image> detailLadder(int side) async {
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(
+      recorder,
+      Rect.fromLTWH(0, 0, side.toDouble(), side.toDouble()),
+    );
+    final random = math.Random(7);
+    const cell = 3;
+    for (var y = 0; y < side; y += cell) {
+      for (var x = 0; x < side; x += cell) {
+        final v = random.nextInt(256);
+        canvas.drawRect(
+          Rect.fromLTWH(x.toDouble(), y.toDouble(), cell + 0.0, cell + 0.0),
+          Paint()..color = Color.fromARGB(255, v, v, v),
+        );
+      }
+    }
+    final picture = recorder.endRecording();
+    final image = await picture.toImage(side, side);
+    picture.dispose();
+    return image;
+  }
+
+  /// Kuwahara preserves edges by design, so when it was the thing doing the
+  /// merging the detail control barely moved the result: the shapes coarsened
+  /// but their number stayed put across the whole slider. The blur does the
+  /// merging in both modes now, and this is what pins that.
+  test('the detail control changes how much is merged, in both modes', () async {
+    Future<int> transitions(Smoothing smoothing, double detail) async {
+      final source = await detailLadder(256);
+      final result = await renderBlurredSource(
         source: source,
-        outputPx: output,
-        detail: 0.2,
+        outputPx: const Size(256, 256),
+        detail: detail,
         view: const ViewTransform(),
-        smoothing: Smoothing.kuwahara,
-        quadrantRadius: radius,
+        smoothing: smoothing,
       );
-      final width = flat.width;
-      flat.dispose();
-      return width;
+      final bytes = (await result.toByteData(
+        format: ui.ImageByteFormat.rawRgba,
+      ))!;
+      final map = bandsFromRgba(bytes, result.width, result.height, 4);
+      final y = map.height ~/ 2;
+      var changes = 0;
+      for (var x = 1; x < map.width; x++) {
+        if (map.bands[y * map.width + x] != map.bands[y * map.width + x - 1]) {
+          changes++;
+        }
+      }
+      result.dispose();
+      source.dispose();
+      return changes;
     }
 
-    expect(
-      await widthAtRadius(4),
-      lessThan(output.width),
-      reason: 'a window too small to cover the sigma has to shrink the copy',
-    );
-    expect(
-      await widthAtRadius(kKuwaharaRadius),
-      output.width,
-      reason:
-          'a window wide enough covers it outright, and shrinking as well '
-          'would throw away detail for nothing',
-    );
-    source.dispose();
+    for (final smoothing in Smoothing.values) {
+      final merged = await transitions(smoothing, 0.1);
+      final kept = await transitions(smoothing, 0.95);
+      expect(
+        kept,
+        greaterThan(merged * 3),
+        reason:
+            '$smoothing barely responded to the detail control: '
+            '$merged transitions at 0.1 against $kept at 0.95',
+      );
+    }
   });
 
   test('a setting saved by a build we no longer ship does not break', () {
