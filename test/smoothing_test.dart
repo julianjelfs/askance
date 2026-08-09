@@ -50,7 +50,9 @@ void main() {
     final result = await renderBlurredSource(
       source: source,
       outputPx: output,
-      detail: 0.55,
+      // Far enough down the control that there is real simplifying to
+      // compare; the ramp is geometric, so 0.55 barely blurs at all.
+      detail: 0.2,
       view: const ViewTransform(),
       smoothing: smoothing,
     );
@@ -183,6 +185,57 @@ void main() {
             '$merged transitions at 0.1 against $kept at 0.95',
       );
     }
+  });
+
+  /// The detail control has to mean one thing, not two. Toggling the mode
+  /// should change how the shapes read, not how much of the photograph is
+  /// left — which it did badly: Kuwahara's window was fixed, so it went on
+  /// flattening after the blur had stopped, and ROUGH stalled around 92% of
+  /// the picture however far the control was pushed while SMOOTH ran to 100%.
+  test('both modes keep about as much of the picture at a given setting', () async {
+    final source = await detailLadder(256);
+    const output = Size(256, 256);
+
+    Future<BandMap> bandsAt(Smoothing smoothing, double detail) async {
+      final result = await renderBlurredSource(
+        source: source,
+        outputPx: output,
+        detail: detail,
+        view: const ViewTransform(),
+        smoothing: smoothing,
+      );
+      final bytes = (await result.toByteData(
+        format: ui.ImageByteFormat.rawRgba,
+      ))!;
+      final map = bandsFromRgba(bytes, result.width, result.height, 4);
+      result.dispose();
+      return map;
+    }
+
+    // What the picture itself quantises to, with nothing taken away.
+    final truth = await bandsAt(Smoothing.gaussian, 1);
+    Future<double> kept(Smoothing smoothing, double detail) async {
+      final map = await bandsAt(smoothing, detail);
+      var same = 0;
+      for (var i = 0; i < map.bands.length; i++) {
+        if (map.bands[i] == truth.bands[i]) same++;
+      }
+      return same / map.bands.length;
+    }
+
+    for (final detail in [0.25, 0.5, 0.75, 1.0]) {
+      final smooth = await kept(Smoothing.gaussian, detail);
+      final rough = await kept(Smoothing.kuwahara, detail);
+      expect(
+        (smooth - rough).abs(),
+        lessThan(0.08),
+        reason:
+            'at detail $detail the modes are not the same setting: SMOOTH '
+            'kept ${(smooth * 100).round()}% and ROUGH '
+            '${(rough * 100).round()}%',
+      );
+    }
+    source.dispose();
   });
 
   test('a setting saved by a build we no longer ship does not break', () {

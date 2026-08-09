@@ -29,19 +29,14 @@ enum Smoothing {
   /// A Gaussian in screen space: everything softens equally and small shapes
   /// dissolve, the way squinting loses detail. Boundaries drift as it deepens,
   /// and what it leaves behind is smooth.
-  gaussian('SMOOTH', geometricRamp: true),
+  gaussian('SMOOTH'),
 
   /// The same blur, followed by a Kuwahara pass that turns the gradients it
   /// left back into flat patches with definite edges. The blur decides what
   /// merges; this only decides how the result reads.
-  kuwahara('ROUGH', geometricRamp: false);
+  kuwahara('ROUGH');
 
-  const Smoothing(this.label, {required this.geometricRamp});
-
-  /// Whether the detail control ramps the sigma geometrically rather than
-  /// linearly, which is what makes the slider mean the same thing in both
-  /// modes — see [blurSigma].
-  final bool geometricRamp;
+  const Smoothing(this.label);
 
   final String label;
 }
@@ -66,37 +61,20 @@ const double kReferenceWidth = 480;
 /// Sigma for the "detail" control. The renderWidth term keeps shapes the same
 /// size at any output resolution.
 ///
-/// The two modes ramp differently on purpose, so that one setting means one
-/// amount of detail whichever is selected. Counting the shapes left in the
-/// reference portrait at four values, across the slider:
+/// The ramp is geometric because blur reads logarithmically — twice the sigma
+/// is not twice the effect. Ramped linearly, the first half of the slider did
+/// nothing perceptible: the portrait below held 93% of its detail at setting 0
+/// and 95% at 45.
 ///
-///     detail    0   15   30   45   60   75   90  100
-///     SMOOTH    9    9   11   19   24   37   44   51
-///     ROUGH    11   12   14   20   35   38   45   41
-///
-/// A Gaussian needs the geometric ramp to get there. Blur reads
-/// logarithmically — twice the sigma is not twice the effect — so ramping it
-/// linearly spent the first half of the slider doing nothing at all: 9 shapes
-/// at detail 0 and still 9 at detail 45. Kuwahara needs the linear one,
-/// because preserving edges already makes its response to sigma compressive,
-/// and ramping it geometrically as well overshoots into blobs by detail 30.
-///
-/// Both ends are the same either way; only the travel between them differs.
-double blurSigma(
-  double detail,
-  double renderWidth, [
-  Smoothing smoothing = Smoothing.gaussian,
-]) {
+/// The result stays strictly proportional to the render width. computeRegions
+/// runs the whole pipeline small and relies on getting the shapes the screen
+/// has, so a sigma that drifted with resolution would put the numbers on
+/// regions that are not there.
+double blurSigma(double detail, double renderWidth) {
   const ceiling = 16.4, floor = 0.4;
-  // Both ramps run between the same two sigmas and differ only in how they
-  // travel. Whichever it is, the result stays strictly proportional to the
-  // render width: computeRegions runs the whole pipeline small and relies on
-  // getting the same shapes as the screen, so a sigma that drifted with
-  // resolution would put the numbers on regions that are not there.
-  final base = smoothing.geometricRamp
-      ? ceiling * math.pow(floor / ceiling, detail)
-      : ceiling - detail * (ceiling - floor);
-  return base * (renderWidth / kReferenceWidth);
+  return ceiling *
+      math.pow(floor / ceiling, detail) *
+      (renderWidth / kReferenceWidth);
 }
 
 /// Skeleton stroke weight, in output pixels.
@@ -298,7 +276,7 @@ Future<ui.Image> renderBlurredSource({
     recorder,
     Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble()),
   );
-  final sigma = blurSigma(detail, outputPx.width, smoothing);
+  final sigma = blurSigma(detail, outputPx.width);
 
 
   // The blur must run over the *magnified* pixels, in output space, and this
@@ -345,7 +323,14 @@ Future<ui.Image> renderBlurredSource({
   // definite edges. Giving it the merging to do as well was the mistake — it
   // preserves edges by design, so widening its window coarsened the shapes
   // without ever reducing how many there were.
-  final flattened = await _kuwahara(blurred: image, quadrantRadius: quadrantRadius);
+  // The window has to follow the blur it is undoing. Held fixed, it went on
+  // flattening over 12 pixels after the blur had stopped taking anything away,
+  // so ROUGH could never resolve past about 92% of the photograph however far
+  // the detail control was pushed, while SMOOTH ran all the way to 100%.
+  final flattened = await _kuwahara(
+    blurred: image,
+    quadrantRadius: math.max(1, math.min(sigma, quadrantRadius)),
+  );
   image.dispose();
   return flattened;
 }
