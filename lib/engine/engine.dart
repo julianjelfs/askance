@@ -51,13 +51,22 @@ enum Smoothing {
 /// Must not exceed KUWAHARA_MAX in the shader, which bounds the loop.
 const double kKuwaharaRadius = 12;
 
-/// Narrowest the window is allowed to get.
+/// Narrowest the window is allowed to get, before the fade below.
 ///
-/// Tied to the sigma alone it vanished as the detail control was raised, and
-/// with it every trace of what distinguishes this mode: above about half way
-/// the two were indistinguishable. Some flattening has to survive at every
-/// setting for the toggle to mean anything.
+/// Tied to the sigma alone it vanished as soon as the detail control was
+/// raised, and with it every trace of what distinguishes this mode: above
+/// about half way the two were indistinguishable.
 const double kKuwaharaMinRadius = 5;
+
+/// How much of the top of the detail control the floor fades away over.
+///
+/// At full detail nothing is being simplified — the picture is the photograph
+/// quantised and no more — so there is nothing left for a style to apply to,
+/// and the two modes ought to arrive at the same image. Holding the floor up
+/// to the end kept ROUGH about five points short of that for no reason the
+/// picture could show. The separation belongs in the middle, where the
+/// simplifying happens, and should run out as the work does.
+const double kKuwaharaFloorFade = 0.25;
 
 /// Widest window the shader itself will run, in the pixels it is handed.
 /// Matches KUWAHARA_MAX there; anything wider is had by shrinking the picture.
@@ -340,11 +349,14 @@ Future<ui.Image> renderBlurredSource({
   // sigma is. Sized in output pixels instead it would not survive a change of
   // resolution, and computeRegions runs this whole pipeline small expecting
   // the shapes the screen has.
+  final floor =
+      kKuwaharaMinRadius *
+      ((1 - detail) / kKuwaharaFloorFade).clamp(0.0, 1.0);
   final radius =
       blurSigma(detail, kReferenceWidth).clamp(
         // A ceiling below the floor means the ceiling: the floor is there to
         // keep the mode recognisable, not to override a deliberate limit.
-        math.min(kKuwaharaMinRadius, quadrantRadius),
+        math.min(floor, quadrantRadius),
         quadrantRadius,
       ) *
       (outputPx.width / kReferenceWidth);

@@ -132,7 +132,9 @@ void main() {
       Paint()..color = const Color(0xFF808080),
     );
     final random = math.Random(7);
-    for (final radius in [side / 5, side / 14, side / 40]) {
+    // The finest of these has to fall inside the flattening window or the
+    // source cannot show the difference between the modes at all.
+    for (final radius in [side / 5, side / 14, side / 40, side / 90]) {
       final count = (side * side / (radius * radius * 4)).round();
       for (var i = 0; i < count; i++) {
         final v = random.nextInt(256);
@@ -241,16 +243,28 @@ void main() {
       );
     }
 
-    // The floor on the window is what stops the modes converging as the
-    // control is raised — without it they were indistinguishable above about
-    // half way, and the toggle stopped meaning anything. It costs a little
-    // fidelity at the top, deliberately, so the gap here is not a defect.
-    final smooth = await kept(Smoothing.gaussian, 1);
-    final rough = await kept(Smoothing.kuwahara, 1);
+    // Where there is simplifying to do the modes have to part, or the toggle
+    // means nothing: tied to the sigma alone the window shrank away as the
+    // control rose and the two became indistinguishable above about half way.
+    final partedSmooth = await kept(Smoothing.gaussian, 0.7);
+    final partedRough = await kept(Smoothing.kuwahara, 0.7);
     expect(
-      smooth - rough,
-      greaterThan(0.02),
-      reason: 'at full detail ROUGH no longer flattens anything',
+      partedSmooth - partedRough,
+      greaterThan(0.01),
+      reason: 'mid-control the modes have stopped being distinguishable',
+    );
+
+    // And where there is none they have to meet again. At full detail the
+    // picture is the photograph quantised and nothing else, so there is
+    // nothing left for either to do differently.
+    final endSmooth = await kept(Smoothing.gaussian, 1);
+    final endRough = await kept(Smoothing.kuwahara, 1);
+    expect(
+      (endSmooth - endRough).abs(),
+      lessThan(0.01),
+      reason:
+          'at full detail the modes should arrive at the same picture: '
+          '${(endSmooth * 100).round()}% against ${(endRough * 100).round()}%',
     );
     source.dispose();
   });
