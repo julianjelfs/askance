@@ -166,11 +166,25 @@ ViewTransform coveringView(ViewTransform base, Size source, Size output) {
     output.width / whole.width,
     output.height / whole.height,
   );
+  if (needed <= base.zoom) {
+    return base.copyWith(offset: base.clampedOffset(source, output));
+  }
+
+  // Grown about the middle of the frame, not about its origin. A landscape
+  // shown whole already meets the sides, so scaling it up from the origin
+  // pins its left edge and the card ends up showing the left of the
+  // photograph — rarely where anything worth looking at is.
+  //
   // Deliberately not capped at maxZoom: covering is the point, and a very
   // wide photograph in a tall card can need more than a hand could pinch.
+  const centre = Offset(0.5, 0.5);
+  final k = needed / base.zoom;
   final candidate = ViewTransform(
-    zoom: math.max(base.zoom, needed),
-    offset: base.offset,
+    zoom: needed,
+    offset: Offset(
+      centre.dx - (centre.dx - base.offset.dx) * k,
+      centre.dy - (centre.dy - base.offset.dy) * k,
+    ),
   );
   return candidate.copyWith(offset: candidate.clampedOffset(source, output));
 }

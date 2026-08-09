@@ -305,4 +305,37 @@ void main() {
       }
     });
   });
+
+  group('covering a card', () {
+    // A 4:5 shelf card, and a photograph far wider than it.
+    const card = Size(160, 200);
+    const landscape = Size(4000, 1000);
+
+    test('fills the card rather than letterboxing it', () {
+      final view = coveringView(const ViewTransform(), landscape, card);
+      final rect = view.destination(landscape, card);
+      expect(rect.left, lessThanOrEqualTo(0.001));
+      expect(rect.top, lessThanOrEqualTo(0.001));
+      expect(rect.right, greaterThanOrEqualTo(card.width - 0.001));
+      expect(rect.bottom, greaterThanOrEqualTo(card.height - 0.001));
+    });
+
+    test('takes the middle of a landscape, not its left edge', () {
+      final view = coveringView(const ViewTransform(), landscape, card);
+      final rect = view.destination(landscape, card);
+      expect(
+        rect.center.dx,
+        closeTo(card.width / 2, 0.001),
+        reason: 'whatever the photograph is of is more likely to be central',
+      );
+    });
+
+    test('a view that already covers is left alone', () {
+      // A portrait fills a card by width at 1x, so nothing needs adding.
+      const portrait = Size(800, 1000);
+      const panned = ViewTransform(zoom: 2, offset: Offset(-0.1, -0.2));
+      final view = coveringView(panned, portrait, card);
+      expect(view.zoom, 2, reason: 'the zoom it was left at');
+    });
+  });
 }

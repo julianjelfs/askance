@@ -125,9 +125,9 @@ void main() {
 
     // The panel that covers the card draws no outline of its own, so the red
     // rule is the card's, not a second one sitting inside the grey one.
-    final overlay = tester.widgetList<Container>(find.byType(Container)).where(
-      (c) => c.color == const Color(0xF2F3F2F2),
-    );
+    final overlay = tester
+        .widgetList<Container>(find.byType(Container))
+        .where((c) => c.color == const Color(0xF2F3F2F2));
     expect(overlay, hasLength(1), reason: 'the confirm panel');
     expect(overlay.single.decoration, isNull);
     expect(overlay.single.foregroundDecoration, isNull);
