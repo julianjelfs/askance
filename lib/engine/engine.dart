@@ -34,13 +34,7 @@ enum Smoothing {
   /// Kuwahara: flattens within a region and leaves the edge between regions
   /// where it is. Shapes go blocky and abrupt rather than melting together —
   /// coarser, and the coarser the lower the detail is set.
-  kuwahara('ROUGH'),
-
-  /// The same thing with the shortcut taken out: full resolution, and a
-  /// quadrant wide enough to cover the ground the sigma would have. This is
-  /// what the method is supposed to look like. It is here to be judged and
-  /// measured, not to ship — see [kKuwaharaMaxRadius] for what it costs.
-  kuwaharaFull('FULL');
+  kuwahara('ROUGH');
 
   const Smoothing(this.label);
 
@@ -49,19 +43,26 @@ enum Smoothing {
 
 /// Quadrant radius for the Kuwahara pass, in the pixels of the downscaled copy
 /// it runs on. The shader's loops are unrolled to this.
-const double kKuwaharaRadius = 4;
-
-/// Ceiling on the full-resolution quadrant radius.
+/// Half-width of the Kuwahara quadrant, on the reduced copy the pass runs on.
 ///
-/// The window is a square per quadrant, so the tap count goes with the square
-/// of this: at 32 that is 4 * 33 * 33 = 4356 texture reads for every pixel on
-/// the screen. The cap exists so a coarse detail setting cannot walk the
-/// number up far enough to trip a GPU watchdog.
-const double kKuwaharaMaxRadius = 32;
+/// This is the quality dial, and it is not free at either end: the window is a
+/// square per quadrant, so the tap count goes with the square of it, while the
+/// copy it runs on shrinks with the square of the reduction it allows. Rendering
+/// the reference portrait full-screen on a Pixel 9a at the coarsest detail:
+///
+///     radius   4      8      12     full resolution
+///     cost     29ms   37ms   72ms   268ms
+///
+/// 4 leaves the copy so small that magnifying it back gives visibly
+/// stair-stepped bands. 12 is close enough to the unreduced result to be hard
+/// to tell apart, for a quarter of its cost. Above that the returns stop.
+///
+/// Must not exceed KUWAHARA_MAX in the shader, which bounds the loop.
+const double kKuwaharaRadius = 12;
 
-/// Times the smoothing pass to logcat. Temporary, for judging the cost of
-/// [Smoothing.kuwaharaFull] on a real device.
-const bool kMeasureSmoothing = true;
+/// Times the smoothing pass to logcat. For measuring the dial above; the
+/// integration test is what actually reads it.
+const bool kMeasureSmoothing = false;
 
 /// The width the blur and line-weight constants were tuned at.
 const double kReferenceWidth = 480;
@@ -246,7 +247,6 @@ ViewTransform coveringView(ViewTransform base, Size source, Size output) {
 /// Held here rather than behind a provider because the pass that needs it is a
 /// plain function, reached from the canvas, the shelf and an export alike.
 Future<ui.FragmentProgram>? _kuwaharaProgram;
-Future<ui.FragmentProgram>? _kuwaharaFullProgram;
 
 Future<ui.Image> renderBlurredSource({
   required ui.Image source,
@@ -281,7 +281,6 @@ Future<ui.Image> renderBlurredSource({
       area: area,
       radiusInOutputPx: sigma,
       quadrantRadius: quadrantRadius,
-      fullResolution: smoothing == Smoothing.kuwaharaFull,
     );
   }
 
@@ -337,33 +336,19 @@ Future<ui.Image> _kuwahara({
   required Rect area,
   required double radiusInOutputPx,
   double quadrantRadius = kKuwaharaRadius,
-  bool fullResolution = false,
 }) async {
-  // Two entry points over one shared body, differing only in the constant
-  // window bound. Splitting them keeps the shipping path unrolling a small
-  // loop instead of stepping over a 33-wide one it never uses.
-  final program = await (fullResolution
-      ? (_kuwaharaFullProgram ??= ui.FragmentProgram.fromAsset(
-          'shaders/kuwahara_full.frag',
-        ))
-      : quadrantRadius > 6
-      ? (_kuwaharaFullProgram ??= ui.FragmentProgram.fromAsset(
-          'shaders/kuwahara_full.frag',
-        ))
-      : (_kuwaharaProgram ??= ui.FragmentProgram.fromAsset(
-          'shaders/kuwahara.frag',
-        )));
+  final program = await (_kuwaharaProgram ??= ui.FragmentProgram.fromAsset(
+    'shaders/kuwahara.frag',
+  ));
   final clock = Stopwatch()..start();
 
   // Two ways to cover the same ground: shrink the picture and keep the window
   // small, or leave the picture alone and grow the window. They agree in
   // principle; they differ by orders of magnitude in what they cost.
-  final scale = fullResolution
-      ? 1.0
-      : math.max(1.0, radiusInOutputPx / quadrantRadius);
-  final radius = fullResolution
-      ? math.max(1.0, math.min(radiusInOutputPx, kKuwaharaMaxRadius))
-      : quadrantRadius;
+  // Scaled down far enough that the fixed window covers the ground the sigma
+  // would have, which is what makes the pass affordable at all.
+  final scale = math.max(1.0, radiusInOutputPx / quadrantRadius);
+  final radius = quadrantRadius;
   final w = math.max(2, (area.width / scale).round());
   final h = math.max(2, (area.height / scale).round());
   final small = Size(w.toDouble(), h.toDouble());
@@ -406,8 +391,7 @@ Future<ui.Image> _kuwahara({
   if (kMeasureSmoothing) {
     final taps = 4 * math.pow(radius + 1, 2) * w * h;
     debugPrint(
-      '[askance] ${fullResolution ? "FULL" : "ROUGH"} '
-      '${w}x$h r=${radius.toStringAsFixed(1)} '
+      '[askance] ROUGH ${w}x$h r=${radius.toStringAsFixed(1)} '
       '${(taps / 1e6).toStringAsFixed(0)}M taps '
       '${clock.elapsedMilliseconds}ms',
     );

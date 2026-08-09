@@ -6,10 +6,15 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 
-/// What each way of finding the shapes actually costs on the GPU in your hand.
+/// What each way of finding the shapes actually costs on the GPU in your hand,
+/// and how that grows as the Kuwahara window widens.
 ///
 /// The equivalent host test rasterises on the CPU, so its timings are off by
-/// orders of magnitude and in the wrong direction. This runs in the real app.
+/// orders of magnitude and in the wrong direction — it reported 115 seconds
+/// for a render this measures at a quarter of one. Numbers about the cost of
+/// these passes cannot be got any other way, which is what this is for.
+///
+///     flutter test integration_test/smoothing_bench_test.dart -d <device>
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -62,7 +67,7 @@ void main() {
         'ROUGH r=4': await time(Smoothing.kuwahara, detail, 4),
         'ROUGH r=8': await time(Smoothing.kuwahara, detail, 8),
         'ROUGH r=12': await time(Smoothing.kuwahara, detail, 12),
-        'FULL': await time(Smoothing.kuwaharaFull, detail, kKuwaharaRadius),
+        'ROUGH r=16': await time(Smoothing.kuwahara, detail, 16),
       };
       results.forEach((name, ms) {
         debugPrint('[bench] detail=${(detail * 100).round()} '

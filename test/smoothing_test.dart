@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:askance/engine/engine.dart';
+import 'package:askance/model/study.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -113,22 +114,48 @@ void main() {
     }
   });
 
-  test('the flat pass returns a reduced copy, as it is meant to', () async {
+  /// The pass shrinks the picture only as far as it must to bring the ground
+  /// the sigma covers within the fixed window. How far that is depends on the
+  /// window, which is the quality dial.
+  test('it reduces only when the window cannot reach far enough', () async {
     final source = await edgeWithNoise(256);
     const output = Size(256, 256);
-    final flat = await renderBlurredSource(
-      source: source,
-      outputPx: output,
-      detail: 0.2,
-      view: const ViewTransform(),
-      smoothing: Smoothing.kuwahara,
+    // At this size and detail the sigma is about 7px.
+    Future<int> widthAtRadius(double radius) async {
+      final flat = await renderBlurredSource(
+        source: source,
+        outputPx: output,
+        detail: 0.2,
+        view: const ViewTransform(),
+        smoothing: Smoothing.kuwahara,
+        quadrantRadius: radius,
+      );
+      final width = flat.width;
+      flat.dispose();
+      return width;
+    }
+
+    expect(
+      await widthAtRadius(4),
+      lessThan(output.width),
+      reason: 'a window too small to cover the sigma has to shrink the copy',
     );
     expect(
-      flat.width,
-      lessThan(output.width),
-      reason: 'a coarse setting has no business running at full resolution',
+      await widthAtRadius(kKuwaharaRadius),
+      output.width,
+      reason:
+          'a window wide enough covers it outright, and shrinking as well '
+          'would throw away detail for nothing',
     );
-    flat.dispose();
     source.dispose();
+  });
+
+  test('a setting saved by a build we no longer ship does not break', () {
+    // The full-resolution mode existed long enough to be saved. Anything
+    // unrecognised has to land somewhere rather than throw.
+    expect(
+      StudySettings.fromJson(const {'smoothing': 'kuwaharaFull'}).smoothing,
+      Smoothing.gaussian,
+    );
   });
 }
