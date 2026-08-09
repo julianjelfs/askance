@@ -1,11 +1,38 @@
 # Askance — the commands you actually need.
 #
 # Dart has no equivalent of npm scripts in pubspec.yaml; the `flutter` CLI is
-# the task runner. This file is only here so the flags we care about are
+# the task runner. This file is only here so the flags worth remembering are
 # remembered for you. Every target is a one-line command you can run directly.
+#
+# Picking a device
+# ----------------
+# `flutter run` with nothing specified and several devices attached prints a
+# numbered list and asks. Fine interactively, useless in a script.
+#
+# `-d` matches a device's **id or name**, case-insensitively: exact match
+# first, then by prefix. There is no substring match, and no `-d android` or
+# `-d ios` — `macos` and `chrome` only work because those are literally the
+# device ids. So `-d pixel` finds "Pixel 9a", but `-d iphone` finds nothing
+# when the phone is called "Julian Jelfs's iPhone".
+#
+# One session drives one device: `-d` is single-valued, so a second `-d`
+# overrides the first rather than adding to it. `-d all` is the only way to
+# drive several at once, and it takes every connected device except web and
+# Fuchsia — with a Mac attached, macOS comes along too. To drive exactly two
+# phones, run `make android` and `make iphone` in two terminals; each gets its
+# own hot reload.
+#
+# ANDROID and IPHONE below are resolved from whatever is attached, by a script
+# that refuses to guess when two devices of the same kind are present rather
+# than quietly deploying to whichever it saw first. Override per-invocation
+# (`make iphone IPHONE=00008110-...`) or export them in your shell.
 
-DEVICE ?=
-APK    := build/app/outputs/flutter-apk/app-release.apk
+ANDROID ?=
+IPHONE  ?=
+DEVICE  ?=
+
+PICK := ./tool/pick-device.sh
+APK  := build/app/outputs/flutter-apk/app-release.apk
 
 .DEFAULT_GOAL := help
 
@@ -13,27 +40,29 @@ APK    := build/app/outputs/flutter-apk/app-release.apk
 help:
 	@grep -E '^## ' $(MAKEFILE_LIST) | sed 's/## /  /'
 
-## devices: what is plugged in or reachable
+## devices: what is plugged in or reachable, with the ids -d wants
 devices:
 	flutter devices
 
 # --- day to day ------------------------------------------------------------
 # This is the loop you want almost always: it installs a debug build and stays
 # attached. Press r to hot reload, R to hot restart, q to quit. Edits to Dart
-# land in under a second, so there is no reason to rebuild by hand.
-#
-#   make run DEVICE=58181JEBF00222
+# land in under a second, so there is rarely a reason to rebuild by hand.
 #
 # Impeller is used in debug too, so anything about how the engine *renders*
 # reproduces here. Only speed differs from release.
 
-## run: hot-reload session on DEVICE (see `make devices`)
+## run: hot-reload session on DEVICE=<id or name prefix>
 run:
 	flutter run $(if $(DEVICE),-d $(DEVICE),)
 
-## phone: hot-reload session on the first attached Android device
-phone:
-	flutter run -d $$(adb devices | awk 'NR==2{print $$1}')
+## android: hot-reload session on the attached Android
+android:
+	@id=$${ANDROID:-$$($(PICK) android)} && flutter run -d "$$id"
+
+## iphone: hot-reload session on the attached iPhone (needs signing in Xcode)
+iphone:
+	@id=$${IPHONE:-$$($(PICK) ios)} && flutter run -d "$$id"
 
 ## mac: hot-reload session on macOS
 mac:
@@ -43,15 +72,19 @@ mac:
 web:
 	flutter run -d chrome
 
+## all: one session driving every attached device (phones *and* macOS)
+all:
+	flutter run -d all
+
 # --- release builds --------------------------------------------------------
 # Worth doing before you trust performance numbers, or when checking anything
 # that AOT and release-mode Impeller might change.
 
-## apk: release APK for this machine's attached arm64 phone
+## apk: release APK for an arm64 phone (fast; not for distribution)
 apk:
 	flutter build apk --release --target-platform android-arm64
 
-## apk-all: release APK for every Android ABI (what you would upload)
+## apk-all: release APK covering every Android ABI
 apk-all:
 	flutter build apk --release
 
@@ -59,34 +92,43 @@ apk-all:
 bundle:
 	flutter build appbundle --release
 
-## install: push the last release APK onto the attached phone
+## install: push the last release APK onto the Android device
 install:
-	adb install -r $(APK)
+	@id=$${ANDROID:-$$($(PICK) android)} && adb -s "$$id" install -r $(APK)
 
-## ship-phone: build release and install it, in one step
-ship-phone: apk install
+## ship-android: build a release APK and install it, in one step
+ship-android: apk install
 
-## ios-sim: build for the iOS simulator (no signing needed)
-ios-sim:
+## ship-iphone: run a release build on the iPhone
+ship-iphone:
+	@id=$${IPHONE:-$$($(PICK) ios)} && flutter run --release -d "$$id"
+
+## build-ios-sim: build for the iOS simulator (no signing needed)
+build-ios-sim:
 	flutter build ios --simulator --debug
 
-## ios: build for a real iPhone (needs your signing set up in Xcode)
-ios:
+## build-ios: build for a real iPhone (needs signing set up in Xcode)
+build-ios:
 	flutter build ios --release
 
-## macos-app: release macOS build
-macos-app:
+## build-macos: release macOS build
+build-macos:
 	flutter build macos --release
 
-## web-build: release web build into build/web
-web-build:
+## build-web: release web build into build/web
+build-web:
 	flutter build web --release
 
 ## serve: build for web and serve it on :8000
-serve: web-build
+serve: build-web
 	cd build/web && python3 -m http.server 8000
 
 # --- housekeeping ----------------------------------------------------------
+
+## logs: follow the Android device log, this app only
+logs:
+	@id=$${ANDROID:-$$($(PICK) android)} && \
+	adb -s "$$id" logcat --pid=$$(adb -s "$$id" shell pidof -s com.julianjelfs.askance)
 
 ## test: run the test suite
 test:
@@ -115,6 +157,6 @@ outdated:
 clean:
 	flutter clean
 
-.PHONY: help devices run phone mac web apk apk-all bundle install ship-phone \
-        ios-sim ios macos-app web-build serve test analyze format check icons \
-        outdated clean
+.PHONY: help devices run android iphone mac web all apk apk-all bundle \
+        install ship-android ship-iphone build-ios-sim build-ios build-macos \
+        build-web serve logs test analyze format check icons outdated clean
