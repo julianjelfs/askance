@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Askance">
+  <defs>
+    <clipPath id="disc"><circle cx="256" cy="256" r="256"></circle></clipPath>
+    <linearGradient id="smooth" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f8f4f4"></stop>
+      <stop offset="0.5" stop-color="#7a7878"></stop>
+      <stop offset="1" stop-color="#111010"></stop>
+    </linearGradient>
+  </defs>
+  <g clip-path="url(#disc)">
+    <rect x="0" y="0" width="256" height="512" fill="url(#smooth)"></rect>
+    <rect x="256" y="0" width="256" height="170.667" fill="#f8f4f4"></rect>
+    <rect x="256" y="170.667" width="256" height="170.667" fill="#7a7878"></rect>
+    <rect x="256" y="341.333" width="256" height="170.667" fill="#111010"></rect>
+    <rect x="238" y="0" width="36" height="512" fill="#ec3013"></rect>
+  </g>
+</svg>

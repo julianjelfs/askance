@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Askance">
+  <defs>
+    <clipPath id="disc"><circle cx="512" cy="512" r="332"></circle></clipPath>
+    <linearGradient id="smooth" x1="0" y1="180" x2="0" y2="844" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f8f4f4"></stop>
+      <stop offset="0.5" stop-color="#7a7878"></stop>
+      <stop offset="1" stop-color="#111010"></stop>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="1024" height="1024" fill="#f3f2f2"></rect>
+  <g clip-path="url(#disc)">
+    <rect x="180" y="180" width="332" height="664" fill="url(#smooth)"></rect>
+    <rect x="512" y="180" width="332" height="221.333" fill="#f8f4f4"></rect>
+    <rect x="512" y="401.333" width="332" height="221.333" fill="#7a7878"></rect>
+    <rect x="512" y="622.667" width="332" height="221.333" fill="#111010"></rect>
+    <rect x="488.5" y="180" width="47" height="664" fill="#ec3013"></rect>
+  </g>
+</svg>
