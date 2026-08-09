@@ -64,10 +64,12 @@ void main() {
     for (final detail in [0.2, 0.55]) {
       final results = <String, int>{
         'SMOOTH': await time(Smoothing.gaussian, detail, kKuwaharaRadius),
-        'ROUGH r=4': await time(Smoothing.kuwahara, detail, 4),
-        'ROUGH r=8': await time(Smoothing.kuwahara, detail, 8),
-        'ROUGH r=12': await time(Smoothing.kuwahara, detail, 12),
-        'ROUGH r=16': await time(Smoothing.kuwahara, detail, 16),
+        // The cap on the window, at the reference width; the floor and the
+        // sigma decide the rest. 12 is what ships.
+        'ROUGH cap 5': await time(Smoothing.kuwahara, detail, 5),
+        'ROUGH cap 8': await time(Smoothing.kuwahara, detail, 8),
+        'ROUGH cap 12': await time(Smoothing.kuwahara, detail, 12),
+        'ROUGH cap 20': await time(Smoothing.kuwahara, detail, 20),
       };
       results.forEach((name, ms) {
         debugPrint('[bench] detail=${(detail * 100).round()} '
