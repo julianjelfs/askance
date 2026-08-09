@@ -103,12 +103,34 @@ void main() {
     });
   });
 
-  test('view state is not a setting and never writes', () {
+  test('zoom and pan persist, so a study reopens where you left it', () {
+    fakeAsync((async) {
+      final t = sessionUnderTest();
+      t.session.openStudy(studyNamed('a'));
+      t.session.setView(
+        const ViewTransform(zoom: 2.4, offset: Offset(-0.1, -0.2)),
+      );
+      async.elapse(const Duration(seconds: 2));
+
+      expect(t.writes.single.$2.view.zoom, 2.4);
+      expect(t.writes.single.$2.view.offset, const Offset(-0.1, -0.2));
+    });
+  });
+
+  test('a reopened study restores the view it was left at', () {
+    final t = sessionUnderTest();
+    const left = ViewTransform(zoom: 3, offset: Offset(-0.2, -0.1));
+    t.session.openStudy(
+      studyNamed('a', settings: const StudySettings(view: left)),
+    );
+    expect(t.session.view, left);
+  });
+
+  test('chrome and peek are not settings and never write', () {
     fakeAsync((async) {
       final t = sessionUnderTest();
       t.session.openStudy(studyNamed('a'));
       t.session
-        ..setView(const ViewTransform(zoom: 3))
         ..setPeeking(true)
         ..setPeeking(false)
         ..toggleChrome()

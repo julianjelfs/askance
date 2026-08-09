@@ -31,16 +31,19 @@ void main() {
       expect(StudySettings.fromJson(original.toJson()), original);
     });
 
-    test('a malformed manifest falls back to defaults rather than throwing', () {
-      final s = StudySettings.fromJson(const {
-        'steps': 'lots',
-        'scale': 'chartreuse',
-        'mode': 'nonsense',
-      });
-      expect(s.steps, 3);
-      expect(s.scale, ValueScale.graphite);
-      expect(s.mode, ViewMode.value);
-    });
+    test(
+      'a malformed manifest falls back to defaults rather than throwing',
+      () {
+        final s = StudySettings.fromJson(const {
+          'steps': 'lots',
+          'scale': 'chartreuse',
+          'mode': 'nonsense',
+        });
+        expect(s.steps, 3);
+        expect(s.scale, ValueScale.graphite);
+        expect(s.mode, ViewMode.value);
+      },
+    );
 
     test('out-of-range values are clamped to the documented ranges', () {
       final low = StudySettings.fromJson(const {

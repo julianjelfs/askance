@@ -234,9 +234,7 @@ Future<void> openStudy(BuildContext context, WidgetRef ref, Study study) async {
 
   if (!context.mounted) return;
   if (MediaQuery.sizeOf(context).width < kDesktopBreakpoint) {
-    await Navigator.of(
-      context,
-    ).push(NoTransitionRoute(builder: (_) => const CanvasScreen()));
+    await Navigator.of(context).push(studyRoute());
   }
 }
 
@@ -292,6 +290,17 @@ class NoTransitionRoute<T> extends PageRoute<T> {
 
 /// Ties a shelf thumbnail to the canvas it opens into.
 String studyHeroTag(String studyId) => 'study-$studyId';
+
+/// The one route in the app that animates: opening a study grows its card into
+/// the canvas, and going back shrinks it home again.
+///
+/// The duration lives here rather than at the call site because a push that
+/// forgets it leaves the Hero nothing to animate over, and the result is not a
+/// fast transition but no transition at all.
+NoTransitionRoute<void> studyRoute() => NoTransitionRoute<void>(
+  builder: (_) => const CanvasScreen(),
+  heroDuration: kStudyOpenDuration,
+);
 
 /// Long enough to read as growth rather than a cut.
 const Duration kStudyOpenDuration = Duration(milliseconds: 420);

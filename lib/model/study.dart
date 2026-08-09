@@ -1,3 +1,5 @@
+import 'dart:ui' show Offset;
+
 import '../engine/engine.dart';
 import '../engine/value_scale.dart';
 
@@ -22,6 +24,7 @@ class StudySettings {
     this.gridDivisions = 4,
     this.numbers = true,
     this.splitPosition = 0.5,
+    this.view = const ViewTransform(),
   });
 
   final int steps;
@@ -32,6 +35,13 @@ class StudySettings {
   final int gridDivisions;
   final bool numbers;
   final double splitPosition;
+
+  /// Where the study was left: zoom, and pan as a fraction of the frame.
+  ///
+  /// The handoff notes list zoom and pan as view-only state, but a study you
+  /// come back to should look like the one you left, and the shelf thumbnail
+  /// should show the passage you were actually working on.
+  final ViewTransform view;
 
   static const int minSteps = 2;
   static const int maxSteps = 7;
@@ -47,6 +57,7 @@ class StudySettings {
     int? gridDivisions,
     bool? numbers,
     double? splitPosition,
+    ViewTransform? view,
   }) => StudySettings(
     steps: steps ?? this.steps,
     scale: scale ?? this.scale,
@@ -56,6 +67,7 @@ class StudySettings {
     gridDivisions: gridDivisions ?? this.gridDivisions,
     numbers: numbers ?? this.numbers,
     splitPosition: splitPosition ?? this.splitPosition,
+    view: view ?? this.view,
   );
 
   Map<String, Object?> toJson() => {
@@ -67,6 +79,9 @@ class StudySettings {
     'gridDivisions': gridDivisions,
     'numbers': numbers,
     'splitPosition': splitPosition,
+    'zoom': view.zoom,
+    'panX': view.offset.dx,
+    'panY': view.offset.dy,
   };
 
   /// Tolerant by design: a manifest written by an older build, or one that has
@@ -83,6 +98,13 @@ class StudySettings {
     ).clamp(minDivisions, maxDivisions),
     numbers: json['numbers'] is bool ? json['numbers']! as bool : true,
     splitPosition: _double(json['splitPosition'], 0.5).clamp(0.0, 1.0),
+    view: ViewTransform(
+      zoom: _double(
+        json['zoom'],
+        1,
+      ).clamp(ViewTransform.minZoom, ViewTransform.maxZoom),
+      offset: Offset(_double(json['panX'], 0), _double(json['panY'], 0)),
+    ),
   );
 
   @override
@@ -95,7 +117,8 @@ class StudySettings {
       other.grid == grid &&
       other.gridDivisions == gridDivisions &&
       other.numbers == numbers &&
-      other.splitPosition == splitPosition;
+      other.splitPosition == splitPosition &&
+      other.view == view;
 
   @override
   int get hashCode => Object.hash(
@@ -107,6 +130,7 @@ class StudySettings {
     gridDivisions,
     numbers,
     splitPosition,
+    view,
   );
 }
 

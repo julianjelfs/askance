@@ -175,27 +175,30 @@ void main() {
       }
     });
 
-    test('a pixel keeps its band whatever the step count of its neighbours', () {
-      // Absolute thresholds mean the same grey is the same band in any frame.
-      final wide = bandsFromRgba(
-        rgbaOf([
-          [40, 40, 200, 200],
-        ]),
-        4,
-        1,
-        4,
-      );
-      final crop = bandsFromRgba(
-        rgbaOf([
-          [40, 200],
-        ]),
-        2,
-        1,
-        4,
-      );
-      expect(wide.bands[0], crop.bands[0]);
-      expect(wide.bands[2], crop.bands[1]);
-    });
+    test(
+      'a pixel keeps its band whatever the step count of its neighbours',
+      () {
+        // Absolute thresholds mean the same grey is the same band in any frame.
+        final wide = bandsFromRgba(
+          rgbaOf([
+            [40, 40, 200, 200],
+          ]),
+          4,
+          1,
+          4,
+        );
+        final crop = bandsFromRgba(
+          rgbaOf([
+            [40, 200],
+          ]),
+          2,
+          1,
+          4,
+        );
+        expect(wide.bands[0], crop.bands[0]);
+        expect(wide.bands[2], crop.bands[1]);
+      },
+    );
   });
 
   group('region labelling', () {

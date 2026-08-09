@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../engine/blur_pass.dart';
 import '../../engine/deferred_disposer.dart';
-import '../../engine/engine.dart';
 import '../../engine/value_painter.dart';
 import '../../model/study.dart';
 import '../../state/providers.dart';
@@ -207,7 +206,7 @@ class _StudyThumbnailState extends ConsumerState<StudyThumbnail> {
           source: image,
           outputPx: constraints.biggest * dpr,
           detail: widget.study.settings.detail,
-          view: const ViewTransform(),
+          view: widget.study.settings.view,
         );
         return ListenableBuilder(
           listenable: _blur,
@@ -217,7 +216,7 @@ class _StudyThumbnailState extends ConsumerState<StudyThumbnail> {
               source: image,
               blurred: _blur.image,
               settings: widget.study.settings,
-              view: const ViewTransform(),
+              view: widget.study.settings.view,
               devicePixelRatio: dpr,
               peeking: false,
               splitPosition: widget.study.settings.splitPosition,

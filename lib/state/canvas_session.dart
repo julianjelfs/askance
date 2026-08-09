@@ -73,7 +73,8 @@ class CanvasSession extends ChangeNotifier {
     imageKey = study.imageKey;
     settings = study.settings;
     splitPosition = study.settings.splitPosition;
-    view = const ViewTransform();
+    // Come back to the passage you were working on, at the zoom you left it.
+    view = study.settings.view;
     openTool = null;
     chromeVisible = true;
     _scheduleRegions();
@@ -98,8 +99,13 @@ class CanvasSession extends ChangeNotifier {
     name: name.trim().isEmpty ? 'Untitled study' : name.trim(),
     date: date ?? DateTime.now(),
     imageKey: imageKey ?? '',
-    settings: settings.copyWith(splitPosition: splitPosition),
+    settings: settled,
   );
+
+  /// The study settings as they stand, folding in the two things kept live for
+  /// the duration of a gesture.
+  StudySettings get settled =>
+      settings.copyWith(splitPosition: splitPosition, view: view);
 
   // --- study settings -----------------------------------------------------
 
@@ -183,6 +189,8 @@ class CanvasSession extends ChangeNotifier {
     if (next == view) return;
     view = next;
     _scheduleRegions();
+    // Debounced, so a pinch writes once when it settles rather than per frame.
+    _persistSoon();
     notifyListeners();
   }
 
@@ -257,7 +265,7 @@ class CanvasSession extends ChangeNotifier {
   void _persistNow() {
     final id = studyId;
     if (id == null) return;
-    onPersist?.call(id, settings.copyWith(splitPosition: splitPosition), name);
+    onPersist?.call(id, settled, name);
   }
 
   // --- value numbers ------------------------------------------------------
