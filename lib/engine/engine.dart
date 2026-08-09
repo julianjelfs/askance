@@ -178,20 +178,38 @@ Future<ui.Image> renderBlurredSource({
     Size(w.toDouble(), h.toDouble()),
   );
   final sigma = blurSigma(detail, w.toDouble());
-  canvas.drawImageRect(
-    source,
-    Rect.fromLTWH(0, 0, source.width.toDouble(), source.height.toDouble()),
-    dest,
+
+  // The blur must run over the *magnified* pixels, in output space, and this
+  // has to be spelled out with a layer rather than hung off the paint.
+  //
+  // Given `drawImageRect` with an imageFilter on its Paint, Skia filters the
+  // result in device space, which is what we want, but Impeller filters the
+  // source image in the image's own space and magnifies the blurred result
+  // afterwards. That makes the effective on-screen sigma scale with the zoom,
+  // so zooming in returns the identical shapes at a larger size instead of
+  // resolving finer ones — the single behaviour the app exists for, working on
+  // web and silently doing nothing on Android, iOS and macOS.
+  //
+  // Rasterising into a layer first and filtering that layer is unambiguous on
+  // both backends: the sigma is pinned to output pixels.
+  canvas.saveLayer(
+    Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble()),
     Paint()
-      ..filterQuality = FilterQuality.medium
       // Clamp rather than decal: a decal blur pulls transparency in from
-      // outside the image and leaves a dark rim once premultiplied.
+      // outside the layer and leaves a dark rim once premultiplied.
       ..imageFilter = ui.ImageFilter.blur(
         sigmaX: sigma,
         sigmaY: sigma,
         tileMode: TileMode.clamp,
       ),
   );
+  canvas.drawImageRect(
+    source,
+    Rect.fromLTWH(0, 0, source.width.toDouble(), source.height.toDouble()),
+    dest,
+    Paint()..filterQuality = FilterQuality.medium,
+  );
+  canvas.restore();
   final picture = recorder.endRecording();
   final image = await picture.toImage(w, h);
   picture.dispose();
