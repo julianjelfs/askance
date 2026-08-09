@@ -21,6 +21,27 @@ enum ViewMode {
   final String longLabel;
 }
 
+/// How the photograph is simplified before it is quantised.
+///
+/// Stored by name, so the labels can be reworded without stranding studies.
+enum Smoothing {
+  /// A Gaussian in screen space: everything softens equally and small shapes
+  /// dissolve, the way squinting loses detail. Boundaries drift as it deepens.
+  gaussian('SOFT'),
+
+  /// Kuwahara: flattens within a region and leaves the edge between regions
+  /// where it is, so shapes go flat rather than melting together.
+  kuwahara('FLAT');
+
+  const Smoothing(this.label);
+
+  final String label;
+}
+
+/// Quadrant radius for the Kuwahara pass, in the pixels of the downscaled copy
+/// it runs on. The shader's loops are unrolled to this.
+const double kKuwaharaRadius = 4;
+
 /// The width the blur and line-weight constants were tuned at.
 const double kReferenceWidth = 480;
 
@@ -199,11 +220,18 @@ ViewTransform coveringView(ViewTransform base, Size source, Size output) {
 /// backing texture may not have been rasterised yet, and binding that as a
 /// shader sampler intermittently samples an empty texture. `toImage` waits for
 /// the raster thread, at the cost of the result landing a frame later.
+/// The Kuwahara program, compiled once on first use.
+///
+/// Held here rather than behind a provider because the pass that needs it is a
+/// plain function, reached from the canvas, the shelf and an export alike.
+Future<ui.FragmentProgram>? _kuwaharaProgram;
+
 Future<ui.Image> renderBlurredSource({
   required ui.Image source,
   required Size outputPx,
   required double detail,
   required ViewTransform view,
+  Smoothing smoothing = Smoothing.gaussian,
 }) async {
   final sourceSize = Size(source.width.toDouble(), source.height.toDouble());
   final dest = view.destination(sourceSize, outputPx);
@@ -221,6 +249,16 @@ Future<ui.Image> renderBlurredSource({
     Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble()),
   );
   final sigma = blurSigma(detail, outputPx.width);
+
+  if (smoothing == Smoothing.kuwahara) {
+    return _kuwahara(
+      source: source,
+      sourceSize: sourceSize,
+      dest: dest,
+      area: area,
+      radiusInOutputPx: sigma,
+    );
+  }
 
   // The blur must run over the *magnified* pixels, in output space, and this
   // has to be spelled out with a layer rather than hung off the paint.
@@ -260,17 +298,79 @@ Future<ui.Image> renderBlurredSource({
   return image;
 }
 
+/// Simplifies by flattening regions rather than by softening everything.
+///
+/// Runs on a copy scaled down so that a fixed, cheap quadrant radius covers
+/// the same ground the Gaussian's sigma would have. The result is returned at
+/// that reduced size: the value shader samples it with normalised coordinates,
+/// so it is magnified back on the way in, which costs nothing and is no loss
+/// when the whole point is that the shapes are coarse.
+Future<ui.Image> _kuwahara({
+  required ui.Image source,
+  required Size sourceSize,
+  required Rect dest,
+  required Rect area,
+  required double radiusInOutputPx,
+}) async {
+  final program = await (_kuwaharaProgram ??= ui.FragmentProgram.fromAsset(
+    'shaders/kuwahara.frag',
+  ));
+
+  final scale = math.max(1.0, radiusInOutputPx / kKuwaharaRadius);
+  final w = math.max(2, (area.width / scale).round());
+  final h = math.max(2, (area.height / scale).round());
+  final small = Size(w.toDouble(), h.toDouble());
+
+  // Scaled down first, which does most of the simplifying on its own and
+  // leaves the shader a small window to work in.
+  final reduceRecorder = ui.PictureRecorder();
+  ui.Canvas(reduceRecorder, Offset.zero & small).drawImageRect(
+    source,
+    Offset.zero & sourceSize,
+    Rect.fromLTWH(
+      (dest.left - area.left) / scale,
+      (dest.top - area.top) / scale,
+      dest.width / scale,
+      dest.height / scale,
+    ),
+    Paint()..filterQuality = FilterQuality.medium,
+  );
+  final reducePicture = reduceRecorder.endRecording();
+  final reduced = await reducePicture.toImage(w, h);
+  reducePicture.dispose();
+
+  final shader = program.fragmentShader()
+    ..setFloat(0, small.width)
+    ..setFloat(1, small.height)
+    ..setFloat(2, kKuwaharaRadius)
+    ..setImageSampler(0, reduced);
+
+  final recorder = ui.PictureRecorder();
+  ui.Canvas(
+    recorder,
+    Offset.zero & small,
+  ).drawRect(Offset.zero & small, Paint()..shader = shader);
+  final picture = recorder.endRecording();
+  final flattened = await picture.toImage(w, h);
+  picture.dispose();
+  shader.dispose();
+  reduced.dispose();
+  return flattened;
+}
+
 /// Identifies a blur result, so it is recomputed only when it has to be.
 Object blurKeyFor({
   required Size outputPx,
   required double detail,
   required ViewTransform view,
+  required Smoothing smoothing,
 }) => Object.hash(
   outputPx.width,
   outputPx.height,
   detail,
   view.zoom,
   view.offset,
+  smoothing,
 );
 
 /// Wraps the compiled fragment program and knows how to set its uniforms.
@@ -288,6 +388,7 @@ class ValueShader {
     required int steps,
     required ValueScale scale,
     required bool skeleton,
+    required double bias,
   }) {
     final shader = _program.fragmentShader();
     shader
@@ -299,15 +400,16 @@ class ValueShader {
       ..setFloat(5, devicePx.height)
       ..setFloat(6, steps.toDouble())
       ..setFloat(7, skeleton ? 1 : 0)
-      ..setFloat(8, skeletonLineWidth(devicePx.width));
+      ..setFloat(8, skeletonLineWidth(devicePx.width))
+      ..setFloat(9, bias);
 
     final ramp = scale.ramp(steps);
     for (var i = 0; i < 7; i++) {
       final c = ramp[math.min(i, ramp.length - 1)];
       shader
-        ..setFloat(9 + i * 3, c.r)
-        ..setFloat(10 + i * 3, c.g)
-        ..setFloat(11 + i * 3, c.b);
+        ..setFloat(10 + i * 3, c.r)
+        ..setFloat(11 + i * 3, c.g)
+        ..setFloat(12 + i * 3, c.b);
     }
     return shader;
   }

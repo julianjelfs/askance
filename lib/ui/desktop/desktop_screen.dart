@@ -221,6 +221,18 @@ class _RailState extends ConsumerState<_Rail> {
                   ),
                   const Rule(),
                   _controlBlock(
+                    'WHERE THE STEPS FALL',
+                    BiasControl.readout(session.settings.bias),
+                    BiasControl(session: session),
+                  ),
+                  const Rule(),
+                  _controlBlock(
+                    'HOW THE SHAPES FORM',
+                    null,
+                    SmoothingControl(session: session),
+                  ),
+                  const Rule(),
+                  _controlBlock(
                     'DETAIL',
                     '${(session.settings.detail * 100).round()}',
                     DetailControl(session: session),

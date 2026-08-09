@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 
@@ -222,11 +224,16 @@ class RuleSlider extends StatelessWidget {
     required this.value,
     required this.onChanged,
     this.rowHeight = 28,
+    this.origin = 0,
   });
 
   final double value;
   final ValueChanged<double> onChanged;
   final double rowHeight;
+
+  /// Where the filled part of the track starts. Centre it for a control that
+  /// runs either side of nothing.
+  final double origin;
 
   @override
   Widget build(BuildContext context) {
@@ -245,7 +252,11 @@ class RuleSlider extends StatelessWidget {
             height: rowHeight * s,
             width: width,
             child: CustomPaint(
-              painter: _RuleSliderPainter(value: value, thumbWidth: 4 * s),
+              painter: _RuleSliderPainter(
+                value: value,
+                origin: origin,
+                thumbWidth: 4 * s,
+              ),
             ),
           ),
         );
@@ -255,9 +266,14 @@ class RuleSlider extends StatelessWidget {
 }
 
 class _RuleSliderPainter extends CustomPainter {
-  _RuleSliderPainter({required this.value, required this.thumbWidth});
+  _RuleSliderPainter({
+    required this.value,
+    required this.origin,
+    required this.thumbWidth,
+  });
 
   final double value;
+  final double origin;
   final double thumbWidth;
 
   @override
@@ -268,8 +284,9 @@ class _RuleSliderPainter extends CustomPainter {
       Rect.fromLTWH(0, y - kRule / 2, size.width, kRule),
       Paint()..color = AskanceColors.dividerDark,
     );
+    final from = origin * size.width;
     canvas.drawRect(
-      Rect.fromLTWH(0, y - kRule / 2, x, kRule),
+      Rect.fromLTWH(math.min(from, x), y - kRule / 2, (x - from).abs(), kRule),
       Paint()..color = AskanceColors.accent,
     );
     canvas.drawRect(
@@ -285,7 +302,9 @@ class _RuleSliderPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _RuleSliderPainter old) =>
-      old.value != value || old.thumbWidth != thumbWidth;
+      old.value != value ||
+      old.origin != origin ||
+      old.thumbWidth != thumbWidth;
 }
 
 /// `–  n  +` in a 2px outlined box.

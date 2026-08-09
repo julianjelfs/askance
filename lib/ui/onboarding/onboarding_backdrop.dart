@@ -77,6 +77,7 @@ class _OnboardingBackdropState extends ConsumerState<OnboardingBackdrop> {
           outputPx: size * dpr,
           detail: widget.settings.detail,
           view: view,
+          smoothing: widget.settings.smoothing,
         );
 
         return ListenableBuilder(

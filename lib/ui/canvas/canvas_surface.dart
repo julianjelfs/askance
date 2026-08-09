@@ -153,6 +153,7 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
             outputPx: Size(_size.width * dpr, _size.height * dpr),
             detail: session.settings.detail,
             view: session.view,
+            smoothing: session.settings.smoothing,
           );
         }
 

@@ -23,6 +23,8 @@ class StudySettings {
     this.grid = GridMode.off,
     this.gridDivisions = 4,
     this.numbers = true,
+    this.smoothing = Smoothing.gaussian,
+    this.bias = 0,
     this.splitPosition = 0.5,
     this.view = const ViewTransform(),
   });
@@ -34,6 +36,16 @@ class StudySettings {
   final GridMode grid;
   final int gridDivisions;
   final bool numbers;
+
+  /// How the photograph is simplified before it is quantised.
+  final Smoothing smoothing;
+
+  /// Slides every threshold together, in fractions of the L* range.
+  ///
+  /// The steps stay evenly spaced, so a value still means what it always did;
+  /// this only decides which side of a boundary a borderline passage falls
+  /// on, which is what an under- or over-exposed photograph needs.
+  final double bias;
   final double splitPosition;
 
   /// Where the study was left: zoom, and pan as a fraction of the frame.
@@ -48,6 +60,10 @@ class StudySettings {
   static const int minDivisions = 2;
   static const int maxDivisions = 10;
 
+  /// A quarter of the L* range in either direction is far more than anyone
+  /// needs and still leaves every step reachable.
+  static const double maxBias = 0.25;
+
   StudySettings copyWith({
     int? steps,
     ValueScale? scale,
@@ -56,6 +72,8 @@ class StudySettings {
     GridMode? grid,
     int? gridDivisions,
     bool? numbers,
+    Smoothing? smoothing,
+    double? bias,
     double? splitPosition,
     ViewTransform? view,
   }) => StudySettings(
@@ -66,6 +84,8 @@ class StudySettings {
     grid: grid ?? this.grid,
     gridDivisions: gridDivisions ?? this.gridDivisions,
     numbers: numbers ?? this.numbers,
+    smoothing: smoothing ?? this.smoothing,
+    bias: bias ?? this.bias,
     splitPosition: splitPosition ?? this.splitPosition,
     view: view ?? this.view,
   );
@@ -78,6 +98,8 @@ class StudySettings {
     'grid': grid.name,
     'gridDivisions': gridDivisions,
     'numbers': numbers,
+    'smoothing': smoothing.name,
+    'bias': bias,
     'splitPosition': splitPosition,
     'zoom': view.zoom,
     'panX': view.offset.dx,
@@ -97,6 +119,12 @@ class StudySettings {
       4,
     ).clamp(minDivisions, maxDivisions),
     numbers: json['numbers'] is bool ? json['numbers']! as bool : true,
+    smoothing: _enumByName(
+      Smoothing.values,
+      json['smoothing'],
+      Smoothing.gaussian,
+    ),
+    bias: _double(json['bias'], 0).clamp(-maxBias, maxBias),
     splitPosition: _double(json['splitPosition'], 0.5).clamp(0.0, 1.0),
     view: ViewTransform(
       zoom: _double(
@@ -117,6 +145,8 @@ class StudySettings {
       other.grid == grid &&
       other.gridDivisions == gridDivisions &&
       other.numbers == numbers &&
+      other.smoothing == smoothing &&
+      other.bias == bias &&
       other.splitPosition == splitPosition &&
       other.view == view;
 
@@ -129,6 +159,8 @@ class StudySettings {
     grid,
     gridDivisions,
     numbers,
+    smoothing,
+    bias,
     splitPosition,
     view,
   );

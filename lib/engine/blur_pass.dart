@@ -15,6 +15,7 @@ class _BlurRequest {
     required this.outputPx,
     required this.detail,
     required this.view,
+    required this.smoothing,
     required this.key,
   });
 
@@ -22,6 +23,7 @@ class _BlurRequest {
   final Size outputPx;
   final double detail;
   final ViewTransform view;
+  final Smoothing smoothing;
   final Object key;
 }
 
@@ -69,15 +71,22 @@ class BlurPass extends ChangeNotifier {
     required Size outputPx,
     required double detail,
     required ViewTransform view,
+    Smoothing smoothing = Smoothing.gaussian,
   }) {
     if (_disposed || outputPx.isEmpty) return;
-    final key = blurKeyFor(outputPx: outputPx, detail: detail, view: view);
+    final key = blurKeyFor(
+      outputPx: outputPx,
+      detail: detail,
+      view: view,
+      smoothing: smoothing,
+    );
     if (key == _key || key == _queued?.key) return;
     _queued = _BlurRequest(
       source: source,
       outputPx: outputPx,
       detail: detail,
       view: view,
+      smoothing: smoothing,
       key: key,
     );
     if (!_rendering) unawaited(_drain());
@@ -97,6 +106,7 @@ class BlurPass extends ChangeNotifier {
             outputPx: request.outputPx,
             detail: request.detail,
             view: request.view,
+            smoothing: request.smoothing,
           );
         } catch (e) {
           // Whatever asked for this can ask again; a failed pass should not

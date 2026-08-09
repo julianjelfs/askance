@@ -16,6 +16,7 @@ uniform vec2 uDevice;    // the same rect in output pixels
 uniform float uSteps;    // 2..7
 uniform float uMode;     // 0 = value map, 1 = skeleton
 uniform float uLineWidth;// skeleton stroke, output px
+uniform float uBias;     // slides every threshold together, in L*/100
 
 uniform vec3 uC0;
 uniform vec3 uC1;
@@ -54,7 +55,14 @@ float lstar(vec3 c) {
 // so a pixel keeps its value between a wide view and a close-up.
 float bandAt(vec2 devPx) {
   vec3 c = texture(uSrc, devPx / uDevice).rgb;
-  return clamp(floor(lstar(c) / 100.0 * uSteps), 0.0, uSteps - 1.0);
+  // uBias slides the whole ladder of thresholds at once. The steps stay
+  // evenly spaced in L*, so a value still means the same thing; it only
+  // decides which side of a boundary a borderline passage falls on.
+  return clamp(
+    floor((lstar(c) / 100.0 + uBias) * uSteps),
+    0.0,
+    uSteps - 1.0
+  );
 }
 
 void main() {

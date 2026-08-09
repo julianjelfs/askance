@@ -126,6 +126,7 @@ class ValuePainter extends CustomPainter {
       steps: settings.steps,
       scale: settings.scale,
       skeleton: settings.mode == ViewMode.skeleton,
+      bias: settings.bias,
     )..setImageSampler(0, source);
 
     canvas.drawRect(area, Paint()..shader = _fragment!);

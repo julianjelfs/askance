@@ -134,6 +134,23 @@ class CanvasSession extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setSmoothing(Smoothing smoothing) {
+    if (smoothing == settings.smoothing) return;
+    settings = settings.copyWith(smoothing: smoothing);
+    _scheduleRegions();
+    _persistSoon();
+    notifyListeners();
+  }
+
+  void setBias(double bias) {
+    final next = bias.clamp(-StudySettings.maxBias, StudySettings.maxBias);
+    if (next == settings.bias) return;
+    settings = settings.copyWith(bias: next);
+    _scheduleRegions();
+    _persistSoon();
+    notifyListeners();
+  }
+
   void setScale(ValueScale scale) {
     if (scale == settings.scale) return;
     settings = settings.copyWith(scale: scale);
@@ -299,6 +316,8 @@ class CanvasSession extends ChangeNotifier {
       detail: settings.detail,
       view: view,
       steps: settings.steps,
+      bias: settings.bias,
+      smoothing: settings.smoothing,
     );
     // A newer request landed while this one was in flight.
     if (request != _regionRequest) return;
@@ -320,6 +339,7 @@ class CanvasSession extends ChangeNotifier {
       outputPx: outputPx,
       detail: settings.detail,
       view: view,
+      smoothing: settings.smoothing,
     );
     await blur.settled;
   }

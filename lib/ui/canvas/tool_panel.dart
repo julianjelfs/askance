@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 
+import '../../engine/engine.dart';
 import '../../engine/value_scale.dart';
 import '../../model/study.dart';
 import '../../state/canvas_session.dart';
@@ -21,6 +22,26 @@ class ValuesControl extends StatelessWidget {
   );
 }
 
+/// Slides every threshold together, so a borderline passage can be pushed to
+/// one side of a boundary or the other.
+class BiasControl extends StatelessWidget {
+  const BiasControl({super.key, required this.session});
+  final CanvasSession session;
+
+  static String readout(double bias) {
+    final steps = (bias / StudySettings.maxBias * 50).round();
+    return steps == 0 ? '0' : (steps > 0 ? '+$steps' : '$steps');
+  }
+
+  @override
+  Widget build(BuildContext context) => RuleSlider(
+    // Nothing in the middle, and equal room either side of it.
+    origin: 0.5,
+    value: session.settings.bias / (StudySettings.maxBias * 2) + 0.5,
+    onChanged: (v) => session.setBias((v - 0.5) * StudySettings.maxBias * 2),
+  );
+}
+
 class DetailControl extends StatelessWidget {
   const DetailControl({super.key, required this.session});
   final CanvasSession session;
@@ -28,6 +49,22 @@ class DetailControl extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       RuleSlider(value: session.settings.detail, onChanged: session.setDetail);
+}
+
+/// Which way the photograph is simplified before it is quantised.
+class SmoothingControl extends StatelessWidget {
+  const SmoothingControl({super.key, required this.session});
+  final CanvasSession session;
+
+  @override
+  Widget build(BuildContext context) => SegmentedControl<Smoothing>(
+    values: Smoothing.values,
+    selected: session.settings.smoothing,
+    labelOf: (v) => v.label,
+    onChanged: session.setSmoothing,
+    height: 30,
+    fontSize: 10,
+  );
 }
 
 class ScaleControl extends StatelessWidget {
@@ -170,8 +207,17 @@ class ToolPanel extends StatelessWidget {
           CanvasTool.steps => [
             const ControlLabelRow(label: 'HOW MANY VALUES'),
             ValuesControl(session: session),
+            SizedBox(height: 16 * s),
+            ControlLabelRow(
+              label: 'WHERE THE STEPS FALL',
+              value: BiasControl.readout(session.settings.bias),
+            ),
+            BiasControl(session: session),
           ],
           CanvasTool.detail => [
+            const ControlLabelRow(label: 'HOW THE SHAPES FORM'),
+            SmoothingControl(session: session),
+            SizedBox(height: 16 * s),
             ControlLabelRow(
               label: 'DETAIL OF THE SHAPES',
               value: '${(session.settings.detail * 100).round()}',

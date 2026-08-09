@@ -52,6 +52,8 @@ Future<Uint8List?> renderExport({
       detail: settings.detail,
       view: exportView,
       steps: settings.steps,
+      bias: settings.bias,
+      smoothing: settings.smoothing,
     );
     overlay = RegionOverlay(
       regions: found.regions,
@@ -65,6 +67,7 @@ Future<Uint8List?> renderExport({
     outputPx: size,
     detail: settings.detail,
     view: exportView,
+    smoothing: settings.smoothing,
   );
 
   final disposer = DeferredDisposer();
