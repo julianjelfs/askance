@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
 import '../engine/engine.dart';
+import '../engine/blur_pass.dart';
 import '../engine/regions.dart';
 import '../engine/value_painter.dart';
 import '../engine/value_scale.dart';
@@ -16,6 +17,11 @@ enum CanvasTool { steps, detail, scale, grid }
 /// study: zoom, pan, peek, chrome visibility and which tool is open.
 class CanvasSession extends ChangeNotifier {
   ui.Image? image;
+
+  /// Owned here rather than by the canvas widget so that every view of this
+  /// study — the canvas, and the copy that flies during the open transition —
+  /// shares one finished pass instead of each starting from nothing.
+  final BlurPass blur = BlurPass();
 
   /// The original bytes, kept so exports can re-run the engine from the source
   /// rather than upscaling the screen raster.
@@ -303,8 +309,23 @@ class CanvasSession extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Renders the pass this study needs at [outputPx] and waits for it, so the
+  /// canvas is never put on screen showing the untouched photograph first.
+  Future<void> warmBlur(Size outputPx) async {
+    final source = image;
+    if (source == null || outputPx.isEmpty) return;
+    blur.request(
+      source: source,
+      outputPx: outputPx,
+      detail: settings.detail,
+      view: view,
+    );
+    await blur.settled;
+  }
+
   @override
   void dispose() {
+    blur.dispose();
     _persistDebounce?.cancel();
     _regionDebounce?.cancel();
     image?.dispose();

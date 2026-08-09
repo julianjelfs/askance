@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 
-import '../../engine/blur_pass.dart';
 import '../../engine/deferred_disposer.dart';
 import '../../engine/engine.dart';
 import '../../engine/value_painter.dart';
@@ -26,6 +25,7 @@ class CanvasSurface extends StatefulWidget {
     this.onTap,
     this.allowChromeToggle = true,
     this.drawGrid = true,
+    this.freezeBlur = false,
   });
 
   final CanvasSession session;
@@ -34,13 +34,18 @@ class CanvasSurface extends StatefulWidget {
   final bool allowChromeToggle;
   final bool drawGrid;
 
+  /// Held still while the open transition runs. Re-rendering at each
+  /// intermediate size would re-quantise the picture as it grew — the blur
+  /// sigma scales with frame width — so the shapes would visibly re-form
+  /// instead of the whole thing simply getting bigger.
+  final bool freezeBlur;
+
   @override
   State<CanvasSurface> createState() => _CanvasSurfaceState();
 }
 
 class _CanvasSurfaceState extends State<CanvasSurface> {
   final _disposer = DeferredDisposer();
-  final _blur = BlurPass();
 
   ViewTransform _gestureStart = const ViewTransform();
   Offset _focalStart = Offset.zero;
@@ -53,7 +58,6 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
   void dispose() {
     _pendingTap?.cancel();
     _disposer.disposeAll();
-    _blur.dispose();
     super.dispose();
   }
 
@@ -137,18 +141,20 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
     return LayoutBuilder(
       builder: (context, constraints) {
         _size = constraints.biggest;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) session.setViewport(_size, dpr);
-        });
+        if (!widget.freezeBlur) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) session.setViewport(_size, dpr);
+          });
 
-        // Asking every build is cheap: the pass only re-renders when the
-        // detail, zoom or output size actually changes.
-        _blur.request(
-          source: session.image!,
-          outputPx: Size(_size.width * dpr, _size.height * dpr),
-          detail: session.settings.detail,
-          view: session.view,
-        );
+          // Asking every build is cheap: the pass only re-renders when the
+          // detail, zoom or output size actually changes.
+          session.blur.request(
+            source: session.image!,
+            outputPx: Size(_size.width * dpr, _size.height * dpr),
+            detail: session.settings.detail,
+            view: session.view,
+          );
+        }
 
         return Listener(
           onPointerSignal: _onScroll,
@@ -179,13 +185,13 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
             },
             child: RepaintBoundary(
               child: ListenableBuilder(
-                listenable: _blur,
+                listenable: session.blur,
                 builder: (context, _) => CustomPaint(
                   size: Size.infinite,
                   painter: ValuePainter(
                     shader: widget.shader,
                     source: session.image!,
-                    blurred: _blur.image,
+                    blurred: session.blur.image,
                     settings: session.settings,
                     view: session.view,
                     devicePixelRatio: dpr,

@@ -233,7 +233,13 @@ Future<void> openStudy(BuildContext context, WidgetRef ref, Study study) async {
   session.loadImage(image, bytes, key: study.imageKey);
 
   if (!context.mounted) return;
-  if (MediaQuery.sizeOf(context).width < kDesktopBreakpoint) {
+  final media = MediaQuery.of(context);
+  if (media.size.width < kDesktopBreakpoint) {
+    // Render the pass before the push, not during it. The canvas is full
+    // bleed, so its output is the screen; without this the flight opens on the
+    // untouched photograph and flips to the value map partway across.
+    await session.warmBlur(media.size * media.devicePixelRatio);
+    if (!context.mounted) return;
     await Navigator.of(context).push(studyRoute());
   }
 }
@@ -302,5 +308,6 @@ NoTransitionRoute<void> studyRoute() => NoTransitionRoute<void>(
   heroDuration: kStudyOpenDuration,
 );
 
-/// Long enough to read as growth rather than a cut.
-const Duration kStudyOpenDuration = Duration(milliseconds: 420);
+/// Long enough to read as growth rather than a cut, short enough not to make
+/// you wait for it.
+const Duration kStudyOpenDuration = Duration(milliseconds: 280);

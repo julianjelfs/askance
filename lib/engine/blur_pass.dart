@@ -47,12 +47,20 @@ class BlurPass extends ChangeNotifier {
   _BlurRequest? _queued;
   bool _rendering = false;
   bool _disposed = false;
+  Completer<void>? _settled;
 
   /// The most recent completed blur, or null until the first one lands.
   ui.Image? get image => _image;
 
   /// Whether [image] reflects the settings last asked for.
   bool get isCurrent => _queued == null && !_rendering;
+
+  /// Completes once nothing is queued or in flight, so a caller can make sure
+  /// there is a finished pass to show before putting it on screen.
+  Future<void> get settled {
+    if (isCurrent || _disposed) return Future<void>.value();
+    return (_settled ??= Completer<void>()).future;
+  }
 
   /// Asks for the blur matching these inputs. Cheap and idempotent: repeated
   /// calls with the same inputs do nothing.
@@ -111,6 +119,8 @@ class BlurPass extends ChangeNotifier {
       }
     } finally {
       _rendering = false;
+      _settled?.complete();
+      _settled = null;
     }
   }
 
@@ -125,6 +135,8 @@ class BlurPass extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _queued = null;
+    _settled?.complete();
+    _settled = null;
     _image?.dispose();
     _image = null;
     super.dispose();

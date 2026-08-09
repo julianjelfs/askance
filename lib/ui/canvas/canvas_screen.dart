@@ -50,7 +50,33 @@ class _CanvasBody extends ConsumerWidget {
     final s = DesignScale.of(context);
     final padding = MediaQuery.paddingOf(context);
     final chromeVisible = session.chromeVisible;
+    // While the open transition runs, the canvas is also the widget flying
+    // between the card and the screen, and it must not re-render as it grows.
+    // Listening to the route's own animation is what lets it start rendering
+    // again the moment the flight lands.
+    final routeAnimation =
+        ModalRoute.of(context)?.animation ??
+        const AlwaysStoppedAnimation<double>(1);
 
+    return ListenableBuilder(
+      listenable: routeAnimation,
+      builder: (context, _) => _body(
+        context,
+        s,
+        padding,
+        chromeVisible,
+        flying: routeAnimation.isAnimating,
+      ),
+    );
+  }
+
+  Widget _body(
+    BuildContext context,
+    double s,
+    EdgeInsets padding,
+    bool chromeVisible, {
+    required bool flying,
+  }) {
     return PopScope(
       // Settings persist on a short debounce, so leaving immediately after a
       // change would otherwise drop it.
@@ -65,10 +91,14 @@ class _CanvasBody extends ConsumerWidget {
           if (session.studyId case final id?)
             Hero(
               tag: studyHeroTag(id),
-              child: CanvasSurface(session: session, shader: shader),
+              child: CanvasSurface(
+                session: session,
+                shader: shader,
+                freezeBlur: flying,
+              ),
             )
           else
-            CanvasSurface(session: session, shader: shader),
+            CanvasSurface(session: session, shader: shader, freezeBlur: flying),
 
           if (session.settings.mode == ViewMode.split && !session.peeking)
             SplitHandle(session: session),
