@@ -4,12 +4,14 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../engine/blur_pass.dart';
+import '../../engine/engine.dart';
 import '../../engine/deferred_disposer.dart';
 import '../../engine/value_painter.dart';
 import '../../model/study.dart';
 import '../../state/providers.dart';
 import '../../theme.dart';
 import '../widgets/controls.dart';
+import '../widgets/glyphs.dart';
 import 'shelf_screen.dart';
 
 /// Decoded source images, cached per study so a shelf of thumbnails decodes
@@ -61,7 +63,14 @@ class _StudyCardState extends ConsumerState<StudyCard> {
       child: Container(
         decoration: BoxDecoration(
           color: AskanceColors.surface,
-          border: Border.all(color: AskanceColors.dividerLight, width: kRule),
+          // One rule, not two: while the card is asking, its own border turns
+          // red rather than a second red border appearing inside the grey one.
+          border: Border.all(
+            color: _confirmingDelete
+                ? AskanceColors.accent
+                : AskanceColors.dividerLight,
+            width: kRule,
+          ),
         ),
         child: Stack(
           children: [
@@ -69,15 +78,36 @@ class _StudyCardState extends ConsumerState<StudyCard> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                AspectRatio(
-                  aspectRatio: 4 / 5,
-                  // Grows into the canvas when the card is opened. The
-                  // default shuttle flies the destination's own child, so the
-                  // flight lands on exactly what the canvas will show.
-                  child: Hero(
-                    tag: studyHeroTag(study.id),
-                    child: StudyThumbnail(study: study),
-                  ),
+                Stack(
+                  children: [
+                    AspectRatio(
+                      aspectRatio: 4 / 5,
+                      // Grows into the canvas when the card is opened. The
+                      // default shuttle flies the destination's own child, so the
+                      // flight lands on exactly what the canvas will show.
+                      child: Hero(
+                        tag: studyHeroTag(study.id),
+                        child: StudyThumbnail(study: study),
+                      ),
+                    ),
+                    // Long press works too, but nothing advertises it.
+                    Positioned(
+                      top: 0,
+                      right: 0,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => setState(() => _confirmingDelete = true),
+                        child: Padding(
+                          padding: EdgeInsets.all(7 * s),
+                          child: GlyphIcon(
+                            Glyph.trash,
+                            size: 15 * s,
+                            color: AskanceColors.accent,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const Rule(color: AskanceColors.dividerLight),
                 Padding(
@@ -132,12 +162,8 @@ class _DeleteConfirm extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = DesignScale.of(context);
     return Container(
+      // No border of its own: the card's own rule turns red underneath.
       color: const Color(0xF2F3F2F2),
-      foregroundDecoration: const BoxDecoration(
-        border: Border.fromBorderSide(
-          BorderSide(color: AskanceColors.accent, width: kRule),
-        ),
-      ),
       padding: EdgeInsets.all(12 * s),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -202,11 +228,19 @@ class _StudyThumbnailState extends ConsumerState<StudyThumbnail> {
     final dpr = MediaQuery.devicePixelRatioOf(context);
     return LayoutBuilder(
       builder: (context, constraints) {
+        // Close to where the study was left, but always filling the card: a
+        // shelf of letterboxed thumbnails reads as gaps rather than pictures.
+        final view = coveringView(
+          widget.study.settings.view,
+          Size(image.width.toDouble(), image.height.toDouble()),
+          constraints.biggest,
+        );
+
         _blur.request(
           source: image,
           outputPx: constraints.biggest * dpr,
           detail: widget.study.settings.detail,
-          view: widget.study.settings.view,
+          view: view,
         );
         return ListenableBuilder(
           listenable: _blur,
@@ -216,7 +250,7 @@ class _StudyThumbnailState extends ConsumerState<StudyThumbnail> {
               source: image,
               blurred: _blur.image,
               settings: widget.study.settings,
-              view: widget.study.settings.view,
+              view: view,
               devicePixelRatio: dpr,
               peeking: false,
               splitPosition: widget.study.settings.splitPosition,

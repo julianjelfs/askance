@@ -10,8 +10,9 @@
 // quantisation into `uSteps` bands, then paint from a ramp solved for even
 // L* on the CPU and handed in as uC0..uC6.
 
-uniform vec2 uSize;      // logical size of the drawn rect, matches FlutterFragCoord
-uniform vec2 uDevice;    // same rect in output pixels; all px-denominated work uses this
+uniform vec2 uSize;      // logical size of the drawn rect
+uniform vec2 uOrigin;    // its top-left, in the same space as FlutterFragCoord
+uniform vec2 uDevice;    // the same rect in output pixels
 uniform float uSteps;    // 2..7
 uniform float uMode;     // 0 = value map, 1 = skeleton
 uniform float uLineWidth;// skeleton stroke, output px
@@ -57,7 +58,10 @@ float bandAt(vec2 devPx) {
 }
 
 void main() {
-  vec2 devPx = FlutterFragCoord().xy / uSize * uDevice;
+  // The rect is only the part of the frame the photograph occupies, so
+  // fragment coordinates have to be made relative to it before they mean
+  // anything to the sampler.
+  vec2 devPx = (FlutterFragCoord().xy - uOrigin) / uSize * uDevice;
 
   if (uMode > 0.5) {
     // Ink a pixel if any of the uLineWidth pixels to its left sits on a band

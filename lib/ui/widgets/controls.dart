@@ -88,30 +88,53 @@ class _ActionButtonState extends State<ActionButton> {
                     width: kRule,
                   ),
           ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  widget.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AskanceText.button(
-                    widget.fontSize,
-                    color: foreground,
-                  ).by(s),
-                ),
-              ),
-              if (widget.trailingIcon != null)
-                widget.trailingIcon!
-              else if (widget.trailing != null)
-                Text(
-                  widget.trailing!,
-                  style: AskanceText.button(
-                    widget.fontSize,
-                    color: foreground,
-                  ).by(s),
-                ),
-            ],
+          // A Row hands its non-flex children an unbounded width, and an
+          // Expanded inside one of those is a layout assertion — which only
+          // fires in debug, so a release build hides it. Spread the label and
+          // the trailing glyph apart when there is a width to spread them
+          // across, and shrink-wrap when there is not.
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final label = Text(
+                widget.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AskanceText.button(
+                  widget.fontSize,
+                  color: foreground,
+                ).by(s),
+              );
+              final trailing = widget.trailingIcon != null
+                  ? widget.trailingIcon!
+                  : widget.trailing != null
+                  ? Text(
+                      widget.trailing!,
+                      style: AskanceText.button(
+                        widget.fontSize,
+                        color: foreground,
+                      ).by(s),
+                    )
+                  : null;
+
+              if (!constraints.hasBoundedWidth) {
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    label,
+                    if (trailing != null) ...[
+                      SizedBox(width: 14 * s),
+                      trailing,
+                    ],
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  Expanded(child: label),
+                  ?trailing,
+                ],
+              );
+            },
           ),
         ),
       ),

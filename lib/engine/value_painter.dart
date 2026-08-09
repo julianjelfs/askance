@@ -56,17 +56,23 @@ class ValuePainter extends CustomPainter {
     if (size.isEmpty) return;
     disposer.tick();
 
-    final devicePx = Size(
-      size.width * devicePixelRatio,
-      size.height * devicePixelRatio,
-    );
     final dest = view.destination(_sourceSize, size);
+    // What the photograph actually occupies. Shown whole it is less than the
+    // frame, and the ground shows on the short pair of edges.
+    final area = view.visible(_sourceSize, size);
+    final devicePx = Size(
+      area.width * devicePixelRatio,
+      area.height * devicePixelRatio,
+    );
     final showPhoto = peeking || settings.mode == ViewMode.photo;
 
+    // Nothing is painted outside the picture: each surface supplies its own
+    // ground behind this, and they differ — ink on the canvas, the lighter
+    // surface on the desktop stage and on a shelf card.
     if (showPhoto || blurred == null) {
       _paintPhoto(canvas, size, dest);
     } else {
-      _paintProcessed(canvas, size, devicePx);
+      _paintProcessed(canvas, area, devicePx);
       if (settings.mode == ViewMode.split) {
         final x = splitPosition * size.width;
         canvas.save();
@@ -80,12 +86,14 @@ class ValuePainter extends CustomPainter {
         );
       }
       if (settings.mode == ViewMode.skeleton && settings.numbers) {
-        regions?.paint(canvas, size, devicePixelRatio);
+        regions?.paint(canvas, area, devicePixelRatio);
       }
     }
 
     if (drawGrid && settings.grid != GridMode.off) {
-      paintGrid(canvas, size, settings.grid, settings.gridDivisions);
+      // Divides the picture, not the frame: with the image shown whole the
+      // two are no longer the same thing.
+      paintGrid(canvas, area, settings.grid, settings.gridDivisions);
     }
   }
 
@@ -101,9 +109,9 @@ class ValuePainter extends CustomPainter {
     canvas.restore();
   }
 
-  void _paintProcessed(Canvas canvas, Size size, Size devicePx) {
+  void _paintProcessed(Canvas canvas, Rect area, Size devicePx) {
     final source = blurred;
-    if (source == null) return;
+    if (source == null || area.isEmpty) return;
 
     // A fresh shader every paint. Reusing one across two recorded pictures
     // renders the second as an empty sampler — the picture appears to take
@@ -113,14 +121,14 @@ class ValuePainter extends CustomPainter {
     final old = _fragment;
     if (old != null) disposer.retire(old.dispose);
     _fragment = shader.build(
-      logicalSize: size,
+      area: area,
       devicePx: devicePx,
       steps: settings.steps,
       scale: settings.scale,
       skeleton: settings.mode == ViewMode.skeleton,
     )..setImageSampler(0, source);
 
-    canvas.drawRect(Offset.zero & size, Paint()..shader = _fragment!);
+    canvas.drawRect(area, Paint()..shader = _fragment!);
   }
 
   /// Releases the shader. Only safe once the frame that used it has been
@@ -163,19 +171,21 @@ class RegionOverlay {
   static const _ground = AskanceColors.ground;
   static const _ink = AskanceColors.ink;
 
-  void paint(Canvas canvas, Size size, double devicePixelRatio) {
+  void paint(Canvas canvas, Rect area, double devicePixelRatio) {
     if (regions.isEmpty || gridWidth == 0) return;
-    final renderWidth = size.width * devicePixelRatio;
+    final renderWidth = area.width * devicePixelRatio;
     final scale = renderWidth / kReferenceWidth;
     final fontSize = (21 * scale).roundToDouble() / devicePixelRatio;
     final strokeWidth = 7 * scale / devicePixelRatio;
-    final cell = size.width / gridWidth;
+    final cell = area.width / gridWidth;
 
     for (final region in regions) {
-      final centre = Offset(
-        (region.centroid.dx + 0.5) * cell,
-        (region.centroid.dy + 0.5) * cell,
-      );
+      final centre =
+          area.topLeft +
+          Offset(
+            (region.centroid.dx + 0.5) * cell,
+            (region.centroid.dy + 0.5) * cell,
+          );
       _paintLabel(canvas, region.label, centre, fontSize, strokeWidth);
     }
   }
@@ -219,15 +229,17 @@ class RegionOverlay {
 
 /// The grid, in screen space, over everything. Never baked into the processed
 /// raster — otherwise it rides the zoom transform and jumps.
-void paintGrid(Canvas canvas, Size size, GridMode mode, int divisions) {
-  if (mode == GridMode.off) return;
+void paintGrid(Canvas canvas, Rect area, GridMode mode, int divisions) {
+  if (mode == GridMode.off || area.isEmpty) return;
   final paint = Paint()
     ..color = AskanceColors.grid
     ..strokeWidth = kRule;
-  final spacing = size.width / divisions;
+  final spacing = area.width / divisions;
+  final size = area.size;
 
   canvas.save();
-  canvas.clipRect(Offset.zero & size);
+  canvas.clipRect(area);
+  canvas.translate(area.left, area.top);
   if (mode == GridMode.square) {
     for (var x = spacing; x < size.width - 0.01; x += spacing) {
       canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);

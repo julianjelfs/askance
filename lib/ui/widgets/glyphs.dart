@@ -9,7 +9,7 @@ import 'package:flutter/widgets.dart';
 /// command key. A browser silently falls back to another font for those; iOS,
 /// Android and macOS do not agree on what to fall back to, and some render an
 /// empty box. Drawing them keeps every surface identical.
-enum Glyph { star, arrowUpRight, copy, splitGrip, command }
+enum Glyph { star, arrowUpRight, copy, splitGrip, command, trash }
 
 class GlyphIcon extends StatelessWidget {
   const GlyphIcon(
@@ -49,6 +49,8 @@ class _GlyphPainter extends CustomPainter {
         _splitGrip(canvas, size);
       case Glyph.command:
         _command(canvas, size);
+      case Glyph.trash:
+        _trash(canvas, size);
     }
   }
 
@@ -125,6 +127,48 @@ class _GlyphPainter extends CustomPainter {
         ..lineTo(size.width / 2 + gap + w * 0.8, mid)
         ..close(),
       fill,
+    );
+  }
+
+  void _trash(Canvas canvas, Size size) {
+    final u = size.shortestSide;
+    final stroke = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = u * 0.1
+      ..strokeCap = StrokeCap.square;
+
+    // Lid, then handle, then the body tapering slightly, then two ribs.
+    canvas.drawLine(
+      Offset(u * 0.14, u * 0.26),
+      Offset(u * 0.86, u * 0.26),
+      stroke,
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(u * 0.38, u * 0.26)
+        ..lineTo(u * 0.38, u * 0.14)
+        ..lineTo(u * 0.62, u * 0.14)
+        ..lineTo(u * 0.62, u * 0.26),
+      stroke,
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(u * 0.24, u * 0.26)
+        ..lineTo(u * 0.3, u * 0.88)
+        ..lineTo(u * 0.7, u * 0.88)
+        ..lineTo(u * 0.76, u * 0.26),
+      stroke,
+    );
+    canvas.drawLine(
+      Offset(u * 0.42, u * 0.4),
+      Offset(u * 0.44, u * 0.74),
+      stroke,
+    );
+    canvas.drawLine(
+      Offset(u * 0.58, u * 0.4),
+      Offset(u * 0.56, u * 0.74),
+      stroke,
     );
   }
 

@@ -32,20 +32,41 @@ void main() {
     });
   });
 
-  group('cover crop', () {
-    test('fills the frame and aligns 32% from the top', () {
-      // A 2:3 source into a taller frame covers by height, overflowing sideways.
-      final rect = coverRect(const Size(900, 1350), const Size(320, 664));
-      expect(rect.height, greaterThanOrEqualTo(664));
-      expect(rect.width, greaterThanOrEqualTo(320));
-      expect(rect.left, closeTo((320 - rect.width) / 2, 1e-9));
-      expect(rect.top, closeTo((664 - rect.height) * 0.32, 1e-9));
+  group('showing the whole photograph', () {
+    test('a portrait fits inside a tall frame with room to spare', () {
+      final rect = containRect(const Size(900, 1350), const Size(320, 664));
+      expect(rect.width, lessThanOrEqualTo(320.001));
+      expect(rect.height, lessThanOrEqualTo(664.001));
+      // Nothing is cropped: the whole of both dimensions is on screen.
+      expect(rect.width / rect.height, closeTo(900 / 1350, 1e-9));
     });
 
-    test('a wide source into a tall frame covers by width', () {
-      final rect = coverRect(const Size(4000, 1000), const Size(320, 664));
-      expect(rect.width, greaterThanOrEqualTo(320));
-      expect(rect.height, greaterThanOrEqualTo(664));
+    test('a landscape shows whole rather than filling the height', () {
+      const output = Size(320, 664);
+      final rect = containRect(const Size(4000, 1000), output);
+      expect(
+        rect.width,
+        closeTo(320, 0.001),
+        reason: 'a wide photograph should meet the sides',
+      );
+      expect(
+        rect.height,
+        lessThan(output.height),
+        reason: 'and leave the ground showing above and below',
+      );
+      expect(rect.width / rect.height, closeTo(4, 1e-9));
+    });
+
+    test('the image is centred in whatever room is left over', () {
+      const output = Size(320, 664);
+      final rect = containRect(const Size(4000, 1000), output);
+      expect(rect.center.dx, closeTo(output.width / 2, 1e-9));
+      expect(rect.center.dy, closeTo(output.height / 2, 1e-9));
+    });
+
+    test('a frame-shaped photograph fills it exactly', () {
+      final rect = containRect(const Size(640, 1328), const Size(320, 664));
+      expect(rect, const Rect.fromLTWH(0, 0, 320, 664));
     });
   });
 
@@ -53,12 +74,23 @@ void main() {
     const source = Size(900, 1350);
     const output = Size(320, 664);
 
-    test('at 1x the frame is exactly covered', () {
+    test('at 1x the whole photograph is on screen', () {
       final rect = const ViewTransform().destination(source, output);
-      expect(rect.left, lessThanOrEqualTo(0.001));
-      expect(rect.top, lessThanOrEqualTo(0.001));
-      expect(rect.right, greaterThanOrEqualTo(output.width - 0.001));
-      expect(rect.bottom, greaterThanOrEqualTo(output.height - 0.001));
+      expect(rect.left, greaterThanOrEqualTo(-0.001));
+      expect(rect.top, greaterThanOrEqualTo(-0.001));
+      expect(rect.right, lessThanOrEqualTo(output.width + 0.001));
+      expect(rect.bottom, lessThanOrEqualTo(output.height + 0.001));
+    });
+
+    test('the visible area is the picture at 1x and the frame once zoomed', () {
+      const view = ViewTransform();
+      final whole = view.visible(source, output);
+      expect(whole, view.destination(source, output));
+
+      // Zoomed far enough to cover, the picture and the frame are the same.
+      final zoomed = const ViewTransform(zoom: 6).visible(source, output);
+      expect(zoomed.width, closeTo(output.width, 0.001));
+      expect(zoomed.height, closeTo(output.height, 0.001));
     });
 
     test('panning can never expose the ground behind the image', () {

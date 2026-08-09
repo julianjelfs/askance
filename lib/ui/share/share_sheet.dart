@@ -136,13 +136,11 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
     try {
       await ref.read(studiesProvider.notifier).keep(_session);
       if (!mounted) return;
-      if (widget.wide) {
-        _report('Saved to the shelf');
-      } else {
-        // The caller decides what to do next; on phone that is a return to
-        // the shelf, whether the sheet was opened from SHARE or on the way out.
-        Navigator.of(context).pop(ShareOutcome.kept);
-      }
+      // Keeping is finished business: close, and let the caller take you to
+      // the shelf. The handoff notes have the desktop stay put and report
+      // "Saved to the shelf", but then the sheet has to be dismissed by hand
+      // for no reason.
+      Navigator.of(context).pop(ShareOutcome.kept);
     } catch (e) {
       _report('Could not keep this study');
     } finally {

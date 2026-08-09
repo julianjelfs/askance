@@ -46,19 +46,17 @@ Future<Uint8List?> renderExport({
 
   RegionOverlay? overlay;
   if (settings.mode == ViewMode.skeleton && settings.numbers) {
-    final stride = labelStride(size.width);
-    final gw = (size.width / stride).floor();
-    final gh = (size.height / stride).floor();
+    final found = await computeRegions(
+      source: source,
+      outputPx: size,
+      detail: settings.detail,
+      view: exportView,
+      steps: settings.steps,
+    );
     overlay = RegionOverlay(
-      regions: await computeRegions(
-        source: source,
-        outputPx: size,
-        detail: settings.detail,
-        view: exportView,
-        steps: settings.steps,
-      ),
-      gridWidth: gw,
-      gridHeight: gh,
+      regions: found.regions,
+      gridWidth: found.gridWidth,
+      gridHeight: found.gridHeight,
     );
   }
 

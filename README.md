@@ -10,7 +10,7 @@ Target platforms: iOS, Android and PWA, built in Flutter from one codebase. A de
 
 The files in this bundle are **design references created in HTML**. They are a working prototype of the intended look and behaviour — not production code to port. The task is to **rebuild these designs in Flutter** using idiomatic Flutter patterns and packages.
 
-The one exception worth reading closely is the image-processing pipeline. That is a specification, not a suggestion: the algorithm in "The engine" below defines what the app *is*, and the values in it were chosen deliberately. Everything else — layout, widget structure, state management — should be rebuilt the Flutter way.
+The one exception worth reading closely is the image-processing pipeline. That is a specification, not a suggestion: the algorithm in "The engine" below defines what the app _is_, and the values in it were chosen deliberately. Everything else — layout, widget structure, state management — should be rebuilt the Flutter way.
 
 `Askance.dc.html` is a single self-contained page. Open it in a browser; it needs `support.js` and `assets/ref-portrait.jpg` alongside it. It contains four sections, newest first:
 
@@ -37,47 +37,47 @@ For each frame that needs re-computing:
 
 2. **Blur** — this is the "detail" control. Gaussian blur with sigma:
 
-   ```
-   sigma = (1 - detail) * 16 * (renderWidth / 480) + 0.4
-   ```
+    ```
+    sigma = (1 - detail) * 16 * (renderWidth / 480) + 0.4
+    ```
 
-   `detail` runs 0…1 (UI shows 0–100). The `renderWidth / 480` term keeps shapes the same size at any output resolution — 480 is the width the constants were tuned at. Blur happens in *screen* space, which is what makes shapes simplify uniformly regardless of how far you have zoomed.
+    `detail` runs 0…1 (UI shows 0–100). The `renderWidth / 480` term keeps shapes the same size at any output resolution — 480 is the width the constants were tuned at. Blur happens in _screen_ space, which is what makes shapes simplify uniformly regardless of how far you have zoomed.
 
 3. **Lightness.** For each pixel, convert sRGB to CIE L\*:
 
-   ```
-   linear(c) = c <= 0.04045 ? c/12.92 : ((c+0.055)/1.055)^2.4     // c in 0..1
-   Y         = 0.2126*linear(r) + 0.7152*linear(g) + 0.0722*linear(b)
-   L*        = Y > 0.008856 ? 116*cbrt(Y) - 16 : 903.3*Y          // 0..100
-   ```
+    ```
+    linear(c) = c <= 0.04045 ? c/12.92 : ((c+0.055)/1.055)^2.4     // c in 0..1
+    Y         = 0.2126*linear(r) + 0.7152*linear(g) + 0.0722*linear(b)
+    L*        = Y > 0.008856 ? 116*cbrt(Y) - 16 : 903.3*Y          // 0..100
+    ```
 
-   **Do not shortcut this to a luma of the gamma-encoded channels.** L\* tracks Munsell value closely (L\* ≈ 10 × Munsell V), which is why the output matches the printed value scale on an artist's desk. It is the single most important correctness property in the app.
+    **Do not shortcut this to a luma of the gamma-encoded channels.** L\* tracks Munsell value closely (L\* ≈ 10 × Munsell V), which is why the output matches the printed value scale on an artist's desk. It is the single most important correctness property in the app.
 
 4. **Quantise.** With `n` = step count (2–7):
 
-   ```
-   band = clamp(floor(L*/100 * n), 0, n-1)
-   ```
+    ```
+    band = clamp(floor(L*/100 * n), 0, n-1)
+    ```
 
-   Band 0 is darkest. Thresholds are absolute — never derived from the histogram of what is on screen — so a pixel keeps its value whether it is in a wide view or a close-up.
+    Band 0 is darkest. Thresholds are absolute — never derived from the histogram of what is on screen — so a pixel keeps its value whether it is in a wide view or a close-up.
 
 5. **Paint.** Each band is filled with a colour from the chosen scale. The ramp is solved for **even L\*** between the scale's two endpoints, not interpolated in sRGB:
 
-   ```
-   La, Lz  = L* of the dark and light endpoints
-   Lt      = La + (Lz - La) * i/(n-1)                 // target for band i
-   s       = (Y(Lt) - Ya) / (Yz - Ya)                 // Y(L) is the inverse of step 3
-   rgb_i   = linearRGB endpoints lerped by s, converted back to sRGB
-   ```
+    ```
+    La, Lz  = L* of the dark and light endpoints
+    Lt      = La + (Lz - La) * i/(n-1)                 // target for band i
+    s       = (Y(Lt) - Ya) / (Yz - Ya)                 // Y(L) is the inverse of step 3
+    rgb_i   = linearRGB endpoints lerped by s, converted back to sRGB
+    ```
 
-   Sanity check: on the Graphite scale with n=3, the middle band must come out at sRGB **122,120,120**. If you get ~132 you have interpolated in the wrong space.
+    Sanity check: on the Graphite scale with n=3, the middle band must come out at sRGB **122,120,120**. If you get ~132 you have interpolated in the wrong space.
 
 ### Scales
 
 Four, each a dark and a light endpoint in sRGB:
 
 | Name     | Dark      | Light     |
-|----------|-----------|-----------|
+| -------- | --------- | --------- |
 | Graphite | `#111010` | `#f8f4f4` |
 | Warm     | `#2a0b05` | `#ffe0d9` |
 | Cool     | `#0d1520` | `#eef2f7` |
@@ -112,7 +112,7 @@ Off, square or diamond, with a divisions control (2–10). Drawn in **screen spa
 - Diamond: rules at ±45°, same spacing.
 - Colour `rgba(236,48,19,0.65)`, 2px.
 
-In *exports* the grid is drawn into the image, dividing the exported frame.
+In _exports_ the grid is drawn into the image, dividing the exported frame.
 
 ### Zoom, and why detail follows it
 
@@ -146,9 +146,9 @@ Light screen, ground `#f3f2f2`, text `#201e1d`.
 - Status bar row, 46px tall, 18px side padding, time flush left, Archivo 700 11px.
 - Title row: "Askance", Archivo 800 26px, letter-spacing −0.02em, flush left; a 28 × 28 outlined `?` button flush right opening onboarding. Bottom border 2px `rgba(32,30,29,0.4)`.
 - Scrolling body, 18px side padding, 16px top:
-  - Section label "RECENT STUDIES", Archivo 700 9px, letter-spacing 0.16em, uppercase, `rgba(32,30,29,0.5)`, 10px below.
-  - Two-column grid, 14px gap. Each card: 2px border `rgba(32,30,29,0.4)` (hover `#ec3013`), background `#eae9e9`, a 4:5 thumbnail rendered **by the engine** using that study's own settings, then a 2px rule and a caption block — name in Archivo 700 11px, meta in Archivo 400 10px `rgba(32,30,29,0.55)` reading `"3 values · grey · 8 Aug"`.
-  - One dashed empty slot: 2px dashed `rgba(32,30,29,0.3)`, 45° 6px stripe background at 5% ink, label "empty slot" in 9px monospace.
+    - Section label "RECENT STUDIES", Archivo 700 9px, letter-spacing 0.16em, uppercase, `rgba(32,30,29,0.5)`, 10px below.
+    - Two-column grid, 14px gap. Each card: 2px border `rgba(32,30,29,0.4)` (hover `#ec3013`), background `#eae9e9`, a 4:5 thumbnail rendered **by the engine** using that study's own settings, then a 2px rule and a caption block — name in Archivo 700 11px, meta in Archivo 400 10px `rgba(32,30,29,0.55)` reading `"3 values · grey · 8 Aug"`.
+    - One dashed empty slot: 2px dashed `rgba(32,30,29,0.3)`, 45° 6px stripe background at 5% ink, label "empty slot" in 9px monospace.
 - Footer, 2px top rule, 14px/18px padding, two 46px full-width buttons with flush-left labels and a trailing `→`: "New study from photos" (solid `#ec3013`, text `#f3f2f2`, hover `#dd2b0f`) and "Take a photo" (2px outline, hover 7% ink tint).
 
 The thumbnails showing the value map rather than the source photograph is deliberate — the shelf shows what you made, not what you started from.
@@ -161,10 +161,10 @@ Fullscreen image. Chrome sits over it and can be dismissed entirely.
 - **Mode rail**, right edge, 14px inset, 60px from top, 44px wide, ground `#201e1d`, four 44px buttons — VAL / PHOTO / SPLIT / EDGE — Archivo 700 9px letter-spacing 0.06em, divided by 2px `rgba(243,242,242,0.18)`. Active button fills `#ec3013`. In skeleton mode a fifth `№` button appears to toggle value numbers, also filling red when on.
 - **Tool bar**, flush to the bottom and both sides, 44px tall, ground `#201e1d`, four equal cells: "{n} VAL", "DETAIL", "SCALE", "GRID". Archivo 700 10px letter-spacing 0.08em. The open tool fills `#ec3013`. Tapping the open tool closes it.
 - **Tool panel**, directly above the tool bar, full width, ground `#201e1d`, 2px `#ec3013` top rule, 14px/16px padding. One tool at a time:
-  - *Values* — a six-cell segmented control 2…7, 34px tall on a `rgba(243,242,242,0.1)` track, with a red marker that slides between cells over 220ms `cubic-bezier(.2,.8,.2,1)`.
-  - *Detail* — a 2px track with a 4px red thumb, drag anywhere on the row; the value 0–100 shown in `#ec3013` at the right of the label line.
-  - *Scale* — four 32px gradient swatches, 2px borders, 8px gaps.
-  - *Grid* — a three-cell segmented control OFF / SQUARE / DIAMOND with the same sliding marker, plus a `–  n  +` stepper in a 2px outlined box.
+    - _Values_ — a six-cell segmented control 2…7, 34px tall on a `rgba(243,242,242,0.1)` track, with a red marker that slides between cells over 220ms `cubic-bezier(.2,.8,.2,1)`.
+    - _Detail_ — a 2px track with a 4px red thumb, drag anywhere on the row; the value 0–100 shown in `#ec3013` at the right of the label line.
+    - _Scale_ — four 32px gradient swatches, 2px borders, 8px gaps.
+    - _Grid_ — a three-cell segmented control OFF / SQUARE / DIAMOND with the same sliding marker, plus a `–  n  +` stepper in a 2px outlined box.
 - **Split handle** (split mode) — a 44px-wide invisible drag target centred on the boundary, containing a 2px `#ec3013` rule and a 32 × 32 red grip with `◀▶`.
 - **Single tap anywhere on the image** fades all chrome out over 220ms; tap again brings it back. **Press and hold** (280ms) peeks the untouched photograph; releasing returns. **Double tap** zooms.
 
@@ -179,22 +179,22 @@ Ground `#201e1d`, text `#f3f2f2`. Bottom-anchored: content sits at the bottom of
 
 Copy, verbatim:
 
-1. **Value before colour.** / "Askance flattens a photograph into a handful of values, so you can see the shapes light actually makes. The steps are spaced the way the eye reads them, not the way a camera measures them — so they line up with the value scale on your desk." / *Next*
-2. **Look askance.** / "Hold the image to peek at the photo. Split it down the middle. Strip it back to edges and number every value." / *Next*
-3. **Grid when you want it.** / "Square or diamond, as fine as you like — then get it out of the way with a single tap." / *Start a study*
+1. **Value before colour.** / "Askance flattens a photograph into a handful of values, so you can see the shapes light actually makes. The steps are spaced the way the eye reads them, not the way a camera measures them — so they line up with the value scale on your desk." / _Next_
+2. **Look askance.** / "Hold the image to peek at the photo. Split it down the middle. Strip it back to edges and number every value." / _Next_
+3. **Grid when you want it.** / "Square or diamond, as fine as you like — then get it out of the way with a single tap." / _Start a study_
 
 ### 4. Desktop and web
 
 Designed at 1180 × 760; the rail is fixed and the stage flexes.
 
 - **Left rail**, 284px, ground `#201e1d`, sections divided by 2px `rgba(243,242,242,0.22)` rules:
-  - Brand row — "Askance" Archivo 800 22px, and a SHELF button (2px outline, 30px tall).
-  - Study block — label "STUDY", the study name on its own line in Archivo 700 14px, then a full-width `#ec3013` SHARE button with a trailing `↗`.
-  - View — four 38px full-width flush-left buttons, VALUE MAP / PHOTOGRAPH / SPLIT / SKELETON, active filling red; a fifth indented `№ NUMBER THE REGIONS` appears in skeleton mode.
-  - Values, Detail, Root of the scale, Grid — the same controls as the phone, at rail width.
-  - Footer line: "{n} studies on the shelf · scroll to zoom · hold to peek", Archivo 400 11px `rgba(243,242,242,0.55)`.
-  - **The View→Grid block scrolls**; brand, study and footer are pinned. Necessary — the tallest state overflows 760px.
-- **Stage**, ground `#eae9e9`, with the image centred in a 496 × 744 frame with a 2px `rgba(32,30,29,0.4)` border. The image sits *whole on the ground* here rather than filling the frame.
+    - Brand row — "Askance" Archivo 800 22px, and a SHELF button (2px outline, 30px tall).
+    - Study block — label "STUDY", the study name on its own line in Archivo 700 14px, then a full-width `#ec3013` SHARE button with a trailing `↗`.
+    - View — four 38px full-width flush-left buttons, VALUE MAP / PHOTOGRAPH / SPLIT / SKELETON, active filling red; a fifth indented `№ NUMBER THE REGIONS` appears in skeleton mode.
+    - Values, Detail, Root of the scale, Grid — the same controls as the phone, at rail width.
+    - Footer line: "{n} studies on the shelf · scroll to zoom · hold to peek", Archivo 400 11px `rgba(243,242,242,0.55)`.
+    - **The View→Grid block scrolls**; brand, study and footer are pinned. Necessary — the tallest state overflows 760px.
+- **Stage**, ground `#eae9e9`, with the image centred in a 496 × 744 frame with a 2px `rgba(32,30,29,0.4)` border. The image sits _whole on the ground_ here rather than filling the frame.
 - **Shelf overlay** — SHELF covers the stage with a `#f3f2f2` panel: a "Studies" title row with a `×`, a three-column card grid identical in construction to the phone shelf, and a bottom bar with "New study from an image". Picking a study loads its settings and closes the overlay.
 
 ---
@@ -208,8 +208,8 @@ One action on each surface: SHARE. There is no separate save.
 1. Title "Share this study" (Archivo 800 18px) with a `×`.
 2. **Keep on the shelf** — full-width `#ec3013` button with a trailing `★`. Writes the current settings back to the open study, or creates a new one if this study has never been saved. On phone it then returns to the shelf; on desktop it stays put and reports "Saved to the shelf".
 3. Size — a two-cell segmented control SCREEN / PRINT, then a note reading "Image size · {dims} · exactly what you see".
-   - Screen: 1200 × 1800
-   - Print: 2480 × 3720 (300 dpi)
+    - Screen: 1200 × 1800
+    - Print: 2480 × 3720 (300 dpi)
 4. **Save image** (outlined) → PNG named `{study-name-slugified}-{W}x{H}.png`.
 5. **Print** (outlined) → the same render, at page width.
 6. **Copy to clipboard** (outlined) → PNG to the clipboard.
@@ -223,7 +223,7 @@ Exports re-run the engine at the target size from the **original image** — nev
 
 **£3.99, one payment, no subscription: everything that outlives the session.** Keeping a study on the shelf, and every export.
 
-The unlock lives *inside* the share sheet — there is no separate upsell screen and nothing interrupts the user while working. When locked:
+The unlock lives _inside_ the share sheet — there is no separate upsell screen and nothing interrupts the user while working. When locked:
 
 - A block bordered 2px `#ec3013` appears above the options: kicker "ONE PAYMENT · LIFETIME" in `#ec3013` 9px; heading "Keep and export your studies" Archivo 800 17px; body "Looking is free, always. £3.99 unlocks the shelf and every way out of the app."; a full-width `#ec3013` button "Unlock — £3.99" with a trailing `→`; and a quiet "RESTORE PURCHASE" text button.
 - The options below drop to 40% opacity but **stay tappable** — tapping a locked option starts the purchase rather than showing an error. This is deliberate: a tap on a locked control is intent to buy.
@@ -239,16 +239,16 @@ The unlock lives *inside* the share sheet — there is no separate upsell screen
 
 Per study (what gets saved to the shelf):
 
-| Field | Type | Default | Range |
-|---|---|---|---|
-| `steps` | int | 3 | 2–7 |
-| `scale` | enum | Graphite | 4 values |
-| `detail` | double | 0.5 | 0–1 |
-| `mode` | enum | value | value / photo / split / skeleton |
-| `grid` | enum | off | off / square / diamond |
-| `gridDivisions` | int | 4 | 2–10 |
-| `numbers` | bool | true | — |
-| `splitPosition` | double | 0.5 | 0–1 |
+| Field           | Type   | Default  | Range                            |
+| --------------- | ------ | -------- | -------------------------------- |
+| `steps`         | int    | 3        | 2–7                              |
+| `scale`         | enum   | Graphite | 4 values                         |
+| `detail`        | double | 0.5      | 0–1                              |
+| `mode`          | enum   | value    | value / photo / split / skeleton |
+| `grid`          | enum   | off      | off / square / diamond           |
+| `gridDivisions` | int    | 4        | 2–10                             |
+| `numbers`       | bool   | true     | —                                |
+| `splitPosition` | double | 0.5      | 0–1                              |
 
 Plus, not saved: `zoom` / `pan` (view only), `peeking` (transient), `chromeVisible`, `openTool`, `pro` (entitlement).
 
@@ -260,44 +260,44 @@ Shelf entries add `id`, `name`, `date` and a reference to the source image. **Th
 
 **Colour**
 
-| Token | Value | Use |
-|---|---|---|
-| Ink | `#201e1d` | Chrome ground, dark screens, text on light |
-| Ground | `#f3f2f2` | Light screens, text on dark |
-| Surface | `#eae9e9` | Card fills, desktop stage |
-| Accent | `#ec3013` | Active state, primary action, grid rules, split rule |
-| Accent pressed | `#dd2b0f` | Hover / pressed on primary |
-| Divider (light) | `rgba(32,30,29,0.4)` | 2px rules on light |
-| Divider (dark) | `rgba(243,242,242,0.22)` | 2px rules on dark |
-| Muted (light) | `rgba(32,30,29,0.55)` | Secondary text on light |
-| Muted (dark) | `rgba(243,242,242,0.5)` | Section labels on dark |
+| Token           | Value                    | Use                                                  |
+| --------------- | ------------------------ | ---------------------------------------------------- |
+| Ink             | `#201e1d`                | Chrome ground, dark screens, text on light           |
+| Ground          | `#f3f2f2`                | Light screens, text on dark                          |
+| Surface         | `#eae9e9`                | Card fills, desktop stage                            |
+| Accent          | `#ec3013`                | Active state, primary action, grid rules, split rule |
+| Accent pressed  | `#dd2b0f`                | Hover / pressed on primary                           |
+| Divider (light) | `rgba(32,30,29,0.4)`     | 2px rules on light                                   |
+| Divider (dark)  | `rgba(243,242,242,0.22)` | 2px rules on dark                                    |
+| Muted (light)   | `rgba(32,30,29,0.55)`    | Secondary text on light                              |
+| Muted (dark)    | `rgba(243,242,242,0.5)`  | Section labels on dark                               |
 
 **Type** — Archivo throughout (Google Fonts). Weights 400, 700, 800.
 
-| Role | Spec |
-|---|---|
-| Screen title | 800 26px / 1, −0.02em |
-| Onboarding title | 800 34px / 1.05, −0.03em |
-| Sheet title | 800 18px / 1, −0.02em |
-| Button label | 800 13–14px / 1 |
-| Section label | 700 9px, 0.16em, uppercase |
-| Control label | 700 10–11px, 0.06–0.1em |
-| Body | 400 12–14px / 1.5 |
-| Caption | 400 10–11px / 1.3 |
+| Role             | Spec                       |
+| ---------------- | -------------------------- |
+| Screen title     | 800 26px / 1, −0.02em      |
+| Onboarding title | 800 34px / 1.05, −0.03em   |
+| Sheet title      | 800 18px / 1, −0.02em      |
+| Button label     | 800 13–14px / 1            |
+| Section label    | 700 9px, 0.16em, uppercase |
+| Control label    | 700 10–11px, 0.06–0.1em    |
+| Body             | 400 12–14px / 1.5          |
+| Caption          | 400 10–11px / 1.3          |
 
 **Spacing** — 4 / 8 / 12 / 16 / 18 / 22 / 28px. **Radius — 0 everywhere. No exceptions.** **Rules — 2px, never hairlines.**
 
 **Motion**
 
-| What | Spec |
-|---|---|
-| Segmented marker | `left` 220ms `cubic-bezier(.2,.8,.2,1)` |
-| Chrome fade | `opacity` 220ms |
-| Sheet slide | `transform` 320ms `cubic-bezier(.2,.8,.2,1)` |
-| Long-press to peek | 280ms threshold |
-| Double-tap window | 300ms |
-| Re-render after gesture | 180ms (should be unnecessary in Flutter) |
-| Purchase confirmation | ~900ms simulated |
+| What                    | Spec                                         |
+| ----------------------- | -------------------------------------------- |
+| Segmented marker        | `left` 220ms `cubic-bezier(.2,.8,.2,1)`      |
+| Chrome fade             | `opacity` 220ms                              |
+| Sheet slide             | `transform` 320ms `cubic-bezier(.2,.8,.2,1)` |
+| Long-press to peek      | 280ms threshold                              |
+| Double-tap window       | 300ms                                        |
+| Re-render after gesture | 180ms (should be unnecessary in Flutter)     |
+| Purchase confirmation   | ~900ms simulated                             |
 
 **Icons** — Lucide. Only `share-2` is used so far.
 
@@ -314,42 +314,34 @@ No other assets. The design deliberately contains no illustration or iconography
 
 ## Files in this bundle
 
-| File | What it is |
-|---|---|
-| `Askance.dc.html` | The complete prototype. Open in a browser. |
-| `support.js` | Runtime the prototype needs. Not part of the design. |
-| `assets/ref-portrait.jpg` | The reference photograph. |
-| `screens/` | Reference captures of every screen and state, listed below. |
+| File                      | What it is                                                  |
+| ------------------------- | ----------------------------------------------------------- |
+| `Askance.dc.html`         | The complete prototype. Open in a browser.                  |
+| `support.js`              | Runtime the prototype needs. Not part of the design.        |
+| `assets/ref-portrait.jpg` | The reference photograph.                                   |
+| `screens/`                | Reference captures of every screen and state, listed below. |
 
 ### Screens folder
 
 Phone captures are 648 × 1336 (2× a 324 × 668 card, including its 2px border). Desktop captures are 1180 × 764 at 1×.
 
-| File | State shown |
-|---|---|
-| `01-shelf.png` | Studies shelf — two saved studies and an empty slot |
-| `02-canvas-detail.png` | Canvas, value mode, DETAIL tool open |
-| `03-canvas-grid.png` | Canvas with the square grid and the GRID tool open |
-| `04-canvas-split.png` | Split mode with the drag handle |
-| `05-canvas-skeleton.png` | Skeleton with value numbers, `№` toggle active |
-| `06-canvas-clean.png` | All chrome dismissed by a single tap — the resting state |
-| `07-onboarding.png` | Onboarding, panel one |
-| `08-share-locked.png` | Share sheet with the paywall; options dimmed but still live |
-| `09-share-unlocked.png` | Share sheet after purchase |
-| `10-desktop.png` | Desktop, value mode |
-| `11-desktop-shelf.png` | Desktop shelf overlay |
-| `12-desktop-skeleton-diamond.png` | Desktop skeleton with numbers and the diamond grid |
+| File                              | State shown                                                 |
+| --------------------------------- | ----------------------------------------------------------- |
+| `01-shelf.png`                    | Studies shelf — two saved studies and an empty slot         |
+| `02-canvas-detail.png`            | Canvas, value mode, DETAIL tool open                        |
+| `03-canvas-grid.png`              | Canvas with the square grid and the GRID tool open          |
+| `04-canvas-split.png`             | Split mode with the drag handle                             |
+| `05-canvas-skeleton.png`          | Skeleton with value numbers, `№` toggle active              |
+| `06-canvas-clean.png`             | All chrome dismissed by a single tap — the resting state    |
+| `07-onboarding.png`               | Onboarding, panel one                                       |
+| `08-share-locked.png`             | Share sheet with the paywall; options dimmed but still live |
+| `09-share-unlocked.png`           | Share sheet after purchase                                  |
+| `10-desktop.png`                  | Desktop, value mode                                         |
+| `11-desktop-shelf.png`            | Desktop shelf overlay                                       |
+| `12-desktop-skeleton-diamond.png` | Desktop skeleton with numbers and the diamond grid          |
 
 In `10` and `12` the rail's control stack is scrolled — the GRID section sits below the fold in the tallest states. That is intended behaviour, not a crop.
 
 Two details worth reading off the captures rather than the prose: the phone's fullscreen crop is much tighter than the shelf thumbnail's 4:5 (a 320 × 664 viewport crops a 2:3 photograph hard at the sides), and the value numbers in `05` and `12` sit at region centroids, which for concave shapes can land just outside the region they label — the known imperfection noted above.
 
 The processing code lives in the `<script>` block at the end of `Askance.dc.html` — look for `draw()`, `ramp()`, `renderExport()`, `drawNumbers()` and the `lstar` helper at the top. It is readable and worth reading before writing the shader, but it is a reference implementation, not a port target.
-
-## What is not designed yet
-
-- The photo picker. Both shelf CTAs currently jump straight to the canvas.
-- Renaming a study.
-- Deleting a study.
-- Empty state for a shelf with nothing on it.
-- Anything offline, sync or account related — deliberately, there is none.

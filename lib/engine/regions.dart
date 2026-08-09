@@ -121,29 +121,49 @@ List<ValueRegion> labelRegions(BandMap map, {int limit = 16}) {
 /// small produces the *same shapes* as running it at full size — so this is a
 /// cheap pass rather than an approximation. It stays comfortably on the main
 /// thread, which matters on web where `compute` has no real isolate to use.
-Future<List<ValueRegion>> computeRegions({
+/// The labelled regions, and the grid they were found on.
+typedef LabelledRegions = ({
+  List<ValueRegion> regions,
+  int gridWidth,
+  int gridHeight,
+});
+
+Future<LabelledRegions> computeRegions({
   required ui.Image source,
   required Size outputPx,
   required double detail,
   required ViewTransform view,
   required int steps,
 }) async {
+  const empty = (regions: <ValueRegion>[], gridWidth: 0, gridHeight: 0);
   final stride = labelStride(outputPx.width);
-  final gw = (outputPx.width / stride).floor();
-  final gh = (outputPx.height / stride).floor();
-  if (gw < 4 || gh < 4) return const [];
+  final small = Size(outputPx.width / stride, outputPx.height / stride);
 
-  final small = await renderBlurredSource(
+  // The pass covers only what the photograph occupies, which is less than the
+  // frame whenever the image is shown whole, so the grid has to be measured
+  // against that rather than against the frame.
+  final sourceSize = Size(source.width.toDouble(), source.height.toDouble());
+  final area = view.visible(sourceSize, small);
+  final gw = area.width.round();
+  final gh = area.height.round();
+  if (gw < 4 || gh < 4) return empty;
+
+  final blurred = await renderBlurredSource(
     source: source,
-    outputPx: Size(gw.toDouble(), gh.toDouble()),
+    outputPx: small,
     detail: detail,
     view: view,
   );
   try {
-    final rgba = await small.toByteData(format: ui.ImageByteFormat.rawRgba);
-    if (rgba == null) return const [];
-    return labelRegions(bandsFromRgba(rgba, gw, gh, steps));
+    if (blurred.width != gw || blurred.height != gh) return empty;
+    final rgba = await blurred.toByteData(format: ui.ImageByteFormat.rawRgba);
+    if (rgba == null) return empty;
+    return (
+      regions: labelRegions(bandsFromRgba(rgba, gw, gh, steps)),
+      gridWidth: gw,
+      gridHeight: gh,
+    );
   } finally {
-    small.dispose();
+    blurred.dispose();
   }
 }

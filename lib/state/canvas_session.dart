@@ -293,9 +293,6 @@ class CanvasSession extends ChangeNotifier {
       viewportSize.width * devicePixelRatio,
       viewportSize.height * devicePixelRatio,
     );
-    final stride = labelStride(outputPx.width);
-    final gw = (outputPx.width / stride).floor();
-    final gh = (outputPx.height / stride).floor();
     final found = await computeRegions(
       source: source,
       outputPx: outputPx,
@@ -305,7 +302,11 @@ class CanvasSession extends ChangeNotifier {
     );
     // A newer request landed while this one was in flight.
     if (request != _regionRequest) return;
-    regions = RegionOverlay(regions: found, gridWidth: gw, gridHeight: gh);
+    regions = RegionOverlay(
+      regions: found.regions,
+      gridWidth: found.gridWidth,
+      gridHeight: found.gridHeight,
+    );
     notifyListeners();
   }
 

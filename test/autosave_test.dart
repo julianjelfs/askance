@@ -8,14 +8,16 @@ import 'package:flutter_test/flutter_test.dart';
 /// A study on the shelf keeps itself up to date: changing anything about it
 /// writes back without a second save step.
 void main() {
-  Study studyNamed(String id, {StudySettings settings = const StudySettings()}) =>
-      Study(
-        id: id,
-        name: 'Study $id',
-        date: DateTime(2026, 8, 9),
-        imageKey: '$id.jpg',
-        settings: settings,
-      );
+  Study studyNamed(
+    String id, {
+    StudySettings settings = const StudySettings(),
+  }) => Study(
+    id: id,
+    name: 'Study $id',
+    date: DateTime(2026, 8, 9),
+    imageKey: '$id.jpg',
+    settings: settings,
+  );
 
   ({CanvasSession session, List<(String, StudySettings, String)> writes})
   sessionUnderTest() {

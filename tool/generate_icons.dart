@@ -122,7 +122,12 @@ Future<void> _write(
   // at all, even one that is opaque throughout, and dart:ui's PNG encoder
   // always writes RGBA.
   final keepAlpha = ground != Ground.fullBleed;
-  final png = _encodePng(raw!.buffer.asUint8List(), side, side, alpha: keepAlpha);
+  final png = _encodePng(
+    raw!.buffer.asUint8List(),
+    side,
+    side,
+    alpha: keepAlpha,
+  );
 
   final file = File(path);
   file.parent.createSync(recursive: true);
@@ -135,7 +140,12 @@ Future<void> _write(
 }
 
 /// A minimal PNG encoder, so the colour type is ours to choose.
-Uint8List _encodePng(Uint8List rgba, int width, int height, {required bool alpha}) {
+Uint8List _encodePng(
+  Uint8List rgba,
+  int width,
+  int height, {
+  required bool alpha,
+}) {
   final channels = alpha ? 4 : 3;
   // Each scanline is prefixed with its filter type; 0 means none.
   final raw = Uint8List(height * (1 + width * channels));
@@ -161,15 +171,26 @@ Uint8List _encodePng(Uint8List rgba, int width, int height, {required bool alpha
   ];
 
   return Uint8List.fromList([
-    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+    0x89,
+    0x50,
+    0x4E,
+    0x47,
+    0x0D,
+    0x0A,
+    0x1A,
+    0x0A,
     ..._chunk('IHDR', header),
     ..._chunk('IDAT', ZLibEncoder().convert(raw)),
     ..._chunk('IEND', const []),
   ]);
 }
 
-List<int> _be32(int value) =>
-    [(value >> 24) & 0xFF, (value >> 16) & 0xFF, (value >> 8) & 0xFF, value & 0xFF];
+List<int> _be32(int value) => [
+  (value >> 24) & 0xFF,
+  (value >> 16) & 0xFF,
+  (value >> 8) & 0xFF,
+  value & 0xFF,
+];
 
 List<int> _chunk(String type, List<int> data) {
   final body = <int>[...type.codeUnits, ...data];
@@ -232,8 +253,8 @@ void main() {
         ground: Ground.roundedSquare,
         // The rounded square already eats a tenth of the frame, so measure the
         // disc against the content square rather than the canvas.
-        discFractionOverride: _discFractionFor(size * _macContentFraction) *
-            _macContentFraction,
+        discFractionOverride:
+            _discFractionFor(size * _macContentFraction) * _macContentFraction,
       );
     }
 

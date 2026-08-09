@@ -55,6 +55,7 @@ class _DesktopScreenState extends ConsumerState<DesktopScreen> {
                 child: _Rail(
                   session: session,
                   onShelf: () => setState(() => _shelfOpen = !_shelfOpen),
+                  onKept: () => setState(() => _shelfOpen = true),
                 ),
               ),
               Expanded(
@@ -98,15 +99,25 @@ class _Stage extends ConsumerWidget {
       child: Center(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            // 496 x 744 at the design size, shrinking to fit a smaller window.
-            const designed = Size(496, 744);
-            final scale = (constraints.maxHeight - 32) / designed.height;
-            final height = designed.height * scale.clamp(0.3, 1.0);
-            final width = designed.width * scale.clamp(0.3, 1.0);
+            // The frame takes the shape of the photograph and as much of the
+            // stage as it can. A fixed 496x744 frame, as the design has it,
+            // strands the picture in the middle of a large window, and now
+            // that images are shown whole it would letterbox a landscape
+            // inside a portrait frame on top of that.
+            const margin = 28.0;
+            final available = Size(
+              (constraints.maxWidth - margin * 2).clamp(80.0, double.infinity),
+              (constraints.maxHeight - margin * 2).clamp(80.0, double.infinity),
+            );
+            final image = session.image!;
+            final frame = containRect(
+              Size(image.width.toDouble(), image.height.toDouble()),
+              available,
+            ).size;
 
             return Container(
-              width: width,
-              height: height,
+              width: frame.width,
+              height: frame.height,
               foregroundDecoration: const BoxDecoration(
                 border: Border.fromBorderSide(
                   BorderSide(color: AskanceColors.dividerLight, width: kRule),
@@ -137,10 +148,17 @@ class _Stage extends ConsumerWidget {
 }
 
 class _Rail extends ConsumerStatefulWidget {
-  const _Rail({required this.session, required this.onShelf});
+  const _Rail({
+    required this.session,
+    required this.onShelf,
+    required this.onKept,
+  });
 
   final CanvasSession session;
   final VoidCallback onShelf;
+
+  /// Where keeping a study lands: on the shelf, showing what was just kept.
+  final VoidCallback onKept;
 
   @override
   ConsumerState<_Rail> createState() => _RailState();
@@ -310,7 +328,10 @@ class _RailState extends ConsumerState<_Rail> {
           height: 38,
           fontSize: 11,
           onPressed: session.hasImage
-              ? () => showShareSheet(context, ref)
+              ? () async {
+                  final outcome = await showShareSheet(context, ref);
+                  if (outcome == ShareOutcome.kept) widget.onKept();
+                }
               : null,
         ),
       ],

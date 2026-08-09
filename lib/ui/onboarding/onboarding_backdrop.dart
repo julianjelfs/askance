@@ -64,11 +64,19 @@ class _OnboardingBackdropState extends ConsumerState<OnboardingBackdrop> {
         final size = constraints.biggest;
         if (size.isEmpty) return const ColoredBox(color: AskanceColors.ink);
 
+        // A study is shown whole; a backdrop is not a study. Fill the screen,
+        // or it hangs in the middle as a panel.
+        final view = coveringView(
+          const ViewTransform(),
+          Size(image.width.toDouble(), image.height.toDouble()),
+          size,
+        );
+
         _blur.request(
           source: image,
           outputPx: size * dpr,
           detail: widget.settings.detail,
-          view: const ViewTransform(),
+          view: view,
         );
 
         return ListenableBuilder(
@@ -80,7 +88,7 @@ class _OnboardingBackdropState extends ConsumerState<OnboardingBackdrop> {
               source: image,
               blurred: _blur.image,
               settings: widget.settings,
-              view: const ViewTransform(),
+              view: view,
               devicePixelRatio: dpr,
               peeking: false,
               splitPosition: widget.settings.splitPosition,

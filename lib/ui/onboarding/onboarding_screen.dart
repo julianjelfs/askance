@@ -31,6 +31,13 @@ typedef _Panel = ({
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   int _step = 0;
 
+  /// The panel waiting for the current one to get out of the way.
+  ///
+  /// Crossfading the copy meant both panels were legible at once and the two
+  /// blocks of text sat on top of each other. One goes before the next
+  /// arrives instead.
+  int? _pending;
+
   static const _panels = <_Panel>[
     (
       title: 'Value before colour.',
@@ -71,8 +78,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     ),
   ];
 
-  /// Long enough to read as a dissolve rather than a cut, on the house curve.
-  static const _crossfade = Duration(milliseconds: 320);
+  /// Each half of the handover: out, then in.
+  static const _fade = Duration(milliseconds: 170);
 
   void _finish() {
     ref.read(onboardingSeenProvider.notifier).markSeen();
@@ -80,17 +87,23 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   void _next() {
+    if (_pending != null) return;
     if (_step < _panels.length - 1) {
-      setState(() => _step++);
+      setState(() => _pending = _step + 1);
     } else {
       _finish();
     }
   }
 
-  /// Keeps the outgoing panel pinned to the bottom-left as it fades, so the
-  /// copy dissolves in place instead of jumping when the two differ in height.
-  static Widget _bottomLeftLayout(Widget? current, List<Widget> previous) =>
-      Stack(alignment: Alignment.bottomLeft, children: [...previous, ?current]);
+  /// Fired at the end of both halves; only the fade out has anything to do.
+  void _onFaded() {
+    final next = _pending;
+    if (next == null) return;
+    setState(() {
+      _step = next;
+      _pending = null;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -103,7 +116,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         fit: StackFit.expand,
         children: [
           AnimatedSwitcher(
-            duration: _crossfade,
+            duration: _fade * 2,
             switchInCurve: AskanceMotion.slide,
             switchOutCurve: AskanceMotion.slide,
             child: OnboardingBackdrop(
@@ -140,39 +153,44 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       ],
                     ),
                   ),
-                  const Spacer(),
-                  AnimatedSwitcher(
-                    duration: _crossfade,
-                    switchInCurve: AskanceMotion.slide,
-                    switchOutCurve: AskanceMotion.slide,
-                    layoutBuilder: _bottomLeftLayout,
-                    child: Column(
-                      key: ValueKey(_step),
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 44 * s,
-                          height: kRule,
-                          color: AskanceColors.accent,
+                  // Takes the room left over and pins the copy to the bottom
+                  // of it, scrolling only if a short screen leaves too little.
+                  Expanded(
+                    child: SingleChildScrollView(
+                      reverse: true,
+                      child: AnimatedOpacity(
+                        opacity: _pending == null ? 1 : 0,
+                        duration: _fade,
+                        curve: AskanceMotion.slide,
+                        onEnd: _onFaded,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 44 * s,
+                              height: kRule,
+                              color: AskanceColors.accent,
+                            ),
+                            SizedBox(height: 18 * s),
+                            Text(
+                              panel.title,
+                              style: AskanceText.onboardingTitle().by(s),
+                            ),
+                            SizedBox(height: 16 * s),
+                            ConstrainedBox(
+                              constraints: BoxConstraints(maxWidth: 250 * s),
+                              child: Text(
+                                panel.body,
+                                style: AskanceText.body(
+                                  14,
+                                  color: const Color(0xB3F3F2F2),
+                                ).by(s),
+                              ),
+                            ),
+                          ],
                         ),
-                        SizedBox(height: 18 * s),
-                        Text(
-                          panel.title,
-                          style: AskanceText.onboardingTitle().by(s),
-                        ),
-                        SizedBox(height: 16 * s),
-                        ConstrainedBox(
-                          constraints: BoxConstraints(maxWidth: 250 * s),
-                          child: Text(
-                            panel.body,
-                            style: AskanceText.body(
-                              14,
-                              color: const Color(0xB3F3F2F2),
-                            ).by(s),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                   SizedBox(height: 28 * s),
@@ -196,15 +214,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   SizedBox(height: 18 * s),
                   // The fill is the same red either side, so only the label
                   // reads as changing.
-                  AnimatedSwitcher(
-                    duration: _crossfade,
-                    child: ActionButton(
-                      key: ValueKey(panel.cta),
-                      label: panel.cta,
-                      trailing: '→',
-                      height: 56,
-                      onPressed: _next,
-                    ),
+                  ActionButton(
+                    label: panel.cta,
+                    trailing: '→',
+                    height: 56,
+                    onPressed: _next,
                   ),
                   SizedBox(height: 18 * s),
                 ],

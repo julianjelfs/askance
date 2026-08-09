@@ -120,7 +120,11 @@ void main() {
             builder: (context, ref, _) => GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () async {
-                outcome = await showShareSheet(context, ref, offerDiscard: true);
+                outcome = await showShareSheet(
+                  context,
+                  ref,
+                  offerDiscard: true,
+                );
                 settled = true;
               },
               child: const SizedBox.expand(),
