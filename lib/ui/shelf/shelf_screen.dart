@@ -236,7 +236,8 @@ Future<void> openStudy(BuildContext context, WidgetRef ref, Study study) async {
   if (bytes == null || !context.mounted) return;
   final image = await decodeImage(bytes);
   session.openStudy(study);
-  session.loadImage(image, bytes, key: study.imageKey);
+  // resetView belongs to a fresh pick; here it would wipe the restored zoom.
+  session.loadImage(image, bytes, key: study.imageKey, resetView: false);
 
   if (!context.mounted) return;
   final media = MediaQuery.of(context);

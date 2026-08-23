@@ -62,12 +62,21 @@ class CanvasSession extends ChangeNotifier {
 
   bool get hasImage => image != null;
 
-  void loadImage(ui.Image decoded, Uint8List bytes, {String? key}) {
+  /// [resetView] belongs to a freshly picked image. A reopened study has its
+  /// view restored by [openStudy] just before its image arrives here, and
+  /// resetting then wiped the restored zoom — and the next autosave wrote the
+  /// wiped view back over the study, so the passage was lost for good.
+  void loadImage(
+    ui.Image decoded,
+    Uint8List bytes, {
+    String? key,
+    bool resetView = true,
+  }) {
     image?.dispose();
     image = decoded;
     imageBytes = bytes;
     imageKey = key ?? imageKey;
-    view = const ViewTransform();
+    if (resetView) view = const ViewTransform();
     _scheduleRegions();
     notifyListeners();
   }

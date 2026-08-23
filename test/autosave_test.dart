@@ -1,8 +1,12 @@
+import 'dart:typed_data';
+import 'dart:ui' as ui;
+
 import 'package:askance/engine/engine.dart';
 import 'package:askance/engine/value_scale.dart';
 import 'package:askance/model/study.dart';
 import 'package:askance/state/canvas_session.dart';
 import 'package:fake_async/fake_async.dart';
+import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// A study on the shelf keeps itself up to date: changing anything about it
@@ -127,6 +131,36 @@ void main() {
     );
     expect(t.session.view, left);
   });
+
+  test(
+    'the image arriving after the restore keeps the restored view',
+    () async {
+      // The real open flow: openStudy restores the view, then the decoded image
+      // lands via loadImage. Resetting the view there wiped the restored zoom —
+      // and the next autosave wrote the wiped view back over the study, so the
+      // passage was lost for good, thumbnail included.
+      final recorder = ui.PictureRecorder();
+      Canvas(recorder, const Rect.fromLTWH(0, 0, 8, 8)).drawRect(
+        const Rect.fromLTWH(0, 0, 8, 8),
+        Paint()..color = const Color(0xFF808080),
+      );
+      final picture = recorder.endRecording();
+      final image = await picture.toImage(8, 8);
+      picture.dispose();
+
+      final t = sessionUnderTest();
+      const left = ViewTransform(zoom: 3, offset: Offset(-0.2, -0.1));
+      t.session.openStudy(
+        studyNamed('a', settings: const StudySettings(view: left)),
+      );
+      t.session.loadImage(image, Uint8List(0), key: 'a.jpg', resetView: false);
+      expect(t.session.view, left);
+
+      // And what then gets written back is still the passage, not identity.
+      t.session.flushPersist();
+      expect(t.writes.single.$2.view, left);
+    },
+  );
 
   test('chrome and peek are not settings and never write', () {
     fakeAsync((async) {
