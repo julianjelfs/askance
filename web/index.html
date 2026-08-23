@@ -42,5 +42,37 @@
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
   <script src="flutter_bootstrap.js" async></script>
+  <script>
+    // Flutter's service worker downloads a new deploy in the background but
+    // leaves it "waiting" until every window of the old one has closed —
+    // which an installed PWA effectively never does, so refreshing forever
+    // still showed the previous build. The generated worker listens for a
+    // 'skipWaiting' message; send it as soon as an update finishes
+    // installing, and reload once when the new worker takes over.
+    // Only armed when an old worker already controls the page: on the very
+    // first visit there is nothing stale to replace, and the new worker
+    // claiming the page must not trigger a pointless reload.
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      let reloaded = false;
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (reloaded) return;
+        reloaded = true;
+        window.location.reload();
+      });
+      navigator.serviceWorker.ready.then((reg) => {
+        const promote = (sw) => {
+          if (!sw) return;
+          if (sw.state === 'installed') sw.postMessage('skipWaiting');
+          else sw.addEventListener('statechange', () => {
+            if (sw.state === 'installed') sw.postMessage('skipWaiting');
+          });
+        };
+        promote(reg.waiting);
+        reg.addEventListener('updatefound', () => promote(reg.installing));
+        // A long-lived PWA window otherwise only checks on launch.
+        setInterval(() => reg.update(), 60 * 60 * 1000);
+      });
+    }
+  </script>
 </body>
 </html>
