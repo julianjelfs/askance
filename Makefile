@@ -123,6 +123,19 @@ build-web:
 serve: build-web
 	cd build/web && python3 -m http.server 8000
 
+# GitHub Pages cannot serve a private repository on a free plan, so the site
+# lives in a public repository holding only the compiled output; the source
+# stays here. This rebuilds and force-pushes — the output repo has no history
+# worth keeping.
+
+## deploy-web: build for web and publish to julianjelfs.github.io/askance-web
+deploy-web:
+	flutter build web --release --base-href /askance-web/
+	cd build/web && touch .nojekyll && git init -q -b main && \
+	git add -A && (git commit -q -m "Deploy web build" || true) && \
+	git push -q --force git@github.com:julianjelfs/askance-web.git main
+	@echo "https://julianjelfs.github.io/askance-web/"
+
 # --- housekeeping ----------------------------------------------------------
 
 ## logs: follow the Android device log, this app only
