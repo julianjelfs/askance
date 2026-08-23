@@ -18,7 +18,8 @@ abstract final class AskanceColors {
   /// Hover / pressed on primary.
   static const accentPressed = Color(0xFFDD2B0F);
 
-  static const dividerLight = Color(0x66201E1D);
+  /// Was 0x66; lightened so the shelf's furniture recedes behind the work.
+  static const dividerLight = Color(0x40201E1D);
   static const dividerDark = Color(0x38F3F2F2);
   static const mutedLight = Color(0x8C201E1D);
   static const mutedDark = Color(0x80F3F2F2);
@@ -38,6 +39,11 @@ abstract final class AskanceColors {
 
 /// Radius is 0 everywhere. No exceptions. Rules are 2px, never hairlines.
 const double kRule = 2;
+
+/// The one amendment to "2px, never hairlines": grey furniture on the light
+/// shelf — card borders, separators, outlined buttons — read heavy at 2px,
+/// so those thin down. Structural rules and everything on ink stay [kRule].
+const double kRuleThin = 1;
 
 /// Every phone screen was drawn at this width and scales proportionally.
 const double kDesignWidth = 320;

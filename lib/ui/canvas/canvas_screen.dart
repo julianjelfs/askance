@@ -319,7 +319,6 @@ class _ModeRail extends StatelessWidget {
       required String label,
       required bool active,
       required VoidCallback onTap,
-      required bool first,
     }) => GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
@@ -327,17 +326,7 @@ class _ModeRail extends StatelessWidget {
         width: 44 * s,
         height: 44 * s,
         alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: active ? AskanceColors.accent : null,
-          border: first
-              ? null
-              : const Border(
-                  top: BorderSide(
-                    color: AskanceColors.dividerDark,
-                    width: kRule,
-                  ),
-                ),
-        ),
+        color: active ? AskanceColors.accent : null,
         child: Text(
           label,
           style: AskanceText.controlLabel(
@@ -359,14 +348,12 @@ class _ModeRail extends StatelessWidget {
               label: mode.railLabel,
               active: session.settings.mode == mode,
               onTap: () => session.setMode(mode),
-              first: mode == ViewMode.values.first,
             ),
           if (skeleton)
             cell(
               label: '№',
               active: session.settings.numbers,
               onTap: session.toggleNumbers,
-              first: false,
             ),
         ],
       ),
@@ -405,19 +392,9 @@ class _ToolBar extends StatelessWidget {
                   onTap: () => session.toggleTool(tool),
                   child: Container(
                     alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: session.openTool == tool
-                          ? AskanceColors.accent
-                          : null,
-                      border: tool == CanvasTool.steps
-                          ? null
-                          : const Border(
-                              left: BorderSide(
-                                color: AskanceColors.dividerDark,
-                                width: kRule,
-                              ),
-                            ),
-                    ),
+                    color: session.openTool == tool
+                        ? AskanceColors.accent
+                        : null,
                     child: Text(
                       labelFor(tool),
                       style: AskanceText.controlLabel(

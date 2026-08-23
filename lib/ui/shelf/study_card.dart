@@ -69,7 +69,7 @@ class _StudyCardState extends ConsumerState<StudyCard> {
             color: _confirmingDelete
                 ? AskanceColors.accent
                 : AskanceColors.dividerLight,
-            width: kRule,
+            width: kRuleThin,
           ),
         ),
         child: Stack(
@@ -109,7 +109,10 @@ class _StudyCardState extends ConsumerState<StudyCard> {
                     ),
                   ],
                 ),
-                const Rule(color: AskanceColors.dividerLight),
+                const Rule(
+                  color: AskanceColors.dividerLight,
+                  height: kRuleThin,
+                ),
                 Padding(
                   padding: EdgeInsets.fromLTRB(10 * s, 8 * s, 10 * s, 10 * s),
                   child: Column(

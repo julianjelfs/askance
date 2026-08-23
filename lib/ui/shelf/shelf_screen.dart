@@ -130,7 +130,10 @@ class _TitleRow extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: 18 * s),
       decoration: const BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: AskanceColors.dividerLight, width: kRule),
+          bottom: BorderSide(
+            color: AskanceColors.dividerLight,
+            width: kRuleThin,
+          ),
         ),
       ),
       child: SizedBox(
@@ -154,7 +157,7 @@ class _TitleRow extends StatelessWidget {
                 decoration: BoxDecoration(
                   border: Border.all(
                     color: AskanceColors.dividerLight,
-                    width: kRule,
+                    width: kRuleThin,
                   ),
                 ),
                 child: Text(
@@ -177,7 +180,7 @@ class _Footer extends ConsumerWidget {
     return Container(
       decoration: const BoxDecoration(
         border: Border(
-          top: BorderSide(color: AskanceColors.dividerLight, width: kRule),
+          top: BorderSide(color: AskanceColors.dividerLight, width: kRuleThin),
         ),
       ),
       padding: EdgeInsets.fromLTRB(

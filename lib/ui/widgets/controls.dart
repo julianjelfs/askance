@@ -87,7 +87,7 @@ class _ActionButtonState extends State<ActionButton> {
                     color: widget.onDark
                         ? AskanceColors.ground
                         : AskanceColors.dividerLight,
-                    width: kRule,
+                    width: kRuleThin,
                   ),
           ),
           // A Row hands its non-flex children an unbounded width, and an
