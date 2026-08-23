@@ -6,10 +6,13 @@ import 'package:image_picker/image_picker.dart';
 /// studies are auto-named and renamed in place.
 typedef PickedImage = ({Uint8List bytes, String extension});
 
+/// True where a camera capture is a real thing to offer: native mobile, and
+/// mobile *web* — browsers there open the camera for a capture request, and
+/// on web [defaultTargetPlatform] reflects the device. Desktop browsers would
+/// degrade a capture to a plain file dialog, so they stay excluded.
 bool get canTakePhoto =>
-    !kIsWeb &&
-    (defaultTargetPlatform == TargetPlatform.iOS ||
-        defaultTargetPlatform == TargetPlatform.android);
+    defaultTargetPlatform == TargetPlatform.iOS ||
+    defaultTargetPlatform == TargetPlatform.android;
 
 bool get _usesImagePicker =>
     !kIsWeb &&
@@ -39,6 +42,8 @@ Future<PickedImage?> pickFromLibrary() async {
 
 Future<PickedImage?> takePhoto() async {
   if (!canTakePhoto) return pickFromLibrary();
+  // ImagePicker's camera source works on mobile web too: it becomes a file
+  // input with a capture attribute, which the browser answers with a camera.
   final file = await ImagePicker().pickImage(source: ImageSource.camera);
   if (file == null) return null;
   return (bytes: await file.readAsBytes(), extension: _extensionOf(file.name));

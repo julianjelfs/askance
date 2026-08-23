@@ -239,34 +239,32 @@ Future<void> showImportSheet(BuildContext context, WidgetRef ref) =>
                       () => startStudy(context, ref, fromCamera: false),
                     ),
                   ),
-                  SizedBox(height: 10 * s),
-                  ActionButton(
-                    label: canTakePhoto ? 'Take a photo' : 'Open an image file',
-                    trailing: '→',
-                    solid: false,
-                    onDark: true,
-                    onPressed: () => closeThen(
-                      () => startStudy(context, ref, fromCamera: canTakePhoto),
-                    ),
-                  ),
-                  // The QR transfer needs a camera to point at another
-                  // screen, so the scanning end is phone-shaped by nature.
+                  // Without a camera, "open a file" would be this same
+                  // picker wearing a different label — one button, not two.
                   if (canTakePhoto) ...[
                     SizedBox(height: 10 * s),
                     ActionButton(
-                      label: 'Scan from QR code',
+                      label: 'Take a photo',
                       trailing: '→',
                       solid: false,
                       onDark: true,
                       onPressed: () => closeThen(
-                        () => Navigator.of(context).push(
-                          NoTransitionRoute(
-                            builder: (_) => const QrScanScreen(),
-                          ),
-                        ),
+                        () => startStudy(context, ref, fromCamera: true),
                       ),
                     ),
                   ],
+                  SizedBox(height: 10 * s),
+                  ActionButton(
+                    label: 'Scan from QR code',
+                    trailing: '→',
+                    solid: false,
+                    onDark: true,
+                    onPressed: () => closeThen(
+                      () => Navigator.of(context).push(
+                        NoTransitionRoute(builder: (_) => const QrScanScreen()),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
