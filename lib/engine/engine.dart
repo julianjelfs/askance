@@ -296,6 +296,7 @@ Future<ui.Image> renderBlurredSource({
   required double detail,
   required ViewTransform view,
   Smoothing smoothing = Smoothing.gaussian,
+  bool adaptiveDetail = true,
   double quadrantRadius = kKuwaharaRadius,
 }) async {
   final sourceSize = Size(source.width.toDouble(), source.height.toDouble());
@@ -305,7 +306,14 @@ Future<ui.Image> renderBlurredSource({
   // whole, and the blur would pull that transparency inwards as a dark fringe
   // along the edges of the picture.
   final area = view.visible(sourceSize, outputPx);
-  final sigma = blurSigma(detail, outputPx.width);
+
+  // Adaptive detail is the blur in screen space: zooming in resolves finer
+  // shapes, the way leaning closer to a scene does. Pinned detail scales the
+  // sigma with the zoom instead, so the blur holds still against the
+  // photograph and zooming magnifies the same simplification — the way
+  // leaning closer to a painting doesn't add detail the painter left out.
+  final zoomHold = adaptiveDetail ? 1.0 : view.zoom;
+  final sigma = blurSigma(detail, outputPx.width) * zoomHold;
 
   // How wide a window the flattening pass wants, if it is going to run. Worked
   // out at the reference width and scaled like the sigma: in output pixels it
@@ -313,7 +321,7 @@ Future<ui.Image> renderBlurredSource({
   // whole pipeline small expecting the shapes the screen has.
   final flattenRadius = smoothing == Smoothing.gaussian
       ? 0.0
-      : blurSigma(detail, kReferenceWidth).clamp(
+      : (blurSigma(detail, kReferenceWidth) * zoomHold).clamp(
               // A ceiling below the floor means the ceiling: the floor keeps
               // the mode recognisable, it does not override a set limit.
               math.min(
@@ -470,6 +478,7 @@ Object blurKeyFor({
   required double detail,
   required ViewTransform view,
   required Smoothing smoothing,
+  required bool adaptiveDetail,
 }) => Object.hash(
   outputPx.width,
   outputPx.height,
@@ -477,6 +486,7 @@ Object blurKeyFor({
   view.zoom,
   view.offset,
   smoothing,
+  adaptiveDetail,
 );
 
 /// Wraps the compiled fragment program and knows how to set its uniforms.

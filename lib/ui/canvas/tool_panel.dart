@@ -51,6 +51,21 @@ class DetailControl extends StatelessWidget {
       RuleSlider(value: session.settings.detail, onChanged: session.setDetail);
 }
 
+/// Whether the detail follows the zoom. Ticked, the blur lives in screen
+/// space and zooming in resolves finer shapes; unticked, the simplification
+/// holds still against the photograph and zooming only magnifies it.
+class AdaptiveDetailControl extends StatelessWidget {
+  const AdaptiveDetailControl({super.key, required this.session});
+  final CanvasSession session;
+
+  @override
+  Widget build(BuildContext context) => RuleCheckbox(
+    label: 'DETAIL FOLLOWS THE ZOOM',
+    value: session.settings.adaptiveDetail,
+    onChanged: session.setAdaptiveDetail,
+  );
+}
+
 /// Which way the photograph is simplified before it is quantised.
 class SmoothingControl extends StatelessWidget {
   const SmoothingControl({super.key, required this.session});
@@ -282,6 +297,8 @@ class ToolPanel extends StatelessWidget {
               value: '${(session.settings.detail * 100).round()}',
             ),
             DetailControl(session: session),
+            SizedBox(height: 12 * s),
+            AdaptiveDetailControl(session: session),
           ],
           CanvasTool.scale => [
             const ControlLabelRow(label: 'ROOT OF THE SCALE'),

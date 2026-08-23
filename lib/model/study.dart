@@ -24,6 +24,7 @@ class StudySettings {
     this.gridDivisions = 4,
     this.numbers = true,
     this.smoothing = Smoothing.gaussian,
+    this.adaptiveDetail = true,
     this.bias = 0,
     this.splitPosition = 0.5,
     this.randomSeed = 0,
@@ -41,6 +42,12 @@ class StudySettings {
 
   /// How the photograph is simplified before it is quantised.
   final Smoothing smoothing;
+
+  /// Whether the detail control follows the zoom. Adaptive is the blur in
+  /// screen space — zooming in resolves finer shapes, the way leaning closer
+  /// to a scene does. Pinned holds the simplification still against the
+  /// photograph, so zooming magnifies the same shapes instead.
+  final bool adaptiveDetail;
 
   /// Slides every threshold together, in fractions of the L* range.
   ///
@@ -86,6 +93,7 @@ class StudySettings {
     int? gridDivisions,
     bool? numbers,
     Smoothing? smoothing,
+    bool? adaptiveDetail,
     double? bias,
     double? splitPosition,
     int? randomSeed,
@@ -100,6 +108,7 @@ class StudySettings {
     gridDivisions: gridDivisions ?? this.gridDivisions,
     numbers: numbers ?? this.numbers,
     smoothing: smoothing ?? this.smoothing,
+    adaptiveDetail: adaptiveDetail ?? this.adaptiveDetail,
     bias: bias ?? this.bias,
     splitPosition: splitPosition ?? this.splitPosition,
     randomSeed: randomSeed ?? this.randomSeed,
@@ -116,6 +125,7 @@ class StudySettings {
     'gridDivisions': gridDivisions,
     'numbers': numbers,
     'smoothing': smoothing.name,
+    'adaptiveDetail': adaptiveDetail,
     'bias': bias,
     'splitPosition': splitPosition,
     'randomSeed': randomSeed,
@@ -143,6 +153,9 @@ class StudySettings {
       json['smoothing'],
       Smoothing.gaussian,
     ),
+    adaptiveDetail: json['adaptiveDetail'] is bool
+        ? json['adaptiveDetail']! as bool
+        : true,
     bias: _double(json['bias'], 0).clamp(-maxBias, maxBias),
     splitPosition: _double(json['splitPosition'], 0.5).clamp(0.0, 1.0),
     randomSeed: _int(json['randomSeed'], 0),
@@ -171,6 +184,7 @@ class StudySettings {
       other.gridDivisions == gridDivisions &&
       other.numbers == numbers &&
       other.smoothing == smoothing &&
+      other.adaptiveDetail == adaptiveDetail &&
       other.bias == bias &&
       other.splitPosition == splitPosition &&
       other.randomSeed == randomSeed &&
@@ -187,6 +201,7 @@ class StudySettings {
     gridDivisions,
     numbers,
     smoothing,
+    adaptiveDetail,
     bias,
     splitPosition,
     randomSeed,

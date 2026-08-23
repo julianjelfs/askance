@@ -242,6 +242,7 @@ class _StudyThumbnailState extends ConsumerState<StudyThumbnail> {
           detail: widget.study.settings.detail,
           view: view,
           smoothing: widget.study.settings.smoothing,
+          adaptiveDetail: widget.study.settings.adaptiveDetail,
         );
         return ListenableBuilder(
           listenable: _blur,

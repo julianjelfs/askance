@@ -67,12 +67,14 @@ void main() {
     required double detail,
     required Size output,
     int steps = 4,
+    bool adaptiveDetail = true,
   }) async {
     final blurred = await renderBlurredSource(
       source: source,
       outputPx: output,
       detail: detail,
       view: ViewTransform(zoom: zoom),
+      adaptiveDetail: adaptiveDetail,
     );
     final rgba = await blurred.toByteData(format: ui.ImageByteFormat.rawRgba);
     blurred.dispose();
@@ -135,4 +137,49 @@ void main() {
     );
     expect(atSix, greaterThan(atOne * 0.5));
   });
+
+  test(
+    'pinned detail holds the simplification still against the zoom',
+    () async {
+      // With the detail pinned, the sigma scales with the zoom, so a zoomed
+      // frame magnifies the same shapes instead of resolving finer ones — the
+      // density falls away with the magnification, which is exactly the drop
+      // the adaptive tests above prove the default does NOT have.
+      final source = await fractalSource(2048);
+      addTearDown(source.dispose);
+      const output = Size(480, 480);
+
+      final atOne = await densityAt(
+        source: source,
+        zoom: 1,
+        detail: 0.35,
+        output: output,
+        adaptiveDetail: false,
+      );
+      final atThree = await densityAt(
+        source: source,
+        zoom: 3,
+        detail: 0.35,
+        output: output,
+        adaptiveDetail: false,
+      );
+      expect(
+        atThree,
+        lessThan(atOne * 0.6),
+        reason:
+            'pinned detail should magnify, not resolve: '
+            '${atOne.toStringAsFixed(4)} -> ${atThree.toStringAsFixed(4)}',
+      );
+
+      // At 1x the two behaviours are the same thing; the flag must not change
+      // the picture until a zoom gives it something to hold still against.
+      final adaptiveAtOne = await densityAt(
+        source: source,
+        zoom: 1,
+        detail: 0.35,
+        output: output,
+      );
+      expect(atOne, closeTo(adaptiveAtOne, 0.0001));
+    },
+  );
 }

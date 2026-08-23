@@ -307,6 +307,57 @@ class _RuleSliderPainter extends CustomPainter {
       old.thumbWidth != thumbWidth;
 }
 
+/// A 2px outlined box that fills red when ticked, with its label beside it.
+/// The whole row is the tap target.
+class RuleCheckbox extends StatelessWidget {
+  const RuleCheckbox({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String label;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = DesignScale.of(context);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => onChanged(!value),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AnimatedContainer(
+            duration: AskanceMotion.chromeFade,
+            curve: AskanceMotion.slide,
+            width: 16 * s,
+            height: 16 * s,
+            decoration: BoxDecoration(
+              color: value ? AskanceColors.accent : null,
+              border: Border.all(
+                color: value ? AskanceColors.accent : AskanceColors.dividerDark,
+                width: kRule,
+              ),
+            ),
+          ),
+          SizedBox(width: 8 * s),
+          Text(
+            label,
+            style: AskanceText.controlLabel(
+              10,
+              tracking: 0.06,
+              color: AskanceColors.ground,
+            ).by(s),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// `–  n  +` in a 2px outlined box.
 class RuleStepper extends StatelessWidget {
   const RuleStepper({

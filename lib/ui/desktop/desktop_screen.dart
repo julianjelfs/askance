@@ -235,7 +235,14 @@ class _RailState extends ConsumerState<_Rail> {
                   _controlBlock(
                     'DETAIL',
                     '${(session.settings.detail * 100).round()}',
-                    DetailControl(session: session),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        DetailControl(session: session),
+                        const SizedBox(height: 12),
+                        AdaptiveDetailControl(session: session),
+                      ],
+                    ),
                   ),
                   const Rule(),
                   _controlBlock(

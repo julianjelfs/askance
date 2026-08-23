@@ -154,6 +154,7 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
             detail: session.settings.detail,
             view: session.view,
             smoothing: session.settings.smoothing,
+            adaptiveDetail: session.settings.adaptiveDetail,
           );
         }
 
