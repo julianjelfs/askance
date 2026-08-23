@@ -50,6 +50,10 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
       session.applyTransferredSettings(
         StudySettings.fromJson(received.settings),
       );
+      // An arrived study is as much an import as a picked photograph: onto
+      // the shelf without a keep step.
+      await ref.read(studiesProvider.notifier).keep(session);
+      if (!mounted) return;
       // The desktop's canvas is its stage; the phone pushes the canvas
       // screen. Wide layouts pop back with a result so the shelf overlay can
       // close over the newly arrived study.

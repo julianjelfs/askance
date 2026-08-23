@@ -18,7 +18,6 @@ class IndexedDbStudyRepository implements StudyRepository {
   static const _imageStore = 'images';
 
   static const _manifestKey = 'studies';
-  static const _entitlementKey = 'unlocked';
   static const _onboardingKey = 'onboardingSeen';
 
   Database? _db;
@@ -102,14 +101,6 @@ class IndexedDbStudyRepository implements StudyRepository {
     await txn.objectStore(_imageStore).delete(key);
     await txn.completed;
   }
-
-  @override
-  Future<bool> loadEntitlement() async =>
-      await _get(_metaStore, _entitlementKey) == true;
-
-  @override
-  Future<void> saveEntitlement(bool unlocked) =>
-      _put(_metaStore, _entitlementKey, unlocked);
 
   @override
   Future<bool> loadOnboardingSeen() async =>

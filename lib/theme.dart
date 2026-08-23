@@ -59,7 +59,6 @@ abstract final class AskanceMotion {
   static const sheetSlide = Duration(milliseconds: 320);
   static const peekThreshold = Duration(milliseconds: 280);
   static const doubleTapWindow = Duration(milliseconds: 300);
-  static const purchase = Duration(milliseconds: 900);
 }
 
 /// Proportional scale for the phone layout, so a design drawn at 320pt reads

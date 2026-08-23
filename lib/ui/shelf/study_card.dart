@@ -61,17 +61,27 @@ class _StudyCardState extends ConsumerState<StudyCard> {
       onTap: _confirmingDelete ? null : widget.onOpen,
       onLongPress: () => setState(() => _confirmingDelete = true),
       child: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: AskanceColors.surface,
-          // One rule, not two: while the card is asking, its own border turns
-          // red rather than a second red border appearing inside the grey one.
-          border: Border.all(
-            color: _confirmingDelete
-                ? AskanceColors.accent
-                : AskanceColors.dividerLight,
-            width: kRuleThin,
-          ),
+          // Borderless, so a whisper of a shadow does the lifting instead.
+          // Flat design, but not airless.
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x33201E1D),
+              blurRadius: 14,
+              offset: Offset(0, 5),
+            ),
+          ],
         ),
+        // While the card is asking about deletion the accent frames it,
+        // painted in the foreground so the content does not shift.
+        foregroundDecoration: _confirmingDelete
+            ? const BoxDecoration(
+                border: Border.fromBorderSide(
+                  BorderSide(color: AskanceColors.accent, width: kRule),
+                ),
+              )
+            : null,
         child: Stack(
           children: [
             Column(
@@ -108,10 +118,6 @@ class _StudyCardState extends ConsumerState<StudyCard> {
                       ),
                     ),
                   ],
-                ),
-                const Rule(
-                  color: AskanceColors.dividerLight,
-                  height: kRuleThin,
                 ),
                 Padding(
                   padding: EdgeInsets.fromLTRB(10 * s, 8 * s, 10 * s, 10 * s),
@@ -272,29 +278,84 @@ class _StudyThumbnailState extends ConsumerState<StudyThumbnail> {
 
 /// The dashed empty slot that closes the grid. Also stands in as the whole
 /// empty state when the shelf has nothing on it.
-class EmptySlot extends StatelessWidget {
-  const EmptySlot({super.key, this.label = 'empty slot'});
+/// The empty slot at the card's exact size: the dashed box spans the same
+/// 4:5 thumbnail *and* the same caption block — its text invisible but still
+/// setting the height — so the slot lines up with its populated neighbours
+/// to the pixel, footer included.
+class EmptySlotCard extends StatelessWidget {
+  const EmptySlotCard({super.key, this.label = 'empty slot', this.onNew});
 
   final String label;
+
+  /// Tapping the slot starts a study, same as the + in the header: an empty
+  /// space that invites filling should accept the invitation itself.
+  final VoidCallback? onNew;
 
   @override
   Widget build(BuildContext context) {
     final s = DesignScale.of(context);
-    return CustomPaint(
-      painter: _EmptySlotPainter(),
-      child: Padding(
-        padding: EdgeInsets.all(12 * s),
-        child: Align(
-          alignment: Alignment.bottomLeft,
-          child: Text(
-            label,
-            style: TextStyle(
-              fontFamily: 'monospace',
-              fontSize: 9 * s,
-              height: 1.3,
-              color: AskanceColors.mutedLight,
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onNew,
+      child: CustomPaint(
+        painter: _EmptySlotPainter(),
+        child: Stack(
+          children: [
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const AspectRatio(aspectRatio: 4 / 5, child: SizedBox.shrink()),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(10 * s, 8 * s, 10 * s, 10 * s),
+                  child: Opacity(
+                    opacity: 0,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          ' ',
+                          maxLines: 1,
+                          style: AskanceText.cardName().by(s),
+                        ),
+                        SizedBox(height: 4 * s),
+                        Text(
+                          ' ',
+                          maxLines: 1,
+                          style: AskanceText.caption(10).by(s),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
+            Positioned(
+              left: 12 * s,
+              bottom: 12 * s,
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 9 * s,
+                  height: 1.3,
+                  color: AskanceColors.mutedLight,
+                ),
+              ),
+            ),
+            if (onNew != null)
+              Positioned.fill(
+                child: Center(
+                  child: Text(
+                    '+',
+                    style: AskanceText.button(
+                      30,
+                      color: AskanceColors.accent,
+                    ).by(s),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );

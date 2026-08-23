@@ -25,10 +25,6 @@ class _Fake implements StudyRepository {
   @override
   Future<void> deleteImage(String key) async {}
   @override
-  Future<bool> loadEntitlement() async => true;
-  @override
-  Future<void> saveEntitlement(bool value) async {}
-  @override
   Future<bool> loadOnboardingSeen() async => false;
   @override
   Future<void> saveOnboardingSeen(bool seen) async {}

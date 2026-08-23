@@ -44,16 +44,12 @@ engine leans on GPU round trips that WebGL makes expensive.
   (2480×3720) size. Exports re-run the engine from the original image at the
   target size — never an upscale of the screen — and honour the current zoom.
 
-### The paywall
+### Free, everywhere
 
-Everything on the canvas is free forever: every mode, every control, no
-watermark, no limit. One £3.99 payment unlocks what outlives the session —
-keeping studies on the shelf and every export. The unlock lives inside the
-share sheet; locked options dim but stay tappable, and tapping one starts the
-purchase. Wired through `in_app_purchase` with a single non-consumable
-product; with no product ID configured (the current state — the app is not yet
-in any store) a simulated purchase service stands in, and the web build is
-deliberately free.
+The whole app is free: every mode, every control, every export, no watermark,
+no accounts, no payments. A photograph you open lands on the shelf
+immediately — there is no separate keep step — and the share sheet is purely
+about the ways out: an image file, a print, the clipboard, another device.
 
 ## The engine
 

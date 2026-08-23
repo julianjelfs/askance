@@ -348,10 +348,7 @@ class _RailState extends ConsumerState<_Rail> {
           height: 38,
           fontSize: 11,
           onPressed: session.hasImage
-              ? () async {
-                  final outcome = await showShareSheet(context, ref);
-                  if (outcome == ShareOutcome.kept) widget.onKept();
-                }
+              ? () => showShareSheet(context, ref)
               : null,
         ),
       ],
@@ -500,13 +497,22 @@ class _ShelfOverlay extends ConsumerWidget {
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(22, 18, 22, 24),
-              child: ShelfGrid(
-                studies: studies,
-                columns: 3,
-                onOpen: (study) async {
-                  await openStudy(context, ref, study);
-                  onOpened();
-                },
+              // Pinned to the left: a grid narrower than the stage otherwise
+              // floats in the middle of it.
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: ShelfGrid(
+                  studies: studies,
+                  columns: 3,
+                  onOpen: (study) async {
+                    await openStudy(context, ref, study);
+                    onOpened();
+                  },
+                  onNew: () async {
+                    await startStudy(context, ref, fromCamera: false);
+                    onOpened();
+                  },
+                ),
               ),
             ),
           ),

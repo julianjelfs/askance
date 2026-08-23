@@ -19,7 +19,6 @@ class ActionButton extends StatefulWidget {
     this.fontSize = 14,
     this.onDark = false,
     this.enabled = true,
-    this.opacity = 1,
   });
 
   final String label;
@@ -36,10 +35,6 @@ class ActionButton extends StatefulWidget {
   /// and text colour.
   final bool onDark;
   final bool enabled;
-
-  /// Locked share options drop to 40% but stay tappable — a tap on a locked
-  /// control is intent to buy.
-  final double opacity;
 
   @override
   State<ActionButton> createState() => _ActionButtonState();
@@ -65,9 +60,8 @@ class _ActionButtonState extends State<ActionButton> {
     final live = widget.enabled && widget.onPressed != null;
 
     return Opacity(
-      // A locked share option keeps its own dimming and stays tappable; a
-      // button with nothing to do is dimmed and inert.
-      opacity: live ? widget.opacity : widget.opacity * 0.4,
+      // A button with nothing to do is dimmed and inert.
+      opacity: live ? 1 : 0.4,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTapDown: live ? (_) => setState(() => _down = true) : null,

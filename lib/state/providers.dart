@@ -3,7 +3,6 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/purchase_service.dart';
 import '../data/study_repository.dart';
 import '../engine/engine.dart';
 import '../model/study.dart';
@@ -15,12 +14,6 @@ final repositoryProvider = Provider<StudyRepository>(
 
 final shaderProvider = FutureProvider<ValueShader>((ref) => ValueShader.load());
 
-final purchaseServiceProvider = Provider<PurchaseService>((ref) {
-  // The PWA cannot use store IAP, and the web build is free by design.
-  if (kIsWeb || kProductId.isEmpty) return SimulatedPurchaseService();
-  return StorePurchaseService();
-});
-
 final sessionProvider = Provider<CanvasSession>((ref) {
   final session = CanvasSession();
   // A study that is already on the shelf keeps itself up to date; there is no
@@ -30,37 +23,6 @@ final sessionProvider = Provider<CanvasSession>((ref) {
   ref.onDispose(session.dispose);
   return session;
 });
-
-/// Everything on the canvas is free forever. Only what outlives the session —
-/// the shelf and every export — is gated, and never on web.
-final entitlementProvider = AsyncNotifierProvider<EntitlementNotifier, bool>(
-  EntitlementNotifier.new,
-);
-
-class EntitlementNotifier extends AsyncNotifier<bool> {
-  @override
-  Future<bool> build() async {
-    if (kIsWeb) return true;
-    return ref.read(repositoryProvider).loadEntitlement();
-  }
-
-  Future<PurchaseOutcome> unlock() async {
-    final outcome = await ref.read(purchaseServiceProvider).purchase();
-    if (outcome == PurchaseOutcome.success) await _grant();
-    return outcome;
-  }
-
-  Future<PurchaseOutcome> restore() async {
-    final outcome = await ref.read(purchaseServiceProvider).restore();
-    if (outcome == PurchaseOutcome.success) await _grant();
-    return outcome;
-  }
-
-  Future<void> _grant() async {
-    await ref.read(repositoryProvider).saveEntitlement(true);
-    state = const AsyncData(true);
-  }
-}
 
 final onboardingSeenProvider = AsyncNotifierProvider<OnboardingNotifier, bool>(
   OnboardingNotifier.new,

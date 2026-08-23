@@ -15,7 +15,6 @@ StudyRepository createStudyRepository() => FileStudyRepository();
 class FileStudyRepository implements StudyRepository {
   Directory? _root;
 
-  static const _entitlementKey = 'askance.unlocked';
   static const _onboardingKey = 'askance.onboardingSeen';
 
   Future<Directory> _dir() async {
@@ -81,17 +80,6 @@ class FileStudyRepository implements StudyRepository {
     final file = File('${(await _dir()).path}/images/$key');
     if (file.existsSync()) await file.delete();
   }
-
-  @override
-  Future<bool> loadEntitlement() async =>
-      (await SharedPreferences.getInstance()).getBool(_entitlementKey) ?? false;
-
-  @override
-  Future<void> saveEntitlement(bool unlocked) async =>
-      (await SharedPreferences.getInstance()).setBool(
-        _entitlementKey,
-        unlocked,
-      );
 
   @override
   Future<bool> loadOnboardingSeen() async =>

@@ -21,11 +21,6 @@ abstract class StudyRepository {
 
   Future<void> deleteImage(String key);
 
-  /// Whether the one-time purchase has been recorded on this device.
-  Future<bool> loadEntitlement();
-
-  Future<void> saveEntitlement(bool unlocked);
-
   /// Whether onboarding has been completed at least once.
   Future<bool> loadOnboardingSeen();
 

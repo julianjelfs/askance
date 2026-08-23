@@ -23,10 +23,6 @@ class _NoImages implements StudyRepository {
   @override
   Future<void> deleteImage(String key) async {}
   @override
-  Future<bool> loadEntitlement() async => true;
-  @override
-  Future<void> saveEntitlement(bool value) async {}
-  @override
   Future<bool> loadOnboardingSeen() async => true;
   @override
   Future<void> saveOnboardingSeen(bool seen) async {}
@@ -64,7 +60,7 @@ void main() {
       );
 
   /// The colour of the card's own outline.
-  Color cardBorder(WidgetTester tester) {
+  Color? cardBorder(WidgetTester tester) {
     final container = tester.widget<Container>(
       find
           .descendant(
@@ -73,8 +69,8 @@ void main() {
           )
           .first,
     );
-    final decoration = container.decoration! as BoxDecoration;
-    return decoration.border!.top.color;
+    final decoration = container.foregroundDecoration as BoxDecoration?;
+    return decoration?.border?.top.color;
   }
 
   testWidgets('a card advertises deletion rather than hiding it in a hold', (
@@ -111,12 +107,13 @@ void main() {
     expect(deleted, isTrue);
   });
 
-  testWidgets('asking turns the card\'s own rule red, and adds no second one', (
+  testWidgets('asking frames the borderless card in accent, once', (
     tester,
   ) async {
     await pumpCard(tester);
     await tester.pump();
-    expect(cardBorder(tester), AskanceColors.dividerLight);
+    // In repose the card has no border at all: the surface fill is its shape.
+    expect(cardBorder(tester), isNull);
 
     await tester.longPress(find.byType(StudyThumbnail));
     await tester.pumpAndSettle();

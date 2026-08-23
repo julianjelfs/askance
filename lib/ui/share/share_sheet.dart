@@ -6,32 +6,22 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
-import '../../data/purchase_service.dart';
 import '../../engine/export.dart';
 import '../../state/canvas_session.dart';
 import '../../state/providers.dart';
 import '../../theme.dart';
-import 'qr_share_dialog.dart';
 import '../widgets/controls.dart';
 import '../widgets/glyphs.dart';
 import 'image_output.dart';
-
-/// What the sheet was closed with, when the caller needs to know.
-enum ShareOutcome { kept, discarded }
+import 'qr_share_dialog.dart';
 
 /// A bottom sheet on phone, a 360px centred dialog on desktop. One action on
-/// each surface: SHARE. There is no separate save.
-///
-/// [offerDiscard] turns it into the question asked on the way out of a study
-/// that has never been kept: keep it, or throw it away. Dismissing the sheet
-/// in that mode answers neither, and leaves you on the canvas.
-Future<ShareOutcome?> showShareSheet(
-  BuildContext context,
-  WidgetRef ref, {
-  bool offerDiscard = false,
-}) {
+/// each surface: SHARE. The study is already on the shelf — everything a
+/// study needs to survive happens the moment it is opened — so this is purely
+/// about the ways out: an image file, a print, the clipboard, another device.
+Future<void> showShareSheet(BuildContext context, WidgetRef ref) {
   final wide = MediaQuery.sizeOf(context).width >= kDesktopBreakpoint;
-  return showGeneralDialog<ShareOutcome>(
+  return showGeneralDialog<void>(
     context: context,
     barrierDismissible: true,
     barrierLabel: 'Share this study',
@@ -43,7 +33,7 @@ Future<ShareOutcome?> showShareSheet(
         parent: animation,
         curve: AskanceMotion.slide,
       );
-      final sheet = ShareSheet(wide: wide, offerDiscard: offerDiscard);
+      final sheet = ShareSheet(wide: wide);
       if (wide) {
         return Center(
           child: FadeTransition(
@@ -70,12 +60,9 @@ Future<ShareOutcome?> showShareSheet(
 }
 
 class ShareSheet extends ConsumerStatefulWidget {
-  const ShareSheet({super.key, required this.wide, this.offerDiscard = false});
+  const ShareSheet({super.key, required this.wide});
 
   final bool wide;
-
-  /// Show the way out for a study that has never been kept.
-  final bool offerDiscard;
 
   @override
   ConsumerState<ShareSheet> createState() => _ShareSheetState();
@@ -86,77 +73,11 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
   String _status = '';
   bool _busy = false;
   bool _showingQr = false;
-  bool _buying = false;
 
   CanvasSession get _session => ref.read(sessionProvider);
 
-  bool get _unlocked => ref.watch(entitlementProvider).valueOrNull ?? false;
-
   void _report(String message) {
     if (mounted) setState(() => _status = message);
-  }
-
-  /// A tap on a locked control is intent to buy, not an error.
-  Future<bool> _ensureUnlocked() async {
-    if (_unlocked) return true;
-    await _buy();
-    return ref.read(entitlementProvider).valueOrNull ?? false;
-  }
-
-  Future<void> _buy() async {
-    if (_buying) return;
-    setState(() {
-      _buying = true;
-      _status = '';
-    });
-    final outcome = await ref.read(entitlementProvider.notifier).unlock();
-    if (!mounted) return;
-    setState(() {
-      _buying = false;
-      _status = switch (outcome) {
-        PurchaseOutcome.success => 'Unlocked — thank you',
-        PurchaseOutcome.cancelled => '',
-        PurchaseOutcome.failed => 'Purchase did not complete',
-      };
-    });
-  }
-
-  Future<void> _restore() async {
-    setState(() => _status = 'Restoring…');
-    final outcome = await ref.read(entitlementProvider.notifier).restore();
-    if (!mounted) return;
-    _report(
-      outcome == PurchaseOutcome.success
-          ? 'Restored — thank you'
-          : 'Nothing to restore',
-    );
-  }
-
-  Future<void> _keep() async {
-    if (!await _ensureUnlocked()) return;
-    setState(() => _busy = true);
-    try {
-      await ref.read(studiesProvider.notifier).keep(_session);
-      if (!mounted) return;
-      // Keeping is finished business: close, and let the caller take you to
-      // the shelf. The handoff notes have the desktop stay put and report
-      // "Saved to the shelf", but then the sheet has to be dismissed by hand
-      // for no reason.
-      Navigator.of(context).pop(ShareOutcome.kept);
-    } catch (e) {
-      _report('Could not keep this study');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  void _discard() => Navigator.of(context).pop(ShareOutcome.discarded);
-
-  /// Hands the study to another device: the sheet's content swaps for the
-  /// QR face. Gated like the other ways out of the app.
-  Future<void> _shareQr() async {
-    if (!await _ensureUnlocked()) return;
-    if (mounted) setState(() => _showingQr = true);
   }
 
   Future<Uint8List?> _render() async {
@@ -174,7 +95,6 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
   }
 
   Future<void> _withRender(Future<void> Function(Uint8List png) action) async {
-    if (!await _ensureUnlocked()) return;
     setState(() {
       _busy = true;
       _status = 'Rendering…';
@@ -225,8 +145,6 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
   @override
   Widget build(BuildContext context) {
     final s = DesignScale.of(context);
-    final locked = !_unlocked;
-    final optionOpacity = locked ? 0.4 : 1.0;
 
     return Container(
       color: AskanceColors.ink,
@@ -257,11 +175,7 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
                     children: [
                       Expanded(
                         child: Text(
-                          // Arriving here by pressing back is a different question
-                          // from arriving by pressing SHARE.
-                          widget.offerDiscard
-                              ? 'Keep this study?'
-                              : 'Share this study',
+                          'Share this study',
                           style: AskanceText.sheetTitle().by(s),
                         ),
                       ),
@@ -286,70 +200,22 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
                   ),
                   SizedBox(height: 16 * s),
 
-                  if (locked) ...[
-                    _PaywallBlock(
-                      buying: _buying,
-                      onUnlock: _buy,
-                      onRestore: _restore,
-                    ),
-                    SizedBox(height: 16 * s),
-                  ],
-
-                  ActionButton(
-                    label: 'Keep on the shelf',
-                    trailingIcon: GlyphIcon(
-                      Glyph.star,
-                      size: 14 * s,
-                      color: AskanceColors.ground,
-                    ),
-                    onPressed: _busy ? null : _keep,
-                    opacity: optionOpacity,
-                  ),
-                  if (widget.offerDiscard) ...[
-                    SizedBox(height: 8 * s),
-                    // Free, and never dimmed: throwing work away is not a feature
-                    // anyone should have to pay for.
-                    ActionButton(
-                      label: 'Discard',
-                      trailing: '×',
-                      solid: false,
-                      onDark: true,
-                      onPressed: _busy ? null : _discard,
-                    ),
-                    SizedBox(height: 12 * s),
-                    Text(
-                      'This study is not on the shelf yet. Going back without '
-                      'keeping it loses the photograph you picked.',
-                      style: AskanceText.caption(
-                        11,
-                        color: AskanceColors.mutedDark,
-                      ).by(s),
-                    ),
-                  ],
-                  SizedBox(height: 18 * s),
-
                   Text('SIZE', style: AskanceText.sectionLabel().by(s)),
                   SizedBox(height: 10 * s),
-                  Opacity(
-                    opacity: optionOpacity,
-                    child: SegmentedControl<ExportSize>(
-                      values: ExportSize.values,
-                      selected: _size,
-                      labelOf: (v) => v.label,
-                      onChanged: (v) => setState(() => _size = v),
-                      fontSize: 10,
-                    ),
+                  SegmentedControl<ExportSize>(
+                    values: ExportSize.values,
+                    selected: _size,
+                    labelOf: (v) => v.label,
+                    onChanged: (v) => setState(() => _size = v),
+                    fontSize: 10,
                   ),
                   SizedBox(height: 10 * s),
-                  Opacity(
-                    opacity: optionOpacity,
-                    child: Text(
-                      'Image size · ${_size.note} · exactly what you see',
-                      style: AskanceText.caption(
-                        11,
-                        color: AskanceColors.mutedDark,
-                      ).by(s),
-                    ),
+                  Text(
+                    'Image size · ${_size.note} · exactly what you see',
+                    style: AskanceText.caption(
+                      11,
+                      color: AskanceColors.mutedDark,
+                    ).by(s),
                   ),
                   SizedBox(height: 14 * s),
 
@@ -359,7 +225,6 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
                     solid: false,
                     onDark: true,
                     onPressed: _busy ? null : _save,
-                    opacity: optionOpacity,
                   ),
                   SizedBox(height: 8 * s),
                   ActionButton(
@@ -385,7 +250,6 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
                     solid: false,
                     onDark: true,
                     onPressed: _busy ? null : _print,
-                    opacity: optionOpacity,
                   ),
                   SizedBox(height: 8 * s),
                   ActionButton(
@@ -398,15 +262,15 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
                     solid: false,
                     onDark: true,
                     onPressed: _busy ? null : _copy,
-                    opacity: optionOpacity,
                   ),
                   SizedBox(height: 8 * s),
                   ActionButton(
                     label: 'Share with QR code',
                     solid: false,
                     onDark: true,
-                    onPressed: _busy ? null : _shareQr,
-                    opacity: optionOpacity,
+                    onPressed: _busy
+                        ? null
+                        : () => setState(() => _showingQr = true),
                   ),
 
                   if (_status.isNotEmpty) ...[
@@ -421,74 +285,6 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
                   ],
                 ],
               ),
-      ),
-    );
-  }
-}
-
-/// The unlock lives inside the share sheet. There is no separate upsell screen
-/// and nothing interrupts the user while working.
-class _PaywallBlock extends StatelessWidget {
-  const _PaywallBlock({
-    required this.buying,
-    required this.onUnlock,
-    required this.onRestore,
-  });
-
-  final bool buying;
-  final VoidCallback onUnlock;
-  final VoidCallback onRestore;
-
-  @override
-  Widget build(BuildContext context) {
-    final s = DesignScale.of(context);
-    return Container(
-      padding: EdgeInsets.all(14 * s),
-      foregroundDecoration: const BoxDecoration(
-        border: Border.fromBorderSide(
-          BorderSide(color: AskanceColors.accent, width: kRule),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'ONE PAYMENT · LIFETIME',
-            style: AskanceText.sectionLabel(color: AskanceColors.accent).by(s),
-          ),
-          SizedBox(height: 10 * s),
-          Text(
-            'Keep and export your studies',
-            style: AskanceText.button(17, color: AskanceColors.ground).by(s),
-          ),
-          SizedBox(height: 10 * s),
-          Text(
-            'Looking is free, always. $kPriceLabel unlocks the shelf and every '
-            'way out of the app.',
-            style: AskanceText.body(13, color: AskanceColors.mutedDark).by(s),
-          ),
-          SizedBox(height: 14 * s),
-          ActionButton(
-            label: buying ? 'Confirming…' : 'Unlock — $kPriceLabel',
-            trailing: buying ? null : '→',
-            onPressed: buying ? null : onUnlock,
-          ),
-          SizedBox(height: 10 * s),
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: onRestore,
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 4 * s),
-              child: Text(
-                'RESTORE PURCHASE',
-                style: AskanceText.controlLabel(
-                  10,
-                  color: AskanceColors.mutedDark,
-                ).by(s),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

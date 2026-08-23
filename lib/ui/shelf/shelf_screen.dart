@@ -31,15 +31,20 @@ class ShelfScreen extends ConsumerWidget {
             _TitleRow(),
             Expanded(
               child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(18 * s, 16 * s, 18 * s, 24 * s),
+                padding: EdgeInsets.fromLTRB(
+                  18 * s,
+                  16 * s,
+                  18 * s,
+                  24 * s + MediaQuery.paddingOf(context).bottom,
+                ),
                 child: ShelfGrid(
                   studies: studies,
                   columns: 2,
                   onOpen: (study) => openStudy(context, ref, study),
+                  onNew: () => startStudy(context, ref, fromCamera: false),
                 ),
               ),
             ),
-            _Footer(),
           ],
         ),
       ),
@@ -55,11 +60,15 @@ class ShelfGrid extends ConsumerWidget {
     required this.studies,
     required this.columns,
     required this.onOpen,
+    this.onNew,
   });
 
   final List<Study> studies;
   final int columns;
   final void Function(Study) onOpen;
+
+  /// What the + in the empty slot does; null hides it.
+  final VoidCallback? onNew;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -100,33 +109,42 @@ class ShelfGrid extends ConsumerWidget {
                   ),
                 SizedBox(
                   width: cellWidth,
-                  // Matches a card: 4:5 thumbnail plus the caption block.
-                  child: AspectRatio(
-                    aspectRatio: 4 / 5.9,
-                    child: const EmptySlot(),
-                  ),
+                  child: EmptySlotCard(onNew: onNew),
                 ),
               ],
             );
           },
         ),
-        if (studies.isEmpty) ...[
-          SizedBox(height: 14 * s),
-          Text(
-            'Nothing here yet. Open a photograph and it will '
-            'appear on the shelf once you keep it.',
-            style: AskanceText.caption(11).by(s),
-          ),
-        ],
       ],
     );
   }
 }
 
-class _TitleRow extends StatelessWidget {
+class _TitleRow extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final s = DesignScale.of(context);
+
+    Widget headerButton(String glyph, VoidCallback onTap) => GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        width: 28 * s,
+        height: 28 * s,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: AskanceColors.dividerLight,
+            width: kRuleThin,
+          ),
+        ),
+        child: Text(
+          glyph,
+          style: AskanceText.button(13, color: AskanceColors.ink).by(s),
+        ),
+      ),
+    );
+
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 18 * s),
       decoration: const BoxDecoration(
@@ -146,25 +164,12 @@ class _TitleRow extends StatelessWidget {
             Expanded(
               child: Text('Askance', style: AskanceText.screenTitle().by(s)),
             ),
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => Navigator.of(context).push(
+            headerButton('+', () => showImportSheet(context, ref)),
+            SizedBox(width: 8 * s),
+            headerButton(
+              '?',
+              () => Navigator.of(context).push(
                 NoTransitionRoute(builder: (_) => const OnboardingScreen()),
-              ),
-              child: Container(
-                width: 28 * s,
-                height: 28 * s,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: AskanceColors.dividerLight,
-                    width: kRuleThin,
-                  ),
-                ),
-                child: Text(
-                  '?',
-                  style: AskanceText.button(13, color: AskanceColors.ink).by(s),
-                ),
               ),
             ),
           ],
@@ -174,54 +179,96 @@ class _TitleRow extends StatelessWidget {
   }
 }
 
-class _Footer extends ConsumerWidget {
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final s = DesignScale.of(context);
-    return Container(
-      decoration: const BoxDecoration(
-        border: Border(
-          top: BorderSide(color: AskanceColors.dividerLight, width: kRuleThin),
-        ),
-      ),
-      padding: EdgeInsets.fromLTRB(
-        18 * s,
-        14 * s,
-        18 * s,
-        14 * s + MediaQuery.paddingOf(context).bottom,
-      ),
-      child: Column(
-        children: [
-          ActionButton(
-            label: 'New study from photos',
-            trailing: '→',
-            onPressed: () => startStudy(context, ref, fromCamera: false),
-          ),
-          SizedBox(height: 10 * s),
-          ActionButton(
-            label: canTakePhoto ? 'Take a photo' : 'Open an image file',
-            trailing: '→',
-            solid: false,
-            onPressed: () => startStudy(context, ref, fromCamera: canTakePhoto),
-          ),
-          // The QR transfer needs a camera to point at another screen, so the
-          // scanning end is phone-shaped by nature.
-          if (canTakePhoto) ...[
-            SizedBox(height: 10 * s),
-            ActionButton(
-              label: 'Scan from QR code',
-              trailing: '→',
-              solid: false,
-              onPressed: () => Navigator.of(
-                context,
-              ).push(NoTransitionRoute(builder: (_) => const QrScanScreen())),
+/// The three ways in, from the + in the header: a bottom sheet, so the shelf
+/// itself keeps the whole screen.
+Future<void> showImportSheet(BuildContext context, WidgetRef ref) =>
+    showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Start a study',
+      barrierColor: const Color(0x99201E1D),
+      transitionDuration: AskanceMotion.sheetSlide,
+      pageBuilder: (context, _, _) => const SizedBox.shrink(),
+      transitionBuilder: (sheetContext, animation, _, _) {
+        final s = DesignScale.of(sheetContext);
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: AskanceMotion.slide,
+        );
+
+        // Actions run against the shelf's context: the sheet pops first, and
+        // its own context dies with it.
+        void closeThen(void Function() action) {
+          Navigator.of(sheetContext).pop();
+          action();
+        }
+
+        return Align(
+          alignment: Alignment.bottomCenter,
+          child: SlideTransition(
+            position: Tween(
+              begin: const Offset(0, 1),
+              end: Offset.zero,
+            ).animate(curved),
+            child: Container(
+              width: double.infinity,
+              color: AskanceColors.ink,
+              foregroundDecoration: const BoxDecoration(
+                border: Border(
+                  top: BorderSide(color: AskanceColors.accent, width: kRule),
+                ),
+              ),
+              padding: EdgeInsets.fromLTRB(
+                18 * s,
+                18 * s,
+                18 * s,
+                18 * s + MediaQuery.paddingOf(context).bottom,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ActionButton(
+                    label: 'New study from photos',
+                    trailing: '→',
+                    onPressed: () => closeThen(
+                      () => startStudy(context, ref, fromCamera: false),
+                    ),
+                  ),
+                  SizedBox(height: 10 * s),
+                  ActionButton(
+                    label: canTakePhoto ? 'Take a photo' : 'Open an image file',
+                    trailing: '→',
+                    solid: false,
+                    onDark: true,
+                    onPressed: () => closeThen(
+                      () => startStudy(context, ref, fromCamera: canTakePhoto),
+                    ),
+                  ),
+                  // The QR transfer needs a camera to point at another
+                  // screen, so the scanning end is phone-shaped by nature.
+                  if (canTakePhoto) ...[
+                    SizedBox(height: 10 * s),
+                    ActionButton(
+                      label: 'Scan from QR code',
+                      trailing: '→',
+                      solid: false,
+                      onDark: true,
+                      onPressed: () => closeThen(
+                        () => Navigator.of(context).push(
+                          NoTransitionRoute(
+                            builder: (_) => const QrScanScreen(),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
-          ],
-        ],
-      ),
+          ),
+        );
+      },
     );
-  }
-}
 
 /// Picks a photograph and opens it on the canvas. Both shelf actions land here.
 Future<void> startStudy(
@@ -235,8 +282,10 @@ Future<void> startStudy(
   final session = ref.read(sessionProvider);
   final image = await decodeImage(picked.bytes);
   session.startFreshStudy();
-  session.imageKey = null;
   session.loadImage(image, picked.bytes);
+  // Straight onto the shelf: with nothing gated there is no keep step, and a
+  // photograph you opened should already be safe when you look up.
+  await ref.read(studiesProvider.notifier).keep(session);
 
   if (!context.mounted) return;
   if (MediaQuery.sizeOf(context).width < kDesktopBreakpoint) {
