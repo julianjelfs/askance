@@ -202,9 +202,9 @@ class _RailState extends ConsumerState<_Rail> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _brand(),
-          const Rule(),
+          const SizedBox(height: kRule),
           _studyBlock(session),
-          const Rule(),
+          const SizedBox(height: kRule),
           // Brand, study and footer are pinned; View through Grid scrolls,
           // because the tallest state overflows 760px.
           Expanded(
@@ -213,25 +213,25 @@ class _RailState extends ConsumerState<_Rail> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   _viewBlock(session),
-                  const Rule(),
+                  const SizedBox(height: kRule),
                   _controlBlock(
                     'VALUES',
                     '${session.settings.steps} STEPS',
                     ValuesControl(session: session),
                   ),
-                  const Rule(),
+                  const SizedBox(height: kRule),
                   _controlBlock(
                     'WHERE THE STEPS FALL',
                     BiasControl.readout(session.settings.bias),
                     BiasControl(session: session),
                   ),
-                  const Rule(),
+                  const SizedBox(height: kRule),
                   _controlBlock(
                     'HOW THE SHAPES FORM',
                     null,
                     SmoothingControl(session: session),
                   ),
-                  const Rule(),
+                  const SizedBox(height: kRule),
                   _controlBlock(
                     'DETAIL',
                     '${(session.settings.detail * 100).round()}',
@@ -244,19 +244,19 @@ class _RailState extends ConsumerState<_Rail> {
                       ],
                     ),
                   ),
-                  const Rule(),
+                  const SizedBox(height: kRule),
                   _controlBlock(
                     'ROOT OF THE SCALE',
                     null,
                     ScaleControl(session: session),
                   ),
-                  const Rule(),
+                  const SizedBox(height: kRule),
                   _controlBlock('GRID', null, GridControl(session: session)),
                 ],
               ),
             ),
           ),
-          const Rule(),
+          const SizedBox(height: kRule),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
             child: Text(
