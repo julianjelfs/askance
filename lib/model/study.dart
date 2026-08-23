@@ -24,7 +24,7 @@ class StudySettings {
     this.gridDivisions = 4,
     this.numbers = true,
     this.smoothing = Smoothing.gaussian,
-    this.adaptiveDetail = true,
+    this.lockDetail = false,
     this.bias = 0,
     this.splitPosition = 0.5,
     this.randomSeed = 0,
@@ -43,11 +43,11 @@ class StudySettings {
   /// How the photograph is simplified before it is quantised.
   final Smoothing smoothing;
 
-  /// Whether the detail control follows the zoom. Adaptive is the blur in
-  /// screen space — zooming in resolves finer shapes, the way leaning closer
-  /// to a scene does. Pinned holds the simplification still against the
-  /// photograph, so zooming magnifies the same shapes instead.
-  final bool adaptiveDetail;
+  /// Whether the detail is locked against the zoom. Unlocked, the blur is
+  /// in screen space — zooming in resolves finer shapes, the way leaning
+  /// closer to a scene does. Locked, the simplification holds still against
+  /// the photograph and zooming magnifies the same shapes instead.
+  final bool lockDetail;
 
   /// Slides every threshold together, in fractions of the L* range.
   ///
@@ -93,7 +93,7 @@ class StudySettings {
     int? gridDivisions,
     bool? numbers,
     Smoothing? smoothing,
-    bool? adaptiveDetail,
+    bool? lockDetail,
     double? bias,
     double? splitPosition,
     int? randomSeed,
@@ -108,7 +108,7 @@ class StudySettings {
     gridDivisions: gridDivisions ?? this.gridDivisions,
     numbers: numbers ?? this.numbers,
     smoothing: smoothing ?? this.smoothing,
-    adaptiveDetail: adaptiveDetail ?? this.adaptiveDetail,
+    lockDetail: lockDetail ?? this.lockDetail,
     bias: bias ?? this.bias,
     splitPosition: splitPosition ?? this.splitPosition,
     randomSeed: randomSeed ?? this.randomSeed,
@@ -125,7 +125,7 @@ class StudySettings {
     'gridDivisions': gridDivisions,
     'numbers': numbers,
     'smoothing': smoothing.name,
-    'adaptiveDetail': adaptiveDetail,
+    'lockDetail': lockDetail,
     'bias': bias,
     'splitPosition': splitPosition,
     'randomSeed': randomSeed,
@@ -153,9 +153,12 @@ class StudySettings {
       json['smoothing'],
       Smoothing.gaussian,
     ),
-    adaptiveDetail: json['adaptiveDetail'] is bool
-        ? json['adaptiveDetail']! as bool
-        : true,
+    lockDetail: json['lockDetail'] is bool
+        ? json['lockDetail']! as bool
+        // One build persisted this inverted, as adaptiveDetail.
+        : json['adaptiveDetail'] is bool
+        ? !(json['adaptiveDetail']! as bool)
+        : false,
     bias: _double(json['bias'], 0).clamp(-maxBias, maxBias),
     splitPosition: _double(json['splitPosition'], 0.5).clamp(0.0, 1.0),
     randomSeed: _int(json['randomSeed'], 0),
@@ -184,7 +187,7 @@ class StudySettings {
       other.gridDivisions == gridDivisions &&
       other.numbers == numbers &&
       other.smoothing == smoothing &&
-      other.adaptiveDetail == adaptiveDetail &&
+      other.lockDetail == lockDetail &&
       other.bias == bias &&
       other.splitPosition == splitPosition &&
       other.randomSeed == randomSeed &&
@@ -201,7 +204,7 @@ class StudySettings {
     gridDivisions,
     numbers,
     smoothing,
-    adaptiveDetail,
+    lockDetail,
     bias,
     splitPosition,
     randomSeed,

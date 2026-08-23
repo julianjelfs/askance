@@ -142,9 +142,9 @@ class CanvasSession extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setAdaptiveDetail(bool value) {
-    if (value == settings.adaptiveDetail) return;
-    settings = settings.copyWith(adaptiveDetail: value);
+  void setLockDetail(bool value) {
+    if (value == settings.lockDetail) return;
+    settings = settings.copyWith(lockDetail: value);
     _scheduleRegions();
     _persistSoon();
     notifyListeners();
@@ -345,7 +345,7 @@ class CanvasSession extends ChangeNotifier {
       steps: settings.steps,
       bias: settings.bias,
       smoothing: settings.smoothing,
-      adaptiveDetail: settings.adaptiveDetail,
+      lockDetail: settings.lockDetail,
     );
     // A newer request landed while this one was in flight.
     if (request != _regionRequest) return;
@@ -368,7 +368,7 @@ class CanvasSession extends ChangeNotifier {
       detail: settings.detail,
       view: view,
       smoothing: settings.smoothing,
-      adaptiveDetail: settings.adaptiveDetail,
+      lockDetail: settings.lockDetail,
     );
     await blur.settled;
   }

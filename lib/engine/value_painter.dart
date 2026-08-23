@@ -92,9 +92,11 @@ class ValuePainter extends CustomPainter {
     }
 
     if (drawGrid && settings.grid != GridMode.off) {
-      // Divides the picture, not the frame: with the image shown whole the
-      // two are no longer the same thing.
-      paintGrid(canvas, area, settings.grid, settings.gridDivisions);
+      // Divides the photograph, not the view: the grid is drawn across the
+      // whole image at its current size and clipped to what shows, so
+      // zooming magnifies the squares with the picture instead of quietly
+      // re-dividing whatever happens to be on screen.
+      paintGrid(canvas, dest, area, settings.grid, settings.gridDivisions);
     }
   }
 
@@ -238,19 +240,29 @@ class RegionOverlay {
   }
 }
 
-/// The grid, in screen space, over everything. Never baked into the processed
-/// raster — otherwise it rides the zoom transform and jumps.
-void paintGrid(Canvas canvas, Rect area, GridMode mode, int divisions) {
-  if (mode == GridMode.off || area.isEmpty) return;
+/// The grid, over everything, anchored to the photograph: [image] is the
+/// destination rect of the whole picture at the current zoom and pan, and the
+/// rules divide it, clipped to [visible]. Drawn in screen space rather than
+/// baked into the processed raster so the rule weight never rides the zoom —
+/// but the spacing does, which is what makes the grid a division of the
+/// picture rather than of whatever is on screen.
+void paintGrid(
+  Canvas canvas,
+  Rect image,
+  Rect visible,
+  GridMode mode,
+  int divisions,
+) {
+  if (mode == GridMode.off || visible.isEmpty || image.isEmpty) return;
   final paint = Paint()
     ..color = AskanceColors.grid
     ..strokeWidth = kRule;
-  final spacing = area.width / divisions;
-  final size = area.size;
+  final spacing = image.width / divisions;
+  final size = image.size;
 
   canvas.save();
-  canvas.clipRect(area);
-  canvas.translate(area.left, area.top);
+  canvas.clipRect(visible);
+  canvas.translate(image.left, image.top);
   if (mode == GridMode.square) {
     for (var x = spacing; x < size.width - 0.01; x += spacing) {
       canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);

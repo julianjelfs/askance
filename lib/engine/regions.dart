@@ -142,7 +142,7 @@ Future<LabelledRegions> computeRegions({
   required int steps,
   double bias = 0,
   Smoothing smoothing = Smoothing.gaussian,
-  bool adaptiveDetail = true,
+  bool lockDetail = false,
 }) async {
   const empty = (regions: <ValueRegion>[], gridWidth: 0, gridHeight: 0);
   final stride = labelStride(outputPx.width);
@@ -163,7 +163,7 @@ Future<LabelledRegions> computeRegions({
     detail: detail,
     view: view,
     smoothing: smoothing,
-    adaptiveDetail: adaptiveDetail,
+    lockDetail: lockDetail,
   );
   try {
     if (blurred.width != gw || blurred.height != gh) return empty;

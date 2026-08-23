@@ -296,7 +296,7 @@ Future<ui.Image> renderBlurredSource({
   required double detail,
   required ViewTransform view,
   Smoothing smoothing = Smoothing.gaussian,
-  bool adaptiveDetail = true,
+  bool lockDetail = false,
   double quadrantRadius = kKuwaharaRadius,
 }) async {
   final sourceSize = Size(source.width.toDouble(), source.height.toDouble());
@@ -307,12 +307,12 @@ Future<ui.Image> renderBlurredSource({
   // along the edges of the picture.
   final area = view.visible(sourceSize, outputPx);
 
-  // Adaptive detail is the blur in screen space: zooming in resolves finer
-  // shapes, the way leaning closer to a scene does. Pinned detail scales the
-  // sigma with the zoom instead, so the blur holds still against the
-  // photograph and zooming magnifies the same simplification — the way
+  // By default the blur is in screen space: zooming in resolves finer
+  // shapes, the way leaning closer to a scene does. Locking the detail
+  // scales the sigma with the zoom instead, so the blur holds still against
+  // the photograph and zooming magnifies the same simplification — the way
   // leaning closer to a painting doesn't add detail the painter left out.
-  final zoomHold = adaptiveDetail ? 1.0 : view.zoom;
+  final zoomHold = lockDetail ? view.zoom : 1.0;
   final sigma = blurSigma(detail, outputPx.width) * zoomHold;
 
   // How wide a window the flattening pass wants, if it is going to run. Worked
@@ -478,7 +478,7 @@ Object blurKeyFor({
   required double detail,
   required ViewTransform view,
   required Smoothing smoothing,
-  required bool adaptiveDetail,
+  required bool lockDetail,
 }) => Object.hash(
   outputPx.width,
   outputPx.height,
@@ -486,7 +486,7 @@ Object blurKeyFor({
   view.zoom,
   view.offset,
   smoothing,
-  adaptiveDetail,
+  lockDetail,
 );
 
 /// Wraps the compiled fragment program and knows how to set its uniforms.

@@ -26,7 +26,7 @@ void main() {
         grid: GridMode.diamond,
         gridDivisions: 9,
         numbers: false,
-        adaptiveDetail: false,
+        lockDetail: true,
         splitPosition: 0.25,
       );
       expect(StudySettings.fromJson(original.toJson()), original);

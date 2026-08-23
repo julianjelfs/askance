@@ -240,7 +240,7 @@ class _RailState extends ConsumerState<_Rail> {
                       children: [
                         DetailControl(session: session),
                         const SizedBox(height: 12),
-                        AdaptiveDetailControl(session: session),
+                        LockDetailControl(session: session),
                       ],
                     ),
                   ),
