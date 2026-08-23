@@ -75,8 +75,14 @@ class ShelfGrid extends ConsumerWidget {
         SizedBox(height: 10 * s),
         LayoutBuilder(
           builder: (context, constraints) {
+            // The first frame on Android can arrive with zero width, and a
+            // gap subtracted from nothing is a negative cell, which is a
+            // constraints assertion rather than an empty shelf.
             final cellWidth =
-                (constraints.maxWidth - gap * (columns - 1)) / columns;
+                ((constraints.maxWidth - gap * (columns - 1)) / columns).clamp(
+                  0.0,
+                  double.infinity,
+                );
             return Wrap(
               spacing: gap,
               runSpacing: gap,
