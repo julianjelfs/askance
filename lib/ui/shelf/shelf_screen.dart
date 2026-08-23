@@ -37,11 +37,16 @@ class ShelfScreen extends ConsumerWidget {
                   18 * s,
                   24 * s + MediaQuery.paddingOf(context).bottom,
                 ),
-                child: ShelfGrid(
-                  studies: studies,
-                  columns: 2,
-                  onOpen: (study) => openStudy(context, ref, study),
-                  onNew: () => startStudy(context, ref, fromCamera: false),
+                // Pinned left, as on the desktop overlay: a grid narrower
+                // than the screen otherwise floats in the middle of it.
+                child: Align(
+                  alignment: Alignment.topLeft,
+                  child: ShelfGrid(
+                    studies: studies,
+                    columns: 2,
+                    onOpen: (study) => openStudy(context, ref, study),
+                    onNew: () => startStudy(context, ref, fromCamera: false),
+                  ),
                 ),
               ),
             ),
