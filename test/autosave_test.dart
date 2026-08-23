@@ -182,6 +182,23 @@ void main() {
     expect(t.session.imageKey, isNull);
   });
 
+  test('clearing the session leaves nothing shareable and writes nothing', () {
+    fakeAsync((async) {
+      final t = sessionUnderTest();
+      t.session.openStudy(studyNamed('a'));
+      t.session.setSteps(6);
+      t.session.clear();
+      async.elapse(const Duration(seconds: 2));
+
+      expect(t.session.studyId, isNull);
+      expect(t.session.hasImage, isFalse);
+      expect(t.session.imageKey, isNull);
+      // The pending debounced write dies with the study: a deleted study must
+      // not be resurrected by its own autosave.
+      expect(t.writes, isEmpty);
+    });
+  });
+
   test('chrome and peek are not settings and never write', () {
     fakeAsync((async) {
       final t = sessionUnderTest();

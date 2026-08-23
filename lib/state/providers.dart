@@ -105,6 +105,12 @@ class StudiesNotifier extends AsyncNotifier<List<Study>> {
   }
 
   Future<void> delete(String id) async {
+    // If the study being deleted is the one open in the session, empty the
+    // session too — otherwise its ghost stays on the desktop stage, named in
+    // the rail and still shareable.
+    final session = ref.read(sessionProvider);
+    if (session.studyId == id) session.clear();
+
     final repo = ref.read(repositoryProvider);
     final existing = state.valueOrNull ?? const <Study>[];
     final victim = existing.where((s) => s.id == id).firstOrNull;

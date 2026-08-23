@@ -55,7 +55,9 @@ class _DesktopScreenState extends ConsumerState<DesktopScreen> {
                 width: 284,
                 child: _Rail(
                   session: session,
-                  onShelf: () => setState(() => _shelfOpen = !_shelfOpen),
+                  // Opens only: closing is the overlay's own ×, so the
+                  // button cannot strand you on an empty stage.
+                  onShelf: () => setState(() => _shelfOpen = true),
                   onKept: () => setState(() => _shelfOpen = true),
                 ),
               ),

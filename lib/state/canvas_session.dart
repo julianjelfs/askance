@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
+import 'package:flutter/scheduler.dart';
 
 import '../engine/engine.dart';
 import '../engine/blur_pass.dart';
@@ -96,6 +97,32 @@ class CanvasSession extends ChangeNotifier {
     openTool = null;
     chromeVisible = true;
     _scheduleRegions();
+    notifyListeners();
+  }
+
+  /// Empties the session entirely — deleting the open study from the shelf
+  /// must not leave a ghost of it here, still shareable. Nothing is
+  /// persisted: the study is going, not settling.
+  void clear() {
+    _persistDebounce?.cancel();
+    _persistDebounce = null;
+    studyId = null;
+    imageKey = null;
+    name = 'Untitled study';
+    settings = const StudySettings();
+    splitPosition = settings.splitPosition;
+    view = const ViewTransform();
+    regions = null;
+    imageBytes = null;
+    final old = image;
+    image = null;
+    if (old != null) {
+      // The stage may still be rasterising the frame that shows it.
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        SchedulerBinding.instance.addPostFrameCallback((_) => old.dispose());
+        SchedulerBinding.instance.scheduleFrame();
+      });
+    }
     notifyListeners();
   }
 
