@@ -4,13 +4,19 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
-import 'value_scale.dart';
-
 /// How the quantised image is presented.
 enum ViewMode {
   value('VAL', 'VALUE MAP'),
   photo('PHOTO', 'PHOTOGRAPH'),
   split('SPLIT', 'SPLIT'),
+
+  /// The value map painted in arbitrary hues of the correct values. Tapping
+  /// it again deals another palette: the colours keep changing, the values
+  /// never do, which is the point.
+  ///
+  /// Sits above skeleton so the numbers toggle stays attached to the EDGE
+  /// button it belongs to.
+  random('RND', 'RANDOM'),
   skeleton('EDGE', 'SKELETON');
 
   const ViewMode(this.railLabel, this.longLabel);
@@ -355,7 +361,6 @@ Future<ui.Image> renderBlurredSource({
     local.bottom * scaleY,
   );
 
-
   // The blur must run over the *magnified* pixels, in output space, and this
   // has to be spelled out with a layer rather than hung off the paint.
   //
@@ -487,7 +492,7 @@ class ValueShader {
     required Rect area,
     required Size devicePx,
     required int steps,
-    required ValueScale scale,
+    required List<Color> ramp,
     required bool skeleton,
     required double bias,
   }) {
@@ -504,7 +509,6 @@ class ValueShader {
       ..setFloat(8, skeletonLineWidth(devicePx.width))
       ..setFloat(9, bias);
 
-    final ramp = scale.ramp(steps);
     for (var i = 0; i < 7; i++) {
       final c = ramp[math.min(i, ramp.length - 1)];
       shader

@@ -22,6 +22,21 @@ enum ValueScale {
   Color get dark => Color(_dark);
   Color get light => Color(_light);
 
+  /// The even L* each of [steps] bands aims for, darkest first. Shared with
+  /// the random ramp, so RANDOM shows exactly the values VALUE does.
+  List<double> lstarTargets(int steps) {
+    final la = _lstarOfEndpoint(dark);
+    final lz = _lstarOfEndpoint(light);
+    return List<double>.generate(
+      steps,
+      (i) => steps == 1 ? la : la + (lz - la) * (i / (steps - 1)),
+    );
+  }
+
+  static double _lstarOfEndpoint(Color c) => lstarOfLuminance(
+    luminance(srgbToLinear(c.r), srgbToLinear(c.g), srgbToLinear(c.b)),
+  );
+
   /// The ramp for [steps] bands, solved for **even L*** between the two
   /// endpoints rather than interpolated in sRGB. Band 0 is darkest.
   ///
@@ -37,14 +52,12 @@ enum ValueScale {
 
     final ya = luminance(ar, ag, ab);
     final yz = luminance(zr, zg, zb);
-    final la = lstarOfLuminance(ya);
-    final lz = lstarOfLuminance(yz);
+    final targets = lstarTargets(steps);
 
     return List<Color>.generate(steps, (i) {
-      final target = steps == 1 ? la : la + (lz - la) * (i / (steps - 1));
       final s = yz == ya
           ? 0.0
-          : ((luminanceOfLstar(target) - ya) / (yz - ya)).clamp(0.0, 1.0);
+          : ((luminanceOfLstar(targets[i]) - ya) / (yz - ya)).clamp(0.0, 1.0);
       return Color.fromARGB(
         255,
         clampChannel8(ar + (zr - ar) * s),

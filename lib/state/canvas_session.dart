@@ -159,9 +159,28 @@ class CanvasSession extends ChangeNotifier {
   }
 
   void setMode(ViewMode mode) {
-    if (mode == settings.mode) return;
-    settings = settings.copyWith(mode: mode);
-    if (mode == ViewMode.skeleton) _scheduleRegions();
+    if (mode == settings.mode) {
+      // Tapping RANDOM while it is showing is the gesture of the mode:
+      // another deal of colours over the same values. Every other mode,
+      // SPLIT included, treats a repeat tap as nothing new.
+      if (mode != ViewMode.random) return;
+      settings = settings.copyWith(randomSeed: settings.randomSeed + 1);
+    } else {
+      settings = settings.copyWith(
+        mode: mode,
+        // A split is a comparison laid over whatever was showing, so it keeps
+        // the colours it was entered from; from anywhere else it keeps the
+        // base it last had.
+        splitBase: mode == ViewMode.split
+            ? (settings.mode == ViewMode.random
+                  ? ViewMode.random
+                  : settings.mode == ViewMode.value
+                  ? ViewMode.value
+                  : settings.splitBase)
+            : null,
+      );
+      if (mode == ViewMode.skeleton) _scheduleRegions();
+    }
     _persistSoon();
     notifyListeners();
   }

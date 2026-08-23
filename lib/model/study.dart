@@ -26,6 +26,8 @@ class StudySettings {
     this.smoothing = Smoothing.gaussian,
     this.bias = 0,
     this.splitPosition = 0.5,
+    this.randomSeed = 0,
+    this.splitBase = ViewMode.value,
     this.view = const ViewTransform(),
   });
 
@@ -47,6 +49,17 @@ class StudySettings {
   /// on, which is what an under- or over-exposed photograph needs.
   final double bias;
   final double splitPosition;
+
+  /// Which deal of colours the RANDOM mode is showing. Kept with the study so
+  /// a palette that sparked something survives closing it; tapping RANDOM
+  /// again moves the seed on.
+  final int randomSeed;
+
+  /// What the processed half of a SPLIT shows: the grey ramp or the random
+  /// palette, whichever was on screen when SPLIT was tapped. The split is a
+  /// comparison against the photograph, not a mode of its own, so it keeps
+  /// the colours it was laid over. Only [ViewMode.value] or [ViewMode.random].
+  final ViewMode splitBase;
 
   /// Where the study was left: zoom, and pan as a fraction of the frame.
   ///
@@ -75,6 +88,8 @@ class StudySettings {
     Smoothing? smoothing,
     double? bias,
     double? splitPosition,
+    int? randomSeed,
+    ViewMode? splitBase,
     ViewTransform? view,
   }) => StudySettings(
     steps: steps ?? this.steps,
@@ -87,6 +102,8 @@ class StudySettings {
     smoothing: smoothing ?? this.smoothing,
     bias: bias ?? this.bias,
     splitPosition: splitPosition ?? this.splitPosition,
+    randomSeed: randomSeed ?? this.randomSeed,
+    splitBase: splitBase ?? this.splitBase,
     view: view ?? this.view,
   );
 
@@ -101,6 +118,8 @@ class StudySettings {
     'smoothing': smoothing.name,
     'bias': bias,
     'splitPosition': splitPosition,
+    'randomSeed': randomSeed,
+    'splitBase': splitBase.name,
     'zoom': view.zoom,
     'panX': view.offset.dx,
     'panY': view.offset.dy,
@@ -126,6 +145,12 @@ class StudySettings {
     ),
     bias: _double(json['bias'], 0).clamp(-maxBias, maxBias),
     splitPosition: _double(json['splitPosition'], 0.5).clamp(0.0, 1.0),
+    randomSeed: _int(json['randomSeed'], 0),
+    splitBase:
+        _enumByName(ViewMode.values, json['splitBase'], ViewMode.value) ==
+            ViewMode.random
+        ? ViewMode.random
+        : ViewMode.value,
     view: ViewTransform(
       zoom: _double(
         json['zoom'],
@@ -148,6 +173,8 @@ class StudySettings {
       other.smoothing == smoothing &&
       other.bias == bias &&
       other.splitPosition == splitPosition &&
+      other.randomSeed == randomSeed &&
+      other.splitBase == splitBase &&
       other.view == view;
 
   @override
@@ -162,6 +189,8 @@ class StudySettings {
     smoothing,
     bias,
     splitPosition,
+    randomSeed,
+    splitBase,
     view,
   );
 }

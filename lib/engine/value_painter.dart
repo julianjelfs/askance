@@ -6,6 +6,7 @@ import '../model/study.dart';
 import '../theme.dart';
 import 'deferred_disposer.dart';
 import 'engine.dart';
+import 'random_ramp.dart';
 import 'regions.dart';
 
 /// Paints the study: the quantised value map, the untouched photograph, the
@@ -124,7 +125,16 @@ class ValuePainter extends CustomPainter {
       area: area,
       devicePx: devicePx,
       steps: settings.steps,
-      scale: settings.scale,
+      ramp:
+          settings.mode == ViewMode.random ||
+              (settings.mode == ViewMode.split &&
+                  settings.splitBase == ViewMode.random)
+          ? randomRamp(
+              scale: settings.scale,
+              steps: settings.steps,
+              seed: settings.randomSeed,
+            )
+          : settings.scale.ramp(settings.steps),
       skeleton: settings.mode == ViewMode.skeleton,
       bias: settings.bias,
     )..setImageSampler(0, source);
