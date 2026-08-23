@@ -63,6 +63,21 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       ),
     ),
     (
+      title: 'Spark your creativity.',
+      body:
+          'Random mode repaints the study in arbitrary colours of exactly the '
+          'right values. Deal palette after palette — the picture holds '
+          'together every time, because coherence lives in the values, not '
+          'the colours. When one sparks something, paint it.',
+      cta: 'Next',
+      settings: StudySettings(
+        steps: 5,
+        detail: 0.45,
+        mode: ViewMode.random,
+        randomSeed: 7,
+      ),
+    ),
+    (
       title: 'Grid when you want it.',
       body:
           'Square or diamond, as fine as you like — then get it out of the way '
