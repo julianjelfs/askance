@@ -8,7 +8,7 @@ void main() {
     test('defaults match the state table', () {
       const s = StudySettings();
       expect(s.steps, 3);
-      expect(s.scale, ValueScale.graphite);
+      expect(s.scale, ValueScale.grey);
       expect(s.detail, 0.5);
       expect(s.mode, ViewMode.value);
       expect(s.grid, GridMode.off);
@@ -40,7 +40,7 @@ void main() {
           'mode': 'nonsense',
         });
         expect(s.steps, 3);
-        expect(s.scale, ValueScale.graphite);
+        expect(s.scale, ValueScale.grey);
         expect(s.mode, ViewMode.value);
       },
     );

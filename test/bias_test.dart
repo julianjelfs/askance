@@ -77,7 +77,7 @@ void main() {
     // Mid grey is L* 53.6, which at three steps is the middle band. The
     // renumbered uniforms would show up here first as a wrong colour.
     final painted = await render(128, bias: 0);
-    final expected = ValueScale.graphite.ramp(3)[1];
+    final expected = ValueScale.grey.ramp(3)[1];
     expect(painted.toARGB32(), expected.toARGB32());
   });
 
@@ -85,12 +85,12 @@ void main() {
     // L* 53.6 sits just above the 33.3 boundary; pushing up past 66.7 needs
     // a bias of about 0.13.
     final lifted = await render(128, bias: 0.2);
-    expect(lifted.toARGB32(), ValueScale.graphite.ramp(3)[2].toARGB32());
+    expect(lifted.toARGB32(), ValueScale.grey.ramp(3)[2].toARGB32());
   });
 
   test('a negative bias drops it into the band below', () async {
     final dropped = await render(128, bias: -0.21);
-    expect(dropped.toARGB32(), ValueScale.graphite.ramp(3)[0].toARGB32());
+    expect(dropped.toARGB32(), ValueScale.grey.ramp(3)[0].toARGB32());
   });
 
   test('the labelling pass reads the same bands as the screen', () {

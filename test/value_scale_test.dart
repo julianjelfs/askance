@@ -28,10 +28,22 @@ void main() {
     });
   });
 
+  // The scale is continuous now; these sample the legacy hues plus a spread
+  // of arbitrary ones.
+  final scales = [
+    ValueScale.grey,
+    ValueScale.warm,
+    ValueScale.sepia,
+    ValueScale.cool,
+    ValueScale.tinted(75),
+    ValueScale.tinted(140),
+    ValueScale.tinted(288),
+  ];
+
   group('ramp', () {
-    test('Graphite at 3 steps gives the specified middle band', () {
+    test('grey at 3 steps gives the specified middle band', () {
       // The README's sanity check. sRGB interpolation gives ~132 here.
-      final ramp = ValueScale.graphite.ramp(3);
+      final ramp = ValueScale.grey.ramp(3);
       final mid = ramp[1];
       expect(
         [(mid.r * 255).round(), (mid.g * 255).round(), (mid.b * 255).round()],
@@ -40,7 +52,7 @@ void main() {
     });
 
     test('endpoints are preserved exactly at every step count', () {
-      for (final scale in ValueScale.values) {
+      for (final scale in scales) {
         for (var n = 2; n <= 7; n++) {
           final ramp = scale.ramp(n);
           expect(
@@ -58,7 +70,7 @@ void main() {
     });
 
     test('bands are evenly spaced in L*, and ascend', () {
-      for (final scale in ValueScale.values) {
+      for (final scale in scales) {
         for (var n = 3; n <= 7; n++) {
           final ls = scale
               .ramp(n)
@@ -84,8 +96,53 @@ void main() {
 
     test('band count matches the step count across the whole 2..7 range', () {
       for (var n = 2; n <= 7; n++) {
-        expect(ValueScale.graphite.ramp(n).length, n);
+        expect(ValueScale.grey.ramp(n).length, n);
       }
+    });
+
+    test('moving the tint never moves a value', () {
+      // Every scale shares the grey endpoints' L*, so each band holds its L*
+      // whatever the hue — the whole justification for a continuous control.
+      final reference = ValueScale.grey.lstarTargets(5);
+      for (final scale in scales) {
+        final ls = scale
+            .ramp(5)
+            .map(
+              (c) => lstarOfSrgb8(
+                (c.r * 255).round(),
+                (c.g * 255).round(),
+                (c.b * 255).round(),
+              ),
+            )
+            .toList();
+        for (var i = 0; i < 5; i++) {
+          expect(ls[i], closeTo(reference[i], 0.6), reason: '$scale band $i');
+        }
+      }
+    });
+
+    test('a tinted mid band actually carries the tint', () {
+      final mid = ValueScale.warm.ramp(3)[1];
+      expect(mid.r, greaterThan(mid.b), reason: 'warm should lean red');
+      final cool = ValueScale.cool.ramp(3)[1];
+      expect(cool.b, greaterThan(cool.r), reason: 'cool should lean blue');
+    });
+  });
+
+  group('persistence', () {
+    test('grey and tints round-trip', () {
+      expect(ValueScale.fromJson(ValueScale.grey.toJson()), ValueScale.grey);
+      final tint = ValueScale.tinted(123.5);
+      expect(ValueScale.fromJson(tint.toJson()), tint);
+    });
+
+    test('the old enum names map onto their fixed hues', () {
+      expect(ValueScale.fromJson('graphite'), ValueScale.grey);
+      expect(ValueScale.fromJson('warm'), ValueScale.warm);
+      expect(ValueScale.fromJson('sepia'), ValueScale.sepia);
+      expect(ValueScale.fromJson('cool'), ValueScale.cool);
+      expect(ValueScale.fromJson('chartreuse'), ValueScale.grey);
+      expect(ValueScale.fromJson(null), ValueScale.grey);
     });
   });
 }

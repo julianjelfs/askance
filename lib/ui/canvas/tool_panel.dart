@@ -71,9 +71,18 @@ class ScaleControl extends StatelessWidget {
   const ScaleControl({super.key, required this.session});
   final CanvasSession session;
 
+  /// The strip shows the tint each hue actually produces — the mid band of
+  /// its own three-step ramp — not a saturated spectrum. A rainbow would
+  /// promise colours the scale never paints; vivid is RANDOM's job.
+  static final List<Color> _stripTints = [
+    for (var h = 0; h <= 360; h += 15)
+      ValueScale.tinted(h.toDouble()).ramp(3)[1],
+  ];
+
   @override
   Widget build(BuildContext context) {
     final s = DesignScale.of(context);
+    final selected = session.settings.scale;
     return SizedBox(
       height: 32 * s,
       child: Row(
@@ -81,32 +90,82 @@ class ScaleControl extends StatelessWidget {
         // their own, and collapses to a hairline.
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (final scale in ValueScale.values) ...[
-            Expanded(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => session.setScale(scale),
-                child: Container(
-                  foregroundDecoration: BoxDecoration(
-                    border: Border.all(
-                      color: scale == session.settings.scale
-                          ? AskanceColors.accent
-                          : AskanceColors.swatchBorder,
-                      width: kRule,
-                    ),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      for (final band in scale.swatchBands)
-                        Expanded(child: ColoredBox(color: band)),
-                    ],
-                  ),
+          // Grey is not a hue, it is the absence of one, so it gets its own
+          // cell rather than a point on the strip.
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => session.setScale(ValueScale.grey),
+            child: Container(
+              width: 44 * s,
+              foregroundDecoration: BoxDecoration(
+                border: Border.all(
+                  color: selected.hue == null
+                      ? AskanceColors.accent
+                      : AskanceColors.swatchBorder,
+                  width: kRule,
                 ),
               ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final band in ValueScale.grey.swatchBands)
+                    Expanded(child: ColoredBox(color: band)),
+                ],
+              ),
             ),
-            if (scale != ValueScale.values.last) SizedBox(width: 8 * s),
-          ],
+          ),
+          SizedBox(width: 8 * s),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final width = constraints.maxWidth;
+                void report(Offset local) => session.setScale(
+                  ValueScale.tinted((local.dx / width).clamp(0.0, 1.0) * 360),
+                );
+                final hue = selected.hue;
+                return GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTapDown: (d) => report(d.localPosition),
+                  onHorizontalDragStart: (d) => report(d.localPosition),
+                  onHorizontalDragUpdate: (d) => report(d.localPosition),
+                  child: Container(
+                    foregroundDecoration: BoxDecoration(
+                      border: Border.all(
+                        color: hue != null
+                            ? AskanceColors.accent
+                            : AskanceColors.swatchBorder,
+                        width: kRule,
+                      ),
+                    ),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(colors: _stripTints),
+                          ),
+                        ),
+                        if (hue != null)
+                          // The same 4px thumb the sliders use.
+                          Positioned(
+                            left: (hue / 360 * width - 2 * s).clamp(
+                              0.0,
+                              width - 4 * s,
+                            ),
+                            top: 0,
+                            bottom: 0,
+                            width: 4 * s,
+                            child: const ColoredBox(
+                              color: AskanceColors.accent,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
         ],
       ),
     );

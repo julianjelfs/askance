@@ -16,7 +16,13 @@ void main() {
   );
 
   test('every band lands on the grey ramp\'s L*, across scales and seeds', () {
-    for (final scale in ValueScale.values) {
+    final scales = [
+      ValueScale.grey,
+      ValueScale.warm,
+      ValueScale.cool,
+      ValueScale.tinted(140),
+    ];
+    for (final scale in scales) {
       for (var n = 2; n <= 7; n++) {
         final targets = scale.lstarTargets(n);
         for (var seed = 0; seed < 20; seed++) {
@@ -37,16 +43,16 @@ void main() {
   });
 
   test('the same seed deals the same palette', () {
-    final a = randomRamp(scale: ValueScale.graphite, steps: 5, seed: 7);
-    final b = randomRamp(scale: ValueScale.graphite, steps: 5, seed: 7);
+    final a = randomRamp(scale: ValueScale.grey, steps: 5, seed: 7);
+    final b = randomRamp(scale: ValueScale.grey, steps: 5, seed: 7);
     for (var i = 0; i < 5; i++) {
       expect(a[i].toARGB32(), b[i].toARGB32());
     }
   });
 
   test('a new seed deals a new palette', () {
-    final a = randomRamp(scale: ValueScale.graphite, steps: 5, seed: 0);
-    final b = randomRamp(scale: ValueScale.graphite, steps: 5, seed: 1);
+    final a = randomRamp(scale: ValueScale.grey, steps: 5, seed: 0);
+    final b = randomRamp(scale: ValueScale.grey, steps: 5, seed: 1);
     expect(
       List.generate(5, (i) => a[i].toARGB32()),
       isNot(List.generate(5, (i) => b[i].toARGB32())),
@@ -57,11 +63,7 @@ void main() {
     // Near black and white the gamut pins every colour to grey — that is
     // physics, not a bug — but a middle band has room and should use it.
     for (var seed = 0; seed < 20; seed++) {
-      final mid = randomRamp(
-        scale: ValueScale.graphite,
-        steps: 3,
-        seed: seed,
-      )[1];
+      final mid = randomRamp(scale: ValueScale.grey, steps: 3, seed: seed)[1];
       final channels = [mid.r, mid.g, mid.b];
       final spread =
           channels.reduce((a, b) => a > b ? a : b) -

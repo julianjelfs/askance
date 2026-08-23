@@ -17,7 +17,7 @@ enum GridMode {
 class StudySettings {
   const StudySettings({
     this.steps = 3,
-    this.scale = ValueScale.graphite,
+    this.scale = ValueScale.grey,
     this.detail = 0.5,
     this.mode = ViewMode.value,
     this.grid = GridMode.off,
@@ -109,7 +109,7 @@ class StudySettings {
 
   Map<String, Object?> toJson() => {
     'steps': steps,
-    'scale': scale.name,
+    'scale': scale.toJson(),
     'detail': detail,
     'mode': mode.name,
     'grid': grid.name,
@@ -129,7 +129,7 @@ class StudySettings {
   /// been hand-edited, should cost the affected field rather than the shelf.
   static StudySettings fromJson(Map<String, Object?> json) => StudySettings(
     steps: _int(json['steps'], 3).clamp(minSteps, maxSteps),
-    scale: _enumByName(ValueScale.values, json['scale'], ValueScale.graphite),
+    scale: ValueScale.fromJson(json['scale']),
     detail: _double(json['detail'], 0.5).clamp(0.0, 1.0),
     mode: _enumByName(ViewMode.values, json['mode'], ViewMode.value),
     grid: _enumByName(GridMode.values, json['grid'], GridMode.off),
