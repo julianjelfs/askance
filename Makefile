@@ -129,8 +129,11 @@ serve: build-web
 # worth keeping.
 
 ## deploy-web: build for web and publish to julianjelfs.github.io/askance-web
+# --wasm compiles the Dart to WebAssembly, which runs the CPU side of the
+# engine markedly faster than the JavaScript fallback; browsers without
+# WasmGC get that fallback automatically from the same build.
 deploy-web:
-	flutter build web --release --base-href /askance-web/
+	flutter build web --wasm --release --base-href /askance-web/
 	cd build/web && touch .nojekyll && git init -q -b main && \
 	git add -A && (git commit -q -m "Deploy web build" || true) && \
 	git push -q --force git@github.com:julianjelfs/askance-web.git main
