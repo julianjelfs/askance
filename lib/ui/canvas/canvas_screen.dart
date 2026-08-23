@@ -93,6 +93,14 @@ class _CanvasBody extends ConsumerWidget {
           session.flushPersist();
           return;
         }
+        // canPop is from the last build, and keeping a study saves it and
+        // pops in the same beat — so re-check the live state rather than
+        // asking someone who just saved whether they want to save.
+        if (session.studyId != null || !session.hasImage) {
+          session.flushPersist();
+          if (context.mounted) Navigator.of(context).pop();
+          return;
+        }
         final outcome = await showShareSheet(context, ref, offerDiscard: true);
         // Dismissing the sheet answers neither question, and stays put.
         if (outcome == null || !context.mounted) return;

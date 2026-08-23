@@ -75,7 +75,10 @@ class CanvasSession extends ChangeNotifier {
     image?.dispose();
     image = decoded;
     imageBytes = bytes;
-    imageKey = key ?? imageKey;
+    // Taken verbatim, null included: a fresh image has no stored copy yet.
+    // Falling back to the previous study's key here meant a new study could
+    // be kept under the *old* study's photograph.
+    imageKey = key;
     if (resetView) view = const ViewTransform();
     _scheduleRegions();
     notifyListeners();
@@ -99,6 +102,7 @@ class CanvasSession extends ChangeNotifier {
   void startFreshStudy() {
     flushPersist();
     studyId = null;
+    imageKey = null;
     name = 'Untitled study';
     settings = const StudySettings();
     splitPosition = settings.splitPosition;
@@ -121,6 +125,16 @@ class CanvasSession extends ChangeNotifier {
   /// the duration of a gesture.
   StudySettings get settled =>
       settings.copyWith(splitPosition: splitPosition, view: view);
+
+  /// Adopts settings that arrived over the QR transfer, wholesale — including
+  /// the view, so the phone lands on the passage the sender was looking at.
+  void applyTransferredSettings(StudySettings incoming) {
+    settings = incoming;
+    splitPosition = incoming.splitPosition;
+    view = incoming.view;
+    _scheduleRegions();
+    notifyListeners();
+  }
 
   // --- study settings -----------------------------------------------------
 

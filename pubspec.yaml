@@ -23,6 +23,12 @@ dependencies:
   share_plus: ^10.1.4
   in_app_purchase: ^3.2.1
   web: ^1.1.1
+  flutter_webrtc: ^1.6.0
+  mqtt_client: ^10.11.11
+  cryptography: ^2.9.0
+  qr: ^3.0.2
+  mobile_scanner: ^7.4.0
+  typed_data: ^1.4.0
 
 dev_dependencies:
   flutter_test:

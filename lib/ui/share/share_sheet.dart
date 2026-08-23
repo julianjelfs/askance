@@ -11,6 +11,7 @@ import '../../engine/export.dart';
 import '../../state/canvas_session.dart';
 import '../../state/providers.dart';
 import '../../theme.dart';
+import 'qr_share_dialog.dart';
 import '../widgets/controls.dart';
 import '../widgets/glyphs.dart';
 import 'image_output.dart';
@@ -84,6 +85,7 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
   ExportSize _size = ExportSize.screen;
   String _status = '';
   bool _busy = false;
+  bool _showingQr = false;
   bool _buying = false;
 
   CanvasSession get _session => ref.read(sessionProvider);
@@ -149,6 +151,13 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
   }
 
   void _discard() => Navigator.of(context).pop(ShareOutcome.discarded);
+
+  /// Hands the study to another device: the sheet's content swaps for the
+  /// QR face. Gated like the other ways out of the app.
+  Future<void> _shareQr() async {
+    if (!await _ensureUnlocked()) return;
+    if (mounted) setState(() => _showingQr = true);
+  }
 
   Future<Uint8List?> _render() async {
     final shader = ref.read(shaderProvider).valueOrNull;
@@ -235,170 +244,183 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
         18 * s + (widget.wide ? 0 : MediaQuery.paddingOf(context).bottom),
       ),
       child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    // Arriving here by pressing back is a different question
-                    // from arriving by pressing SHARE.
-                    widget.offerDiscard
-                        ? 'Keep this study?'
-                        : 'Share this study',
-                    style: AskanceText.sheetTitle().by(s),
-                  ),
-                ),
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => Navigator.of(context).pop(),
-                  child: SizedBox(
-                    width: 32 * s,
-                    height: 32 * s,
-                    child: Center(
-                      child: Text(
-                        '×',
-                        style: AskanceText.button(
-                          18,
-                          color: AskanceColors.ground,
-                        ).by(s),
+        child: _showingQr
+            ? QrSharePanel(
+                session: _session,
+                onBack: () => setState(() => _showingQr = false),
+              )
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          // Arriving here by pressing back is a different question
+                          // from arriving by pressing SHARE.
+                          widget.offerDiscard
+                              ? 'Keep this study?'
+                              : 'Share this study',
+                          style: AskanceText.sheetTitle().by(s),
+                        ),
                       ),
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => Navigator.of(context).pop(),
+                        child: SizedBox(
+                          width: 32 * s,
+                          height: 32 * s,
+                          child: Center(
+                            child: Text(
+                              '×',
+                              style: AskanceText.button(
+                                18,
+                                color: AskanceColors.ground,
+                              ).by(s),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 16 * s),
+
+                  if (locked) ...[
+                    _PaywallBlock(
+                      buying: _buying,
+                      onUnlock: _buy,
+                      onRestore: _restore,
+                    ),
+                    SizedBox(height: 16 * s),
+                  ],
+
+                  ActionButton(
+                    label: 'Keep on the shelf',
+                    trailingIcon: GlyphIcon(
+                      Glyph.star,
+                      size: 14 * s,
+                      color: AskanceColors.ground,
+                    ),
+                    onPressed: _busy ? null : _keep,
+                    opacity: optionOpacity,
+                  ),
+                  if (widget.offerDiscard) ...[
+                    SizedBox(height: 8 * s),
+                    // Free, and never dimmed: throwing work away is not a feature
+                    // anyone should have to pay for.
+                    ActionButton(
+                      label: 'Discard',
+                      trailing: '×',
+                      solid: false,
+                      onDark: true,
+                      onPressed: _busy ? null : _discard,
+                    ),
+                    SizedBox(height: 12 * s),
+                    Text(
+                      'This study is not on the shelf yet. Going back without '
+                      'keeping it loses the photograph you picked.',
+                      style: AskanceText.caption(
+                        11,
+                        color: AskanceColors.mutedDark,
+                      ).by(s),
+                    ),
+                  ],
+                  SizedBox(height: 18 * s),
+
+                  Text('SIZE', style: AskanceText.sectionLabel().by(s)),
+                  SizedBox(height: 10 * s),
+                  Opacity(
+                    opacity: optionOpacity,
+                    child: SegmentedControl<ExportSize>(
+                      values: ExportSize.values,
+                      selected: _size,
+                      labelOf: (v) => v.label,
+                      onChanged: (v) => setState(() => _size = v),
+                      fontSize: 10,
                     ),
                   ),
-                ),
-              ],
-            ),
-            SizedBox(height: 16 * s),
-
-            if (locked) ...[
-              _PaywallBlock(
-                buying: _buying,
-                onUnlock: _buy,
-                onRestore: _restore,
-              ),
-              SizedBox(height: 16 * s),
-            ],
-
-            ActionButton(
-              label: 'Keep on the shelf',
-              trailingIcon: GlyphIcon(
-                Glyph.star,
-                size: 14 * s,
-                color: AskanceColors.ground,
-              ),
-              onPressed: _busy ? null : _keep,
-              opacity: optionOpacity,
-            ),
-            if (widget.offerDiscard) ...[
-              SizedBox(height: 8 * s),
-              // Free, and never dimmed: throwing work away is not a feature
-              // anyone should have to pay for.
-              ActionButton(
-                label: 'Discard',
-                trailing: '×',
-                solid: false,
-                onDark: true,
-                onPressed: _busy ? null : _discard,
-              ),
-              SizedBox(height: 12 * s),
-              Text(
-                'This study is not on the shelf yet. Going back without '
-                'keeping it loses the photograph you picked.',
-                style: AskanceText.caption(
-                  11,
-                  color: AskanceColors.mutedDark,
-                ).by(s),
-              ),
-            ],
-            SizedBox(height: 18 * s),
-
-            Text('SIZE', style: AskanceText.sectionLabel().by(s)),
-            SizedBox(height: 10 * s),
-            Opacity(
-              opacity: optionOpacity,
-              child: SegmentedControl<ExportSize>(
-                values: ExportSize.values,
-                selected: _size,
-                labelOf: (v) => v.label,
-                onChanged: (v) => setState(() => _size = v),
-                fontSize: 10,
-              ),
-            ),
-            SizedBox(height: 10 * s),
-            Opacity(
-              opacity: optionOpacity,
-              child: Text(
-                'Image size · ${_size.note} · exactly what you see',
-                style: AskanceText.caption(
-                  11,
-                  color: AskanceColors.mutedDark,
-                ).by(s),
-              ),
-            ),
-            SizedBox(height: 14 * s),
-
-            ActionButton(
-              label: 'Save image',
-              trailing: '↓',
-              solid: false,
-              onDark: true,
-              onPressed: _busy ? null : _save,
-              opacity: optionOpacity,
-            ),
-            SizedBox(height: 8 * s),
-            ActionButton(
-              label: 'Print',
-              trailingIcon: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  GlyphIcon(
-                    Glyph.command,
-                    size: 13 * s,
-                    color: AskanceColors.ground,
+                  SizedBox(height: 10 * s),
+                  Opacity(
+                    opacity: optionOpacity,
+                    child: Text(
+                      'Image size · ${_size.note} · exactly what you see',
+                      style: AskanceText.caption(
+                        11,
+                        color: AskanceColors.mutedDark,
+                      ).by(s),
+                    ),
                   ),
-                  SizedBox(width: 3 * s),
-                  Text(
-                    'P',
-                    style: AskanceText.button(
-                      14,
+                  SizedBox(height: 14 * s),
+
+                  ActionButton(
+                    label: 'Save image',
+                    trailing: '↓',
+                    solid: false,
+                    onDark: true,
+                    onPressed: _busy ? null : _save,
+                    opacity: optionOpacity,
+                  ),
+                  SizedBox(height: 8 * s),
+                  ActionButton(
+                    label: 'Print',
+                    trailingIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GlyphIcon(
+                          Glyph.command,
+                          size: 13 * s,
+                          color: AskanceColors.ground,
+                        ),
+                        SizedBox(width: 3 * s),
+                        Text(
+                          'P',
+                          style: AskanceText.button(
+                            14,
+                            color: AskanceColors.ground,
+                          ).by(s),
+                        ),
+                      ],
+                    ),
+                    solid: false,
+                    onDark: true,
+                    onPressed: _busy ? null : _print,
+                    opacity: optionOpacity,
+                  ),
+                  SizedBox(height: 8 * s),
+                  ActionButton(
+                    label: 'Copy to clipboard',
+                    trailingIcon: GlyphIcon(
+                      Glyph.copy,
+                      size: 14 * s,
                       color: AskanceColors.ground,
-                    ).by(s),
+                    ),
+                    solid: false,
+                    onDark: true,
+                    onPressed: _busy ? null : _copy,
+                    opacity: optionOpacity,
                   ),
+                  SizedBox(height: 8 * s),
+                  ActionButton(
+                    label: 'Share with QR code',
+                    solid: false,
+                    onDark: true,
+                    onPressed: _busy ? null : _shareQr,
+                    opacity: optionOpacity,
+                  ),
+
+                  if (_status.isNotEmpty) ...[
+                    SizedBox(height: 14 * s),
+                    Text(
+                      _status.toUpperCase(),
+                      style: AskanceText.controlLabel(
+                        10,
+                        color: AskanceColors.accent,
+                      ).by(s),
+                    ),
+                  ],
                 ],
               ),
-              solid: false,
-              onDark: true,
-              onPressed: _busy ? null : _print,
-              opacity: optionOpacity,
-            ),
-            SizedBox(height: 8 * s),
-            ActionButton(
-              label: 'Copy to clipboard',
-              trailingIcon: GlyphIcon(
-                Glyph.copy,
-                size: 14 * s,
-                color: AskanceColors.ground,
-              ),
-              solid: false,
-              onDark: true,
-              onPressed: _busy ? null : _copy,
-              opacity: optionOpacity,
-            ),
-
-            if (_status.isNotEmpty) ...[
-              SizedBox(height: 14 * s),
-              Text(
-                _status.toUpperCase(),
-                style: AskanceText.controlLabel(
-                  10,
-                  color: AskanceColors.accent,
-                ).by(s),
-              ),
-            ],
-          ],
-        ),
       ),
     );
   }

@@ -162,6 +162,26 @@ void main() {
     },
   );
 
+  test('a fresh image forgets the previous study\'s stored copy', () async {
+    // loadImage used to fall back to the old imageKey when none was given,
+    // so a new study could be kept under the previous study's photograph.
+    final recorder = ui.PictureRecorder();
+    Canvas(recorder, const Rect.fromLTWH(0, 0, 4, 4)).drawRect(
+      const Rect.fromLTWH(0, 0, 4, 4),
+      Paint()..color = const Color(0xFF808080),
+    );
+    final picture = recorder.endRecording();
+    final image = await picture.toImage(4, 4);
+    picture.dispose();
+
+    final t = sessionUnderTest();
+    t.session.openStudy(studyNamed('a'));
+    expect(t.session.imageKey, 'a.jpg');
+    t.session.startFreshStudy();
+    t.session.loadImage(image, Uint8List(0));
+    expect(t.session.imageKey, isNull);
+  });
+
   test('chrome and peek are not settings and never write', () {
     fakeAsync((async) {
       final t = sessionUnderTest();

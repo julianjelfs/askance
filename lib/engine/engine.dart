@@ -474,12 +474,17 @@ Future<ui.Image> _kuwahara({
 
 /// Identifies a blur result, so it is recomputed only when it has to be.
 Object blurKeyFor({
+  required ui.Image source,
   required Size outputPx,
   required double detail,
   required ViewTransform view,
   required Smoothing smoothing,
   required bool lockDetail,
 }) => Object.hash(
+  // The pass belongs to a particular photograph. Without this a new image
+  // loaded under identical settings collided with the old key, and the
+  // canvas kept showing the previous picture's pass.
+  identityHashCode(source),
   outputPx.width,
   outputPx.height,
   detail,

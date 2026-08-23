@@ -9,6 +9,7 @@ import '../onboarding/onboarding_screen.dart';
 import '../pick_image.dart';
 import '../widgets/askance_mark.dart';
 import '../widgets/controls.dart';
+import 'qr_scan_screen.dart';
 import 'study_card.dart';
 
 /// The shelf, and the launch screen: what you have made, and two ways to start
@@ -203,6 +204,19 @@ class _Footer extends ConsumerWidget {
             solid: false,
             onPressed: () => startStudy(context, ref, fromCamera: canTakePhoto),
           ),
+          // The QR transfer needs a camera to point at another screen, so the
+          // scanning end is phone-shaped by nature.
+          if (canTakePhoto) ...[
+            SizedBox(height: 10 * s),
+            ActionButton(
+              label: 'Scan from QR code',
+              trailing: '→',
+              solid: false,
+              onPressed: () => Navigator.of(
+                context,
+              ).push(NoTransitionRoute(builder: (_) => const QrScanScreen())),
+            ),
+          ],
         ],
       ),
     );

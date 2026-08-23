@@ -12,6 +12,7 @@ import '../canvas/canvas_surface.dart';
 import '../canvas/tool_panel.dart';
 import '../onboarding/onboarding_screen.dart';
 import '../share/share_sheet.dart';
+import '../shelf/qr_scan_screen.dart';
 import '../shelf/shelf_screen.dart';
 import '../widgets/askance_mark.dart';
 import '../widgets/controls.dart';
@@ -519,13 +520,32 @@ class _ShelfOverlay extends ConsumerWidget {
               ),
             ),
             padding: const EdgeInsets.fromLTRB(22, 14, 22, 14),
-            child: ActionButton(
-              label: 'New study from an image',
-              trailing: '→',
-              onPressed: () async {
-                await startStudy(context, ref, fromCamera: false);
-                onOpened();
-              },
+            child: Row(
+              children: [
+                Expanded(
+                  child: ActionButton(
+                    label: 'Scan from QR code',
+                    solid: false,
+                    onPressed: () async {
+                      final opened = await Navigator.of(context).push<bool>(
+                        NoTransitionRoute(builder: (_) => const QrScanScreen()),
+                      );
+                      if (opened == true) onOpened();
+                    },
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ActionButton(
+                    label: 'New study from photos',
+                    trailing: '→',
+                    onPressed: () async {
+                      await startStudy(context, ref, fromCamera: false);
+                      onOpened();
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
         ],

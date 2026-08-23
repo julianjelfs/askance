@@ -78,6 +78,7 @@ class BlurPass extends ChangeNotifier {
   }) {
     if (_disposed || outputPx.isEmpty) return;
     final key = blurKeyFor(
+      source: source,
       outputPx: outputPx,
       detail: detail,
       view: view,
