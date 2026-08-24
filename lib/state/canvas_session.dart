@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
@@ -206,10 +207,20 @@ class CanvasSession extends ChangeNotifier {
       // another deal of colours over the same values. Every other mode,
       // SPLIT included, treats a repeat tap as nothing new.
       if (mode != ViewMode.random) return;
-      settings = settings.copyWith(randomSeed: settings.randomSeed + 1);
+      // A fresh draw, not seed + 1: every study starts at seed 0, so an
+      // incrementing seed dealt every study the same palette sequence. The
+      // draw is still stored, so the palette survives repaint and reopening.
+      settings = settings.copyWith(randomSeed: math.Random().nextInt(1 << 31));
     } else {
       settings = settings.copyWith(
         mode: mode,
+        // First entry into RANDOM gets a fresh deal too — seed 0 is the
+        // never-dealt default, and without this every study's first palette
+        // was seed 0's. A study saved in random mode reopens through
+        // openStudy, not here, so a kept palette is never redrawn.
+        randomSeed: mode == ViewMode.random && settings.randomSeed == 0
+            ? math.Random().nextInt(1 << 31)
+            : null,
         // Split and skeleton are laid over whatever was showing, so they
         // keep the colours they were entered from — a split compares them
         // against the photograph, the skeleton's fill blocks them in. From
