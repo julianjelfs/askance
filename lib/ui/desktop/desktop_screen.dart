@@ -401,20 +401,18 @@ class _RailState extends ConsumerState<_Rail> {
           // The fill as a sibling of the value selector: 0 is edges alone,
           // the rest block the values in darkest-first — and a click jumps
           // straight to a count instead of cycling through the rest.
-          LayoutBuilder(
-            builder: (context, constraints) => SegmentedControl<int>(
-              values: [for (var i = 0; i <= session.settings.steps; i++) i],
-              selected: session.settings.skeletonFill.clamp(
-                0,
-                session.settings.steps,
-              ),
-              labelOf: (v) => '$v',
-              onChanged: session.setSkeletonFill,
-              // Square cells, however many of them the step count makes.
-              height: constraints.maxWidth / (session.settings.steps + 1),
-              fontSize: 10,
-              underline: true,
+          // The same height as the value selector above it, whatever the
+          // step count, so the two read as siblings.
+          SegmentedControl<int>(
+            values: [for (var i = 0; i <= session.settings.steps; i++) i],
+            selected: session.settings.skeletonFill.clamp(
+              0,
+              session.settings.steps,
             ),
+            labelOf: (v) => '$v',
+            onChanged: session.setSkeletonFill,
+            fontSize: 10,
+            underline: true,
           ),
         ],
       ],
