@@ -13,7 +13,7 @@ void main() {
       expect(s.mode, ViewMode.value);
       expect(s.grid, GridMode.off);
       expect(s.gridDivisions, 4);
-      expect(s.numbers, isTrue);
+      expect(s.skeletonFill, 0);
       expect(s.splitPosition, 0.5);
     });
 
@@ -25,7 +25,7 @@ void main() {
         mode: ViewMode.skeleton,
         grid: GridMode.diamond,
         gridDivisions: 9,
-        numbers: false,
+        skeletonFill: 3,
         lockDetail: true,
         splitPosition: 0.25,
       );

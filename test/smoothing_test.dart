@@ -61,9 +61,7 @@ void main() {
     ))!.buffer.asUint8List();
     final width = result.width;
     final y = result.height ~/ 2;
-    final row = [
-      for (var x = 0; x < width; x++) bytes[(y * width + x) * 4],
-    ];
+    final row = [for (var x = 0; x < width; x++) bytes[(y * width + x) * 4]];
     result.dispose();
     source.dispose();
     return row;
@@ -155,119 +153,126 @@ void main() {
   /// merging the detail control barely moved the result: the shapes coarsened
   /// but their number stayed put across the whole slider. The blur does the
   /// merging in both modes now, and this is what pins that.
-  test('the detail control changes how much is merged, in both modes', () async {
-    Future<int> transitions(Smoothing smoothing, double detail) async {
-      final source = await detailLadder(256);
-      final result = await renderBlurredSource(
-        source: source,
-        outputPx: const Size(256, 256),
-        detail: detail,
-        view: const ViewTransform(),
-        smoothing: smoothing,
-      );
-      final bytes = (await result.toByteData(
-        format: ui.ImageByteFormat.rawRgba,
-      ))!;
-      final map = bandsFromRgba(bytes, result.width, result.height, 4);
-      final y = map.height ~/ 2;
-      var changes = 0;
-      for (var x = 1; x < map.width; x++) {
-        if (map.bands[y * map.width + x] != map.bands[y * map.width + x - 1]) {
-          changes++;
+  test(
+    'the detail control changes how much is merged, in both modes',
+    () async {
+      Future<int> transitions(Smoothing smoothing, double detail) async {
+        final source = await detailLadder(256);
+        final result = await renderBlurredSource(
+          source: source,
+          outputPx: const Size(256, 256),
+          detail: detail,
+          view: const ViewTransform(),
+          smoothing: smoothing,
+        );
+        final bytes = (await result.toByteData(
+          format: ui.ImageByteFormat.rawRgba,
+        ))!;
+        final map = bandsFromRgba(bytes, result.width, result.height, 4);
+        final y = map.height ~/ 2;
+        var changes = 0;
+        for (var x = 1; x < map.width; x++) {
+          if (map.bands[y * map.width + x] !=
+              map.bands[y * map.width + x - 1]) {
+            changes++;
+          }
         }
+        result.dispose();
+        source.dispose();
+        return changes;
       }
-      result.dispose();
-      source.dispose();
-      return changes;
-    }
 
-    for (final smoothing in Smoothing.values) {
-      final merged = await transitions(smoothing, 0.1);
-      final kept = await transitions(smoothing, 0.95);
-      expect(
-        kept,
-        greaterThan(merged * 3),
-        reason:
-            '$smoothing barely responded to the detail control: '
-            '$merged transitions at 0.1 against $kept at 0.95',
-      );
-    }
-  });
+      for (final smoothing in Smoothing.values) {
+        final merged = await transitions(smoothing, 0.1);
+        final kept = await transitions(smoothing, 0.95);
+        expect(
+          kept,
+          greaterThan(merged * 3),
+          reason:
+              '$smoothing barely responded to the detail control: '
+              '$merged transitions at 0.1 against $kept at 0.95',
+        );
+      }
+    },
+  );
 
   /// The detail control has to mean one thing, not two. Toggling the mode
   /// should change how the shapes read, not how much of the photograph is
   /// left — which it did badly: Kuwahara's window was fixed, so it went on
   /// flattening after the blur had stopped, and ROUGH stalled around 92% of
   /// the picture however far the control was pushed while SMOOTH ran to 100%.
-  test('both modes keep about as much of the picture at a given setting', () async {
-    final source = await detailLadder(256);
-    const output = Size(256, 256);
+  test(
+    'both modes keep about as much of the picture at a given setting',
+    () async {
+      final source = await detailLadder(256);
+      const output = Size(256, 256);
 
-    Future<BandMap> bandsAt(Smoothing smoothing, double detail) async {
-      final result = await renderBlurredSource(
-        source: source,
-        outputPx: output,
-        detail: detail,
-        view: const ViewTransform(),
-        smoothing: smoothing,
-      );
-      final bytes = (await result.toByteData(
-        format: ui.ImageByteFormat.rawRgba,
-      ))!;
-      final map = bandsFromRgba(bytes, result.width, result.height, 4);
-      result.dispose();
-      return map;
-    }
-
-    // What the picture itself quantises to, with nothing taken away.
-    final truth = await bandsAt(Smoothing.gaussian, 1);
-    Future<double> kept(Smoothing smoothing, double detail) async {
-      final map = await bandsAt(smoothing, detail);
-      var same = 0;
-      for (var i = 0; i < map.bands.length; i++) {
-        if (map.bands[i] == truth.bands[i]) same++;
+      Future<BandMap> bandsAt(Smoothing smoothing, double detail) async {
+        final result = await renderBlurredSource(
+          source: source,
+          outputPx: output,
+          detail: detail,
+          view: const ViewTransform(),
+          smoothing: smoothing,
+        );
+        final bytes = (await result.toByteData(
+          format: ui.ImageByteFormat.rawRgba,
+        ))!;
+        final map = bandsFromRgba(bytes, result.width, result.height, 4);
+        result.dispose();
+        return map;
       }
-      return same / map.bands.length;
-    }
 
-    for (final detail in [0.25, 0.5, 0.75]) {
-      final smooth = await kept(Smoothing.gaussian, detail);
-      final rough = await kept(Smoothing.kuwahara, detail);
+      // What the picture itself quantises to, with nothing taken away.
+      final truth = await bandsAt(Smoothing.gaussian, 1);
+      Future<double> kept(Smoothing smoothing, double detail) async {
+        final map = await bandsAt(smoothing, detail);
+        var same = 0;
+        for (var i = 0; i < map.bands.length; i++) {
+          if (map.bands[i] == truth.bands[i]) same++;
+        }
+        return same / map.bands.length;
+      }
+
+      for (final detail in [0.25, 0.5, 0.75]) {
+        final smooth = await kept(Smoothing.gaussian, detail);
+        final rough = await kept(Smoothing.kuwahara, detail);
+        expect(
+          (smooth - rough).abs(),
+          lessThan(0.1),
+          reason:
+              'at detail $detail the modes are not the same setting: SMOOTH '
+              'kept ${(smooth * 100).round()}% and ROUGH '
+              '${(rough * 100).round()}%',
+        );
+      }
+
+      // Where there is simplifying to do the modes have to part, or the toggle
+      // means nothing: tied to the sigma alone the window shrank away as the
+      // control rose and the two became indistinguishable above about half way.
+      final partedSmooth = await kept(Smoothing.gaussian, 0.7);
+      final partedRough = await kept(Smoothing.kuwahara, 0.7);
       expect(
-        (smooth - rough).abs(),
-        lessThan(0.1),
-        reason:
-            'at detail $detail the modes are not the same setting: SMOOTH '
-            'kept ${(smooth * 100).round()}% and ROUGH '
-            '${(rough * 100).round()}%',
+        partedSmooth - partedRough,
+        greaterThan(0.01),
+        reason: 'mid-control the modes have stopped being distinguishable',
       );
-    }
 
-    // Where there is simplifying to do the modes have to part, or the toggle
-    // means nothing: tied to the sigma alone the window shrank away as the
-    // control rose and the two became indistinguishable above about half way.
-    final partedSmooth = await kept(Smoothing.gaussian, 0.7);
-    final partedRough = await kept(Smoothing.kuwahara, 0.7);
-    expect(
-      partedSmooth - partedRough,
-      greaterThan(0.01),
-      reason: 'mid-control the modes have stopped being distinguishable',
-    );
-
-    // And where there is none they have to meet again. At full detail the
-    // picture is the photograph quantised and nothing else, so there is
-    // nothing left for either to do differently.
-    final endSmooth = await kept(Smoothing.gaussian, 1);
-    final endRough = await kept(Smoothing.kuwahara, 1);
-    expect(
-      (endSmooth - endRough).abs(),
-      lessThan(0.01),
-      reason:
-          'at full detail the modes should arrive at the same picture: '
-          '${(endSmooth * 100).round()}% against ${(endRough * 100).round()}%',
-    );
-    source.dispose();
-  });
+      // And where there is none they have to meet again. At full detail the
+      // picture is the photograph quantised and nothing else, so there is
+      // nothing left for either to do differently.
+      final endSmooth = await kept(Smoothing.gaussian, 1);
+      final endRough = await kept(Smoothing.kuwahara, 1);
+      expect(
+        (endSmooth - endRough).abs(),
+        lessThan(0.01),
+        reason:
+            'at full detail the modes should arrive at the same picture: '
+            '${(endSmooth * 100).round()}% against ${(endRough * 100).round()}%',
+      );
+      source.dispose();
+    },
+  );
 
   test('a setting saved by a build we no longer ship does not break', () {
     // The full-resolution mode existed long enough to be saved. Anything

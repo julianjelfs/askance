@@ -7,8 +7,6 @@ import 'package:flutter/scheduler.dart';
 
 import '../engine/engine.dart';
 import '../engine/blur_pass.dart';
-import '../engine/regions.dart';
-import '../engine/value_painter.dart';
 import '../engine/value_scale.dart';
 import '../model/study.dart';
 
@@ -40,8 +38,6 @@ class CanvasSession extends ChangeNotifier {
   bool chromeVisible = true;
   CanvasTool? openTool;
 
-  RegionOverlay? regions;
-
   /// Live split position during a drag. Written back into [settings] when the
   /// drag ends, so the study only records settled values.
   double splitPosition = 0.5;
@@ -58,8 +54,6 @@ class CanvasSession extends ChangeNotifier {
   void Function(String studyId, StudySettings settings, String name)? onPersist;
 
   Timer? _persistDebounce;
-  Timer? _regionDebounce;
-  int _regionRequest = 0;
 
   bool get hasImage => image != null;
 
@@ -81,7 +75,6 @@ class CanvasSession extends ChangeNotifier {
     // be kept under the *old* study's photograph.
     imageKey = key;
     if (resetView) view = const ViewTransform();
-    _scheduleRegions();
     notifyListeners();
   }
 
@@ -96,7 +89,6 @@ class CanvasSession extends ChangeNotifier {
     view = study.settings.view;
     openTool = null;
     chromeVisible = true;
-    _scheduleRegions();
     notifyListeners();
   }
 
@@ -112,7 +104,6 @@ class CanvasSession extends ChangeNotifier {
     settings = const StudySettings();
     splitPosition = settings.splitPosition;
     view = const ViewTransform();
-    regions = null;
     imageBytes = null;
     final old = image;
     image = null;
@@ -136,7 +127,6 @@ class CanvasSession extends ChangeNotifier {
     view = const ViewTransform();
     openTool = null;
     chromeVisible = true;
-    regions = null;
     notifyListeners();
   }
 
@@ -159,7 +149,6 @@ class CanvasSession extends ChangeNotifier {
     settings = incoming;
     splitPosition = incoming.splitPosition;
     view = incoming.view;
-    _scheduleRegions();
     notifyListeners();
   }
 
@@ -170,7 +159,6 @@ class CanvasSession extends ChangeNotifier {
     settings = settings.copyWith(
       steps: steps.clamp(StudySettings.minSteps, StudySettings.maxSteps),
     );
-    _scheduleRegions();
     _persistSoon();
     notifyListeners();
   }
@@ -179,7 +167,6 @@ class CanvasSession extends ChangeNotifier {
     final next = detail.clamp(0.0, 1.0);
     if (next == settings.detail) return;
     settings = settings.copyWith(detail: next);
-    _scheduleRegions();
     _persistSoon();
     notifyListeners();
   }
@@ -187,7 +174,6 @@ class CanvasSession extends ChangeNotifier {
   void setSmoothing(Smoothing smoothing) {
     if (smoothing == settings.smoothing) return;
     settings = settings.copyWith(smoothing: smoothing);
-    _scheduleRegions();
     _persistSoon();
     notifyListeners();
   }
@@ -195,7 +181,6 @@ class CanvasSession extends ChangeNotifier {
   void setLockDetail(bool value) {
     if (value == settings.lockDetail) return;
     settings = settings.copyWith(lockDetail: value);
-    _scheduleRegions();
     _persistSoon();
     notifyListeners();
   }
@@ -204,7 +189,6 @@ class CanvasSession extends ChangeNotifier {
     final next = bias.clamp(-StudySettings.maxBias, StudySettings.maxBias);
     if (next == settings.bias) return;
     settings = settings.copyWith(bias: next);
-    _scheduleRegions();
     _persistSoon();
     notifyListeners();
   }
@@ -226,10 +210,11 @@ class CanvasSession extends ChangeNotifier {
     } else {
       settings = settings.copyWith(
         mode: mode,
-        // A split is a comparison laid over whatever was showing, so it keeps
-        // the colours it was entered from; from anywhere else it keeps the
-        // base it last had.
-        splitBase: mode == ViewMode.split
+        // Split and skeleton are laid over whatever was showing, so they
+        // keep the colours they were entered from — a split compares them
+        // against the photograph, the skeleton's fill blocks them in. From
+        // anywhere else the base stays as it last was.
+        splitBase: mode == ViewMode.split || mode == ViewMode.skeleton
             ? (settings.mode == ViewMode.random
                   ? ViewMode.random
                   : settings.mode == ViewMode.value
@@ -237,7 +222,6 @@ class CanvasSession extends ChangeNotifier {
                   : settings.splitBase)
             : null,
       );
-      if (mode == ViewMode.skeleton) _scheduleRegions();
     }
     _persistSoon();
     notifyListeners();
@@ -261,9 +245,13 @@ class CanvasSession extends ChangeNotifier {
     notifyListeners();
   }
 
-  void toggleNumbers() {
-    settings = settings.copyWith(numbers: !settings.numbers);
-    if (settings.numbers) _scheduleRegions();
+  /// Each tap blocks in one more value, darkest first; past the last it
+  /// returns to edges alone. The count survives a steps change by clamping
+  /// at paint time rather than resetting here.
+  void cycleSkeletonFill() {
+    settings = settings.copyWith(
+      skeletonFill: (settings.skeletonFill + 1) % (settings.steps + 1),
+    );
     _persistSoon();
     notifyListeners();
   }
@@ -288,7 +276,6 @@ class CanvasSession extends ChangeNotifier {
   void setView(ViewTransform next) {
     if (next == view) return;
     view = next;
-    _scheduleRegions();
     // Debounced, so a pinch writes once when it settles rather than per frame.
     _persistSoon();
     notifyListeners();
@@ -328,7 +315,6 @@ class CanvasSession extends ChangeNotifier {
     if (size == viewportSize && dpr == devicePixelRatio) return;
     viewportSize = size;
     devicePixelRatio = dpr;
-    _scheduleRegions();
   }
 
   /// Double tap cycles 1x -> 2.4x -> 4x -> 1x, centred on the tap point.
@@ -368,45 +354,6 @@ class CanvasSession extends ChangeNotifier {
     onPersist?.call(id, settled, name);
   }
 
-  // --- value numbers ------------------------------------------------------
-
-  void _scheduleRegions() {
-    if (settings.mode != ViewMode.skeleton || !settings.numbers) return;
-    _regionDebounce?.cancel();
-    _regionDebounce = Timer(
-      const Duration(milliseconds: 150),
-      _recomputeRegions,
-    );
-  }
-
-  Future<void> _recomputeRegions() async {
-    final source = image;
-    if (source == null || viewportSize.isEmpty) return;
-    final request = ++_regionRequest;
-    final outputPx = Size(
-      viewportSize.width * devicePixelRatio,
-      viewportSize.height * devicePixelRatio,
-    );
-    final found = await computeRegions(
-      source: source,
-      outputPx: outputPx,
-      detail: settings.detail,
-      view: view,
-      steps: settings.steps,
-      bias: settings.bias,
-      smoothing: settings.smoothing,
-      lockDetail: settings.lockDetail,
-    );
-    // A newer request landed while this one was in flight.
-    if (request != _regionRequest) return;
-    regions = RegionOverlay(
-      regions: found.regions,
-      gridWidth: found.gridWidth,
-      gridHeight: found.gridHeight,
-    );
-    notifyListeners();
-  }
-
   /// Renders the pass this study needs at [outputPx] and waits for it, so the
   /// canvas is never put on screen showing the untouched photograph first.
   Future<void> warmBlur(Size outputPx) async {
@@ -427,7 +374,6 @@ class CanvasSession extends ChangeNotifier {
   void dispose() {
     blur.dispose();
     _persistDebounce?.cancel();
-    _regionDebounce?.cancel();
     image?.dispose();
     super.dispose();
   }

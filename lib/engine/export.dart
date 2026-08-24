@@ -6,7 +6,6 @@ import 'package:flutter/rendering.dart';
 import '../model/study.dart';
 import 'deferred_disposer.dart';
 import 'engine.dart';
-import 'regions.dart';
 import 'value_painter.dart';
 
 /// The two export sizes. Both 2:3, matching the shape a study is composed in.
@@ -44,25 +43,6 @@ Future<Uint8List?> renderExport({
   // same crop at export size with nothing to convert.
   final exportView = view;
 
-  RegionOverlay? overlay;
-  if (settings.mode == ViewMode.skeleton && settings.numbers) {
-    final found = await computeRegions(
-      source: source,
-      outputPx: size,
-      detail: settings.detail,
-      view: exportView,
-      steps: settings.steps,
-      bias: settings.bias,
-      smoothing: settings.smoothing,
-      lockDetail: settings.lockDetail,
-    );
-    overlay = RegionOverlay(
-      regions: found.regions,
-      gridWidth: found.gridWidth,
-      gridHeight: found.gridHeight,
-    );
-  }
-
   final blurred = await renderBlurredSource(
     source: source,
     outputPx: size,
@@ -86,7 +66,6 @@ Future<Uint8List?> renderExport({
     devicePixelRatio: 1,
     peeking: false,
     splitPosition: splitPosition,
-    regions: overlay,
     disposer: disposer,
     // In exports the grid is drawn into the image, dividing the exported frame.
     drawGrid: true,

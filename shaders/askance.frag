@@ -26,6 +26,11 @@ uniform vec3 uC4;
 uniform vec3 uC5;
 uniform vec3 uC6;
 
+// Skeleton only: how many bands, counted from the darkest, are filled with
+// their ramp colour. The rest stay ground — the untouched paper of a real
+// painting blocked in dark-first.
+uniform float uFill;
+
 uniform sampler2D uSrc;
 
 out vec4 fragColor;
@@ -84,7 +89,9 @@ void main() {
         ink = true;
       }
     }
-    fragColor = vec4(ink ? SKELETON_INK : SKELETON_GROUND, 1.0);
+    float band = bandAt(devPx);
+    vec3 base = band < uFill - 0.5 ? rampAt(band) : SKELETON_GROUND;
+    fragColor = vec4(ink ? SKELETON_INK : base, 1.0);
     return;
   }
 

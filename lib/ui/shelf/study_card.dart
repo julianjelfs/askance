@@ -265,7 +265,6 @@ class _StudyThumbnailState extends ConsumerState<StudyThumbnail> {
               devicePixelRatio: dpr,
               peeking: false,
               splitPosition: widget.study.settings.splitPosition,
-              regions: null,
               disposer: _disposer,
               drawGrid: true,
             ),

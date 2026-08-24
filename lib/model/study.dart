@@ -22,7 +22,7 @@ class StudySettings {
     this.mode = ViewMode.value,
     this.grid = GridMode.off,
     this.gridDivisions = 4,
-    this.numbers = true,
+    this.skeletonFill = 0,
     this.smoothing = Smoothing.gaussian,
     this.lockDetail = false,
     this.bias = 0,
@@ -38,7 +38,11 @@ class StudySettings {
   final ViewMode mode;
   final GridMode grid;
   final int gridDivisions;
-  final bool numbers;
+
+  /// Skeleton only: how many bands, darkest first, are blocked in with their
+  /// ramp colour over the white ground — the way a painting is actually
+  /// begun. 0 is edges alone; [steps] is every value placed.
+  final int skeletonFill;
 
   /// How the photograph is simplified before it is quantised.
   final Smoothing smoothing;
@@ -62,10 +66,10 @@ class StudySettings {
   /// again moves the seed on.
   final int randomSeed;
 
-  /// What the processed half of a SPLIT shows: the grey ramp or the random
-  /// palette, whichever was on screen when SPLIT was tapped. The split is a
-  /// comparison against the photograph, not a mode of its own, so it keeps
-  /// the colours it was laid over. Only [ViewMode.value] or [ViewMode.random].
+  /// What split and skeleton lay their colours over: the scale's ramp or the
+  /// random palette, whichever was on screen when the mode was entered — a
+  /// split compares it against the photograph, the skeleton's fill blocks it
+  /// in. Only [ViewMode.value] or [ViewMode.random].
   final ViewMode splitBase;
 
   /// Where the study was left: zoom, and pan as a fraction of the frame.
@@ -91,7 +95,7 @@ class StudySettings {
     ViewMode? mode,
     GridMode? grid,
     int? gridDivisions,
-    bool? numbers,
+    int? skeletonFill,
     Smoothing? smoothing,
     bool? lockDetail,
     double? bias,
@@ -106,7 +110,7 @@ class StudySettings {
     mode: mode ?? this.mode,
     grid: grid ?? this.grid,
     gridDivisions: gridDivisions ?? this.gridDivisions,
-    numbers: numbers ?? this.numbers,
+    skeletonFill: skeletonFill ?? this.skeletonFill,
     smoothing: smoothing ?? this.smoothing,
     lockDetail: lockDetail ?? this.lockDetail,
     bias: bias ?? this.bias,
@@ -123,7 +127,7 @@ class StudySettings {
     'mode': mode.name,
     'grid': grid.name,
     'gridDivisions': gridDivisions,
-    'numbers': numbers,
+    'skeletonFill': skeletonFill,
     'smoothing': smoothing.name,
     'lockDetail': lockDetail,
     'bias': bias,
@@ -147,7 +151,7 @@ class StudySettings {
       json['gridDivisions'],
       4,
     ).clamp(minDivisions, maxDivisions),
-    numbers: json['numbers'] is bool ? json['numbers']! as bool : true,
+    skeletonFill: _int(json['skeletonFill'], 0).clamp(0, maxSteps),
     smoothing: _enumByName(
       Smoothing.values,
       json['smoothing'],
@@ -185,7 +189,7 @@ class StudySettings {
       other.mode == mode &&
       other.grid == grid &&
       other.gridDivisions == gridDivisions &&
-      other.numbers == numbers &&
+      other.skeletonFill == skeletonFill &&
       other.smoothing == smoothing &&
       other.lockDetail == lockDetail &&
       other.bias == bias &&
@@ -202,7 +206,7 @@ class StudySettings {
     mode,
     grid,
     gridDivisions,
-    numbers,
+    skeletonFill,
     smoothing,
     lockDetail,
     bias,

@@ -14,7 +14,7 @@ enum ViewMode {
   /// it again deals another palette: the colours keep changing, the values
   /// never do, which is the point.
   ///
-  /// Sits above skeleton so the numbers toggle stays attached to the EDGE
+  /// Sits above skeleton so the fill button stays attached to the EDGE
   /// button it belongs to.
   random('RND', 'RANDOM'),
   skeleton('EDGE', 'SKELETON');
@@ -509,6 +509,7 @@ class ValueShader {
     required int steps,
     required List<Color> ramp,
     required bool skeleton,
+    required int skeletonFill,
     required double bias,
   }) {
     final shader = _program.fragmentShader();
@@ -531,6 +532,7 @@ class ValueShader {
         ..setFloat(11 + i * 3, c.g)
         ..setFloat(12 + i * 3, c.b);
     }
+    shader.setFloat(31, skeletonFill.toDouble());
     return shader;
   }
 }

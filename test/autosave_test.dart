@@ -80,7 +80,7 @@ void main() {
         ..setMode(ViewMode.skeleton)
         ..setGrid(GridMode.diamond)
         ..setGridDivisions(7)
-        ..toggleNumbers()
+        ..cycleSkeletonFill()
         ..rename('Renamed');
       async.elapse(const Duration(seconds: 2));
 
@@ -89,7 +89,7 @@ void main() {
       expect(settings.mode, ViewMode.skeleton);
       expect(settings.grid, GridMode.diamond);
       expect(settings.gridDivisions, 7);
-      expect(settings.numbers, isFalse);
+      expect(settings.skeletonFill, 1);
       expect(name, 'Renamed');
     });
   });

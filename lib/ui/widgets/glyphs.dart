@@ -9,7 +9,7 @@ import 'package:flutter/widgets.dart';
 /// command key. A browser silently falls back to another font for those; iOS,
 /// Android and macOS do not agree on what to fall back to, and some render an
 /// empty box. Drawing them keeps every surface identical.
-enum Glyph { star, arrowUpRight, copy, splitGrip, command, trash }
+enum Glyph { star, arrowUpRight, copy, splitGrip, command, trash, expand }
 
 class GlyphIcon extends StatelessWidget {
   const GlyphIcon(
@@ -51,7 +51,30 @@ class _GlyphPainter extends CustomPainter {
         _command(canvas, size);
       case Glyph.trash:
         _trash(canvas, size);
+      case Glyph.expand:
+        _expand(canvas, size);
     }
+  }
+
+  /// Four corner brackets pointing outwards: Lucide `maximize`.
+  void _expand(Canvas canvas, Size size) {
+    final u = size.shortestSide;
+    final stroke = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = u * 0.13
+      ..strokeCap = StrokeCap.square
+      ..strokeJoin = StrokeJoin.miter;
+    const inset = 0.12;
+    const arm = 0.28;
+    Path corner(double x, double y, double dx, double dy) => Path()
+      ..moveTo(u * (x + dx * arm), u * y)
+      ..lineTo(u * x, u * y)
+      ..lineTo(u * x, u * (y + dy * arm));
+    canvas.drawPath(corner(inset, inset, 1, 1), stroke);
+    canvas.drawPath(corner(1 - inset, inset, -1, 1), stroke);
+    canvas.drawPath(corner(inset, 1 - inset, 1, -1), stroke);
+    canvas.drawPath(corner(1 - inset, 1 - inset, -1, -1), stroke);
   }
 
   void _star(Canvas canvas, Size size) {

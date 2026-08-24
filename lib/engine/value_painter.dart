@@ -7,7 +7,6 @@ import '../theme.dart';
 import 'deferred_disposer.dart';
 import 'engine.dart';
 import 'random_ramp.dart';
-import 'regions.dart';
 
 /// Paints the study: the quantised value map, the untouched photograph, the
 /// split of the two, or the skeleton — plus the grid, which is always drawn
@@ -22,7 +21,6 @@ class ValuePainter extends CustomPainter {
     required this.devicePixelRatio,
     required this.peeking,
     required this.splitPosition,
-    required this.regions,
     required this.disposer,
     required this.drawGrid,
     super.repaint,
@@ -43,7 +41,6 @@ class ValuePainter extends CustomPainter {
   /// Live during a drag; written back to the study when the drag ends.
   final double splitPosition;
 
-  final RegionOverlay? regions;
   final DeferredDisposer disposer;
   final bool drawGrid;
 
@@ -86,9 +83,6 @@ class ValuePainter extends CustomPainter {
           Paint()..color = AskanceColors.accent,
         );
       }
-      if (settings.mode == ViewMode.skeleton && settings.numbers) {
-        regions?.paint(canvas, area, devicePixelRatio);
-      }
     }
 
     if (drawGrid && settings.grid != GridMode.off) {
@@ -129,7 +123,8 @@ class ValuePainter extends CustomPainter {
       steps: settings.steps,
       ramp:
           settings.mode == ViewMode.random ||
-              (settings.mode == ViewMode.split &&
+              ((settings.mode == ViewMode.split ||
+                      settings.mode == ViewMode.skeleton) &&
                   settings.splitBase == ViewMode.random)
           ? randomRamp(
               scale: settings.scale,
@@ -138,6 +133,8 @@ class ValuePainter extends CustomPainter {
             )
           : settings.scale.ramp(settings.steps),
       skeleton: settings.mode == ViewMode.skeleton,
+      // Clamped so a steps change never asks for bands that no longer exist.
+      skeletonFill: settings.skeletonFill.clamp(0, settings.steps),
       bias: settings.bias,
     )..setImageSampler(0, source);
 
@@ -161,82 +158,9 @@ class ValuePainter extends CustomPainter {
         old.view != view ||
         old.peeking != peeking ||
         old.splitPosition != splitPosition ||
-        old.regions != regions ||
         old.source != source ||
         old.drawGrid != drawGrid ||
         old.devicePixelRatio != devicePixelRatio;
-  }
-}
-
-/// Value numbers, ready to paint. Kept separate from the labelling pass so a
-/// repaint mid-gesture never triggers recomputation.
-class RegionOverlay {
-  const RegionOverlay({
-    required this.regions,
-    required this.gridWidth,
-    required this.gridHeight,
-  });
-
-  final List<ValueRegion> regions;
-  final int gridWidth;
-  final int gridHeight;
-
-  static const _ground = AskanceColors.ground;
-  static const _ink = AskanceColors.ink;
-
-  void paint(Canvas canvas, Rect area, double devicePixelRatio) {
-    if (regions.isEmpty || gridWidth == 0) return;
-    final renderWidth = area.width * devicePixelRatio;
-    final scale = renderWidth / kReferenceWidth;
-    final fontSize = (21 * scale).roundToDouble() / devicePixelRatio;
-    final strokeWidth = 7 * scale / devicePixelRatio;
-    final cell = area.width / gridWidth;
-
-    for (final region in regions) {
-      final centre =
-          area.topLeft +
-          Offset(
-            (region.centroid.dx + 0.5) * cell,
-            (region.centroid.dy + 0.5) * cell,
-          );
-      _paintLabel(canvas, region.label, centre, fontSize, strokeWidth);
-    }
-  }
-
-  void _paintLabel(
-    Canvas canvas,
-    String text,
-    Offset centre,
-    double fontSize,
-    double strokeWidth,
-  ) {
-    TextPainter build(Paint paint) => TextPainter(
-      text: TextSpan(
-        text: text,
-        style: TextStyle(
-          fontFamily: AskanceText.family,
-          fontWeight: FontWeight.w700,
-          fontSize: fontSize,
-          height: 1,
-          foreground: paint,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-
-    final stroke = build(
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth
-        ..strokeJoin = StrokeJoin.round
-        ..color = _ground,
-    );
-    final fill = build(Paint()..color = _ink);
-    final offset = centre - Offset(fill.width / 2, fill.height / 2);
-    stroke.paint(canvas, offset);
-    fill.paint(canvas, offset);
-    stroke.dispose();
-    fill.dispose();
   }
 }
 

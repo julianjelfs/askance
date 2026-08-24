@@ -16,11 +16,13 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   Future<ui.Image> flat(int grey, {int side = 64}) async {
     final recorder = ui.PictureRecorder();
-    Canvas(recorder, Rect.fromLTWH(0, 0, side.toDouble(), side.toDouble()))
-        .drawRect(
-          Rect.fromLTWH(0, 0, side.toDouble(), side.toDouble()),
-          Paint()..color = Color.fromARGB(255, grey, grey, grey),
-        );
+    Canvas(
+      recorder,
+      Rect.fromLTWH(0, 0, side.toDouble(), side.toDouble()),
+    ).drawRect(
+      Rect.fromLTWH(0, 0, side.toDouble(), side.toDouble()),
+      Paint()..color = Color.fromARGB(255, grey, grey, grey),
+    );
     final picture = recorder.endRecording();
     final image = await picture.toImage(side, side);
     picture.dispose();
@@ -52,7 +54,6 @@ void main() {
       devicePixelRatio: 1,
       peeking: false,
       splitPosition: 0.5,
-      regions: null,
       disposer: disposer,
       drawGrid: false,
     )..paint(Canvas(recorder, Offset.zero & output), output);

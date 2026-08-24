@@ -8,6 +8,8 @@ import '../../model/study.dart';
 import '../../state/canvas_session.dart';
 import '../../state/providers.dart';
 import '../../theme.dart';
+import '../fullscreen/fullscreen_stub.dart'
+    if (dart.library.js_interop) '../fullscreen/fullscreen_web.dart';
 import '../canvas/canvas_surface.dart';
 import '../canvas/tool_panel.dart';
 import '../onboarding/onboarding_screen.dart';
@@ -287,6 +289,31 @@ class _RailState extends ConsumerState<_Rail> {
             ).copyWith(fontSize: 22, letterSpacing: 22 * -0.02),
           ),
         ),
+        // Web only: a landscape tablet in a browser lands in this layout,
+        // and reference use wants the glass to itself there too.
+        if (canToggleFullscreen) ...[
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: toggleFullscreen,
+            child: Container(
+              width: 30,
+              height: 30,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: AskanceColors.ground,
+                  width: kRuleThin,
+                ),
+              ),
+              child: const GlyphIcon(
+                Glyph.expand,
+                size: 15,
+                color: AskanceColors.ground,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
         ActionButton(
           label: 'SHELF',
           height: 30,
@@ -374,9 +401,13 @@ class _RailState extends ConsumerState<_Rail> {
           Padding(
             padding: const EdgeInsets.only(left: 16),
             child: _railButton(
-              label: '№  NUMBER THE REGIONS',
-              active: session.settings.numbers,
-              onTap: session.toggleNumbers,
+              label: session.settings.skeletonFill == 0
+                  ? 'FILL, DARKEST FIRST'
+                  : 'FILLED '
+                        '${session.settings.skeletonFill.clamp(0, session.settings.steps)}'
+                        ' OF ${session.settings.steps}',
+              active: session.settings.skeletonFill > 0,
+              onTap: session.cycleSkeletonFill,
             ),
           ),
       ],

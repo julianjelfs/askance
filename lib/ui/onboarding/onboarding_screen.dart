@@ -53,7 +53,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       title: 'Look askance.',
       body:
           'Hold the image to peek at the photo. Split it down the middle. '
-          'Strip it back to edges and number every value.',
+          'Strip it back to edges, then block the values in, darkest first.',
       cta: 'Next',
       settings: StudySettings(
         steps: 4,

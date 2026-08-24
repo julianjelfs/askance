@@ -10,6 +10,9 @@ import '../../state/providers.dart';
 import '../../theme.dart';
 import '../share/share_sheet.dart';
 import '../shelf/shelf_screen.dart';
+import '../fullscreen/fullscreen_stub.dart'
+    if (dart.library.js_interop) '../fullscreen/fullscreen_web.dart';
+import '../widgets/glyphs.dart';
 import '../widgets/controls.dart';
 import 'canvas_surface.dart';
 import 'tool_panel.dart';
@@ -268,6 +271,22 @@ class _TopBarState extends ConsumerState<_TopBar> {
                       ),
                     ),
             ),
+            if (canToggleFullscreen)
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: toggleFullscreen,
+                child: SizedBox(
+                  width: 42 * s,
+                  height: 46 * s,
+                  child: Center(
+                    child: GlyphIcon(
+                      Glyph.expand,
+                      size: 17 * s,
+                      color: AskanceColors.ground,
+                    ),
+                  ),
+                ),
+              ),
             GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: () => showShareSheet(context, ref),
@@ -332,9 +351,12 @@ class _ModeRail extends StatelessWidget {
             ),
           if (skeleton)
             cell(
-              label: '№',
-              active: session.settings.numbers,
-              onTap: session.toggleNumbers,
+              label: session.settings.skeletonFill == 0
+                  ? 'FILL'
+                  : '${session.settings.skeletonFill.clamp(0, session.settings.steps)}'
+                        '/${session.settings.steps}',
+              active: session.settings.skeletonFill > 0,
+              onTap: session.cycleSkeletonFill,
             ),
         ],
       ),

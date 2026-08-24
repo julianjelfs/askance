@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/widgets.dart';
 
 import '../../engine/deferred_disposer.dart';
+import 'screen_awake.dart';
 import '../../engine/engine.dart';
 import '../../engine/value_painter.dart';
 import '../../state/canvas_session.dart';
@@ -47,6 +48,12 @@ class CanvasSurface extends StatefulWidget {
 class _CanvasSurfaceState extends State<CanvasSurface> {
   final _disposer = DeferredDisposer();
 
+  @override
+  void initState() {
+    super.initState();
+    ScreenAwake.acquire();
+  }
+
   ViewTransform _gestureStart = const ViewTransform();
   Offset _focalStart = Offset.zero;
   Size _size = Size.zero;
@@ -56,6 +63,7 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
 
   @override
   void dispose() {
+    ScreenAwake.release();
     _pendingTap?.cancel();
     _disposer.disposeAll();
     super.dispose();
@@ -199,7 +207,6 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
                     devicePixelRatio: dpr,
                     peeking: session.peeking,
                     splitPosition: session.splitPosition,
-                    regions: session.regions,
                     disposer: _disposer,
                     drawGrid: widget.drawGrid,
                   ),
