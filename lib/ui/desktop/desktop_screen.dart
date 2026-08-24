@@ -397,19 +397,26 @@ class _RailState extends ConsumerState<_Rail> {
             active: session.settings.mode == mode,
             onTap: () => session.setMode(mode),
           ),
-        if (session.settings.mode == ViewMode.skeleton)
-          Padding(
-            padding: const EdgeInsets.only(left: 16),
-            child: _railButton(
-              label: session.settings.skeletonFill == 0
-                  ? 'FILL, DARKEST FIRST'
-                  : 'FILLED '
-                        '${session.settings.skeletonFill.clamp(0, session.settings.steps)}'
-                        ' OF ${session.settings.steps}',
-              active: session.settings.skeletonFill > 0,
-              onTap: session.cycleSkeletonFill,
+        if (session.settings.mode == ViewMode.skeleton) ...[
+          // The fill as a sibling of the value selector: 0 is edges alone,
+          // the rest block the values in darkest-first — and a click jumps
+          // straight to a count instead of cycling through the rest.
+          LayoutBuilder(
+            builder: (context, constraints) => SegmentedControl<int>(
+              values: [for (var i = 0; i <= session.settings.steps; i++) i],
+              selected: session.settings.skeletonFill.clamp(
+                0,
+                session.settings.steps,
+              ),
+              labelOf: (v) => '$v',
+              onChanged: session.setSkeletonFill,
+              // Square cells, however many of them the step count makes.
+              height: constraints.maxWidth / (session.settings.steps + 1),
+              fontSize: 10,
+              underline: true,
             ),
           ),
+        ],
       ],
     ),
   );

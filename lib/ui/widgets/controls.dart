@@ -148,6 +148,7 @@ class SegmentedControl<T> extends StatelessWidget {
     required this.onChanged,
     this.height = 34,
     this.fontSize = 11,
+    this.underline = false,
   });
 
   final List<T> values;
@@ -156,6 +157,10 @@ class SegmentedControl<T> extends StatelessWidget {
   final ValueChanged<T> onChanged;
   final double height;
   final double fontSize;
+
+  /// The quieter variant: the selection reads as red text over a red bottom
+  /// rule instead of a filled cell.
+  final bool underline;
 
   @override
   Widget build(BuildContext context) {
@@ -176,8 +181,9 @@ class SegmentedControl<T> extends StatelessWidget {
                 duration: AskanceMotion.segmentedMarker,
                 curve: AskanceMotion.slide,
                 left: cell * index,
-                top: 0,
+                top: underline ? null : 0,
                 bottom: 0,
+                height: underline ? kRule : null,
                 width: cell,
                 child: const ColoredBox(color: AskanceColors.accent),
               ),
@@ -194,7 +200,9 @@ class SegmentedControl<T> extends StatelessWidget {
                             style: AskanceText.controlLabel(
                               fontSize,
                               tracking: 0.06,
-                              color: AskanceColors.ground,
+                              color: underline && value == selected
+                                  ? AskanceColors.accent
+                                  : AskanceColors.ground,
                             ).by(s),
                           ),
                         ),

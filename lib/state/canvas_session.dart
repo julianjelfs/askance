@@ -245,6 +245,15 @@ class CanvasSession extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Jump straight to a fill count — the desktop's segmented control.
+  void setSkeletonFill(int fill) {
+    final next = fill.clamp(0, settings.steps);
+    if (next == settings.skeletonFill) return;
+    settings = settings.copyWith(skeletonFill: next);
+    _persistSoon();
+    notifyListeners();
+  }
+
   /// Each tap blocks in one more value, darkest first; past the last it
   /// returns to edges alone. The count survives a steps change by clamping
   /// at paint time rather than resetting here.
