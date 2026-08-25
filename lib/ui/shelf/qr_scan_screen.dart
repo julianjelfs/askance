@@ -2,7 +2,8 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, kIsWeb, TargetPlatform;
 import '../../data/qr_transfer/still_decode.dart';
 import '../pick_image.dart';
 import '../../data/qr_transfer/transfer.dart';
@@ -21,6 +22,13 @@ class QrScanScreen extends ConsumerStatefulWidget {
   @override
   ConsumerState<QrScanScreen> createState() => _QrScanScreenState();
 }
+
+/// iOS Safari takes the whole route down with the live scanner's platform
+/// view — a blank screen, no error, nothing to catch. The capture UI works
+/// perfectly there, so on iOS-web the photograph is the way in, not the
+/// fallback.
+bool get _liveScannerWorks =>
+    !kIsWeb || defaultTargetPlatform != TargetPlatform.iOS;
 
 class _QrScanScreenState extends ConsumerState<QrScanScreen> {
   final _scanner = MobileScannerController(
@@ -148,7 +156,34 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
               ),
             ),
             Expanded(
-              child: stage == null
+              child: stage == null && !_liveScannerWorks
+                  ? Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(24 * s),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              'Photograph the code on the other screen and '
+                              'it will be read from the picture.',
+                              textAlign: TextAlign.center,
+                              style: AskanceText.body(
+                                13,
+                                color: AskanceColors.mutedDark,
+                              ).by(s),
+                            ),
+                            SizedBox(height: 16 * s),
+                            ActionButton(
+                              label: 'Photograph the code',
+                              trailing: '→',
+                              onPressed: _photoOfCode,
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : stage == null
                   ? MobileScanner(
                       controller: _scanner,
                       onDetect: _onDetect,
@@ -187,7 +222,7 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
                       ),
                     ),
             ),
-            if (kIsWeb && stage == null)
+            if (kIsWeb && _liveScannerWorks && stage == null)
               Padding(
                 padding: EdgeInsets.fromLTRB(16 * s, 12 * s, 16 * s, 16 * s),
                 child: ActionButton(
