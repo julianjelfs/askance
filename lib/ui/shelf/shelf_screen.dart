@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../build_stamp.dart';
 import '../../model/study.dart';
 import '../../state/providers.dart';
 import '../../theme.dart';
@@ -294,25 +295,38 @@ class _ShelfRail extends ConsumerWidget {
                 },
               ),
               const Spacer(),
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: onHowItWorks,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  child: Text(
-                    'HOW IT WORKS',
-                    style: AskanceText.controlLabel(
-                      10,
-                      tracking: 0.06,
-                      color: AskanceColors.mutedDark,
+              Row(
+                children: [
+                  Expanded(child: _howItWorks()),
+                  Text(
+                    kBuildStamp,
+                    style: AskanceText.caption(
+                      9,
+                      color: const Color(0x40F3F2F2),
                     ),
                   ),
-                ),
+                ],
               ),
             ],
           ),
         ),
       ],
+    ),
+  );
+
+  Widget _howItWorks() => GestureDetector(
+    behavior: HitTestBehavior.opaque,
+    onTap: onHowItWorks,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Text(
+        'HOW IT WORKS',
+        style: AskanceText.controlLabel(
+          10,
+          tracking: 0.06,
+          color: AskanceColors.mutedDark,
+        ),
+      ),
     ),
   );
 }

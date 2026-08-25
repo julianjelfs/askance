@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
+import '../../build_stamp.dart';
 import '../../data/qr_transfer/still_decode.dart';
 import '../pick_image.dart';
 import '../../data/qr_transfer/transfer.dart';
@@ -149,6 +150,17 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
                       tracking: 0.06,
                       color: AskanceColors.ground,
                     ).by(s),
+                  ),
+                  const Spacer(),
+                  Padding(
+                    padding: EdgeInsets.only(right: 12 * s),
+                    child: Text(
+                      kBuildStamp,
+                      style: AskanceText.caption(
+                        9,
+                        color: const Color(0x40F3F2F2),
+                      ),
+                    ),
                   ),
                 ],
               ),
