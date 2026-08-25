@@ -2,8 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
-import 'package:flutter/foundation.dart'
-    show defaultTargetPlatform, kIsWeb, TargetPlatform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../data/qr_transfer/still_decode.dart';
 import '../pick_image.dart';
 import '../../data/qr_transfer/transfer.dart';
@@ -23,12 +22,11 @@ class QrScanScreen extends ConsumerStatefulWidget {
   ConsumerState<QrScanScreen> createState() => _QrScanScreenState();
 }
 
-/// iOS Safari takes the whole route down with the live scanner's platform
-/// view — a blank screen, no error, nothing to catch. The capture UI works
-/// perfectly there, so on iOS-web the photograph is the way in, not the
-/// fallback.
-bool get _liveScannerWorks =>
-    !kIsWeb || defaultTargetPlatform != TargetPlatform.iOS;
+/// Whether to attempt the live camera view. Earlier iPad reports of a blank
+/// screen turned out to coincide with stale service-worker builds, so the
+/// live scanner gets its fair trial everywhere — with the photograph route
+/// alongside it on web as the escape hatch.
+const bool _liveScannerWorks = true;
 
 class _QrScanScreenState extends ConsumerState<QrScanScreen> {
   final _scanner = MobileScannerController(
@@ -222,7 +220,7 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
                       ),
                     ),
             ),
-            if (kIsWeb && _liveScannerWorks && stage == null)
+            if (kIsWeb && stage == null)
               Padding(
                 padding: EdgeInsets.fromLTRB(16 * s, 12 * s, 16 * s, 16 * s),
                 child: ActionButton(
