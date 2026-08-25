@@ -40,6 +40,10 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
 
   @override
   void dispose() {
+    // Web disposal alone has been seen to leave the camera track live —
+    // Safari's red badge outlasting the screen — so stop is always called
+    // explicitly first, here and on every way out.
+    unawaited(_scanner.stop());
     _scanner.dispose();
     super.dispose();
   }
@@ -137,7 +141,10 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
                 children: [
                   GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: () => Navigator.of(context).maybePop(),
+                    onTap: () async {
+                      await _scanner.stop();
+                      if (context.mounted) Navigator.of(context).maybePop();
+                    },
                     child: Padding(
                       padding: EdgeInsets.symmetric(horizontal: 16 * s),
                       child: Text(
