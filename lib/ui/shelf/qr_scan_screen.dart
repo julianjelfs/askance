@@ -2,6 +2,8 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import 'dart:async' show unawaited;
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../build_stamp.dart';
 import '../../data/qr_transfer/still_decode.dart';
@@ -74,6 +76,10 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
 
   Future<void> _begin(String payload) async {
     if (_receiver != null) return;
+    // The code has done its job: release the camera now, not when the route
+    // is eventually disposed — Safari shows a solid red badge for as long as
+    // the track is live, and the transfer needs no camera.
+    unawaited(_scanner.stop());
 
     final receiver = _receiver = QrReceiver(
       onProgress: (stage, fraction) {
