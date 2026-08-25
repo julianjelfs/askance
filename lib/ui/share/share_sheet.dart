@@ -10,6 +10,7 @@ import '../../engine/export.dart';
 import '../../state/canvas_session.dart';
 import '../../state/providers.dart';
 import '../../theme.dart';
+import '../layout.dart';
 import '../widgets/controls.dart';
 import '../widgets/glyphs.dart';
 import 'image_output.dart';
@@ -20,7 +21,7 @@ import 'qr_share_dialog.dart';
 /// study needs to survive happens the moment it is opened — so this is purely
 /// about the ways out: an image file, a print, the clipboard, another device.
 Future<void> showShareSheet(BuildContext context, WidgetRef ref) {
-  final wide = MediaQuery.sizeOf(context).width >= kDesktopBreakpoint;
+  final wide = isWideLayout(context);
   return showGeneralDialog<void>(
     context: context,
     barrierDismissible: true,

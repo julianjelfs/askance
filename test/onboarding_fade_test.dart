@@ -48,7 +48,7 @@ void main() {
     return opacity;
   }
 
-  testWidgets('the panels never overlap while one replaces the other', (
+  testWidgets('the panels crossfade, quickly and completely', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1080, 2400);
@@ -63,26 +63,20 @@ void main() {
         ),
       ),
     );
-    await tester.pump();
+    // Let the pane's entrance fade and slide finish before measuring.
+    await tester.pump(const Duration(milliseconds: 700));
 
     expect(visibility(tester, first), 1);
     expect(visibility(tester, second), 0);
 
     await tester.tap(find.text('Next'));
+    await tester.pump(); // start the switcher's clock
+    await tester.pump(const Duration(milliseconds: 90));
 
-    // Step through the whole handover. At no point should both be readable.
-    for (var elapsed = 0; elapsed < 500; elapsed += 20) {
-      await tester.pump(const Duration(milliseconds: 20));
-      final a = visibility(tester, first);
-      final b = visibility(tester, second);
-      expect(
-        a < 0.02 || b < 0.02,
-        isTrue,
-        reason:
-            'at ${elapsed}ms both panels were legible: '
-            '${a.toStringAsFixed(2)} and ${b.toStringAsFixed(2)}',
-      );
-    }
+    // Mid-handover the new copy is arriving while the old departs: a
+    // crossfade, not a cut and not a blank.
+    expect(visibility(tester, second), greaterThan(0));
+    expect(visibility(tester, second), lessThan(1));
 
     await tester.pumpAndSettle();
     expect(visibility(tester, first), 0);

@@ -12,10 +12,7 @@ import '../fullscreen/fullscreen_stub.dart'
     if (dart.library.js_interop) '../fullscreen/fullscreen_web.dart';
 import '../canvas/canvas_surface.dart';
 import '../canvas/tool_panel.dart';
-import '../onboarding/onboarding_screen.dart';
 import '../share/share_sheet.dart';
-import '../shelf/qr_scan_screen.dart';
-import '../shelf/shelf_screen.dart';
 import '../widgets/askance_mark.dart';
 import '../widgets/controls.dart';
 import '../widgets/glyphs.dart';
@@ -29,19 +26,6 @@ class DesktopScreen extends ConsumerStatefulWidget {
 }
 
 class _DesktopScreenState extends ConsumerState<DesktopScreen> {
-  bool _shelfOpen = false;
-
-  @override
-  void initState() {
-    super.initState();
-    // Nothing is open yet, so the shelf is the honest place to start.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && !ref.read(sessionProvider).hasImage) {
-        setState(() => _shelfOpen = true);
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(sessionProvider);
@@ -57,26 +41,13 @@ class _DesktopScreenState extends ConsumerState<DesktopScreen> {
                 width: 284,
                 child: _Rail(
                   session: session,
-                  // Opens only: closing is the overlay's own ×, so the
-                  // button cannot strand you on an empty stage.
-                  onShelf: () => setState(() => _shelfOpen = true),
-                  onKept: () => setState(() => _shelfOpen = true),
+                  // Leaving the study: the route's disposal clears the
+                  // session and drops fullscreen, so the shelf arrives with
+                  // nothing selected.
+                  onShelf: () => Navigator.of(context).maybePop(),
                 ),
               ),
-              Expanded(
-                child: Stack(
-                  children: [
-                    Positioned.fill(child: _Stage(session: session)),
-                    if (_shelfOpen)
-                      Positioned.fill(
-                        child: _ShelfOverlay(
-                          onClose: () => setState(() => _shelfOpen = false),
-                          onOpened: () => setState(() => _shelfOpen = false),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
+              Expanded(child: _Stage(session: session)),
             ],
           ),
         ),
@@ -153,17 +124,10 @@ class _Stage extends ConsumerWidget {
 }
 
 class _Rail extends ConsumerStatefulWidget {
-  const _Rail({
-    required this.session,
-    required this.onShelf,
-    required this.onKept,
-  });
+  const _Rail({required this.session, required this.onShelf});
 
   final CanvasSession session;
   final VoidCallback onShelf;
-
-  /// Where keeping a study lands: on the shelf, showing what was just kept.
-  final VoidCallback onKept;
 
   @override
   ConsumerState<_Rail> createState() => _RailState();
@@ -464,136 +428,3 @@ class _RailState extends ConsumerState<_Rail> {
 
 /// SHELF covers the stage with a light panel. Picking a study loads its
 /// settings and closes the overlay.
-class _ShelfOverlay extends ConsumerWidget {
-  const _ShelfOverlay({required this.onClose, required this.onOpened});
-
-  final VoidCallback onClose;
-  final VoidCallback onOpened;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final studies = ref.watch(studiesProvider).valueOrNull ?? const <Study>[];
-
-    return ColoredBox(
-      color: AskanceColors.ground,
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
-            decoration: const BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: AskanceColors.dividerLight,
-                  width: kRule,
-                ),
-              ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text('Studies', style: AskanceText.screenTitle()),
-                ),
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => Navigator.of(context).push(
-                    NoTransitionRoute(builder: (_) => const OnboardingScreen()),
-                  ),
-                  child: Container(
-                    width: 28,
-                    height: 28,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                        color: AskanceColors.dividerLight,
-                        width: kRule,
-                      ),
-                    ),
-                    child: Text(
-                      '?',
-                      style: AskanceText.button(13, color: AskanceColors.ink),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: onClose,
-                  child: SizedBox(
-                    width: 32,
-                    height: 32,
-                    child: Center(
-                      child: Text(
-                        '×',
-                        style: AskanceText.button(20, color: AskanceColors.ink),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(22, 18, 22, 24),
-              // Pinned to the left: a grid narrower than the stage otherwise
-              // floats in the middle of it.
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: ShelfGrid(
-                  studies: studies,
-                  columns: 3,
-                  onOpen: (study) async {
-                    await openStudy(context, ref, study);
-                    onOpened();
-                  },
-                  onNew: () async {
-                    await startStudy(context, ref, fromCamera: false);
-                    onOpened();
-                  },
-                ),
-              ),
-            ),
-          ),
-          Container(
-            decoration: const BoxDecoration(
-              border: Border(
-                top: BorderSide(
-                  color: AskanceColors.dividerLight,
-                  width: kRule,
-                ),
-              ),
-            ),
-            padding: const EdgeInsets.fromLTRB(22, 14, 22, 14),
-            child: Row(
-              children: [
-                Expanded(
-                  child: ActionButton(
-                    label: 'Scan from QR code',
-                    solid: false,
-                    onPressed: () async {
-                      final opened = await Navigator.of(context).push<bool>(
-                        NoTransitionRoute(builder: (_) => const QrScanScreen()),
-                      );
-                      if (opened == true) onOpened();
-                    },
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: ActionButton(
-                    label: 'New study from photos',
-                    trailing: '→',
-                    onPressed: () async {
-                      await startStudy(context, ref, fromCamera: false);
-                      onOpened();
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

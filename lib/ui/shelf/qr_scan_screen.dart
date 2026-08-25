@@ -6,7 +6,7 @@ import '../../data/qr_transfer/transfer.dart';
 import '../../model/study.dart';
 import '../../state/providers.dart';
 import '../../theme.dart';
-import '../canvas/canvas_screen.dart';
+import '../study_screen.dart';
 import '../widgets/controls.dart';
 import 'shelf_screen.dart' show NoTransitionRoute;
 
@@ -20,7 +20,18 @@ class QrScanScreen extends ConsumerStatefulWidget {
 }
 
 class _QrScanScreenState extends ConsumerState<QrScanScreen> {
+  final _scanner = MobileScannerController(
+    facing: CameraFacing.back,
+    formats: const [BarcodeFormat.qrCode],
+  );
   QrReceiver? _receiver;
+
+  @override
+  void dispose() {
+    _scanner.dispose();
+    super.dispose();
+  }
+
   String? _stage;
   double? _fraction;
   bool _failed = false;
@@ -54,16 +65,9 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
       // the shelf without a keep step.
       await ref.read(studiesProvider.notifier).keep(session);
       if (!mounted) return;
-      // The desktop's canvas is its stage; the phone pushes the canvas
-      // screen. Wide layouts pop back with a result so the shelf overlay can
-      // close over the newly arrived study.
-      if (MediaQuery.sizeOf(context).width >= kDesktopBreakpoint) {
-        Navigator.of(context).pop(true);
-      } else {
-        Navigator.of(context).pushReplacement(
-          NoTransitionRoute(builder: (_) => const CanvasScreen()),
-        );
-      }
+      Navigator.of(
+        context,
+      ).pushReplacement(NoTransitionRoute(builder: (_) => const StudyScreen()));
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -118,7 +122,28 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
             ),
             Expanded(
               child: stage == null
-                  ? MobileScanner(onDetect: _onDetect)
+                  ? MobileScanner(
+                      controller: _scanner,
+                      onDetect: _onDetect,
+                      // The default error state is an unexplained black
+                      // rectangle; say what actually went wrong instead.
+                      errorBuilder: (context, error) => Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(24 * s),
+                          child: Text(
+                            'Camera failed: '
+                            '${error.errorCode.name}'
+                            '${error.errorDetails?.message == null ? '' : ' — ${error.errorDetails!.message}'}',
+                            textAlign: TextAlign.center,
+                            style: AskanceText.controlLabel(
+                              11,
+                              tracking: 0.06,
+                              color: AskanceColors.accent,
+                            ).by(s),
+                          ),
+                        ),
+                      ),
+                    )
                   : Center(
                       child: Text(
                         _fraction != null && _fraction! > 0 && _fraction! < 1

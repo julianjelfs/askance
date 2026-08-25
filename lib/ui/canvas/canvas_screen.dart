@@ -130,17 +130,57 @@ class _CanvasBody extends ConsumerWidget {
                     right: 14 * s,
                     child: _ModeRail(session: session),
                   ),
+                  // Full-bleed at phone widths; on a desktop-sized screen —
+                  // browser fullscreen — a bar stretched across the whole
+                  // glass reads wrong, so past kToolsMaxWidth it becomes a
+                  // floating panel in the bottom-left corner instead.
                   Positioned(
                     left: 0,
-                    right: 0,
+                    right: null,
                     bottom: 0,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (session.openTool != null)
-                          ToolPanel(session: session, tool: session.openTool!),
-                        _ToolBar(session: session, bottomInset: padding.bottom),
-                      ],
+                    child: LayoutBuilder(
+                      builder: (context, _) {
+                        final width = MediaQuery.sizeOf(context).width;
+                        final floating = width > kToolsMaxWidth;
+                        final tools = Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (session.openTool != null)
+                              ToolPanel(
+                                session: session,
+                                tool: session.openTool!,
+                              ),
+                            _ToolBar(
+                              session: session,
+                              bottomInset: floating ? 0 : padding.bottom,
+                            ),
+                          ],
+                        );
+                        if (!floating) {
+                          return SizedBox(width: width, child: tools);
+                        }
+                        return Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            14 * s,
+                            0,
+                            0,
+                            14 * s + padding.bottom,
+                          ),
+                          child: Container(
+                            width: kToolsMaxWidth,
+                            decoration: const BoxDecoration(
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Color(0x33201E1D),
+                                  blurRadius: 14,
+                                  offset: Offset(0, 5),
+                                ),
+                              ],
+                            ),
+                            child: tools,
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -152,6 +192,10 @@ class _CanvasBody extends ConsumerWidget {
     );
   }
 }
+
+/// Wider than this and the tool bar stops stretching: a hand-sized control
+/// block has no business spanning a desktop.
+const double kToolsMaxWidth = 550;
 
 class _TopBar extends ConsumerStatefulWidget {
   const _TopBar({required this.session, required this.topInset});

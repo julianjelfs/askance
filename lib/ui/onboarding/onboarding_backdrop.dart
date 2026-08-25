@@ -31,9 +31,15 @@ final onboardingImageProvider = FutureProvider<ui.Image?>((ref) async {
 /// Held behind a scrim that goes to solid ink at the bottom, where the title,
 /// body and call to action sit.
 class OnboardingBackdrop extends ConsumerStatefulWidget {
-  const OnboardingBackdrop({super.key, required this.settings});
+  const OnboardingBackdrop({super.key, required this.settings, this.onSettled});
 
   final StudySettings settings;
+
+  /// Fires once each time the pass for the *current* settings has rendered —
+  /// the moment this backdrop is actually showing what it was asked for. The
+  /// onboarding crossfade waits for it: fading in a backdrop that is still
+  /// showing the raw photograph defeats the point.
+  final void Function(StudySettings settled)? onSettled;
 
   @override
   ConsumerState<OnboardingBackdrop> createState() => _OnboardingBackdropState();
@@ -42,6 +48,7 @@ class OnboardingBackdrop extends ConsumerStatefulWidget {
 class _OnboardingBackdropState extends ConsumerState<OnboardingBackdrop> {
   final _disposer = DeferredDisposer();
   final _blur = BlurPass();
+  StudySettings? _settled;
 
   @override
   void dispose() {
@@ -82,21 +89,32 @@ class _OnboardingBackdropState extends ConsumerState<OnboardingBackdrop> {
 
         return ListenableBuilder(
           listenable: _blur,
-          builder: (context, _) => CustomPaint(
-            size: Size.infinite,
-            painter: ValuePainter(
-              shader: shader,
-              source: image,
-              blurred: _blur.image,
-              settings: widget.settings,
-              view: view,
-              devicePixelRatio: dpr,
-              peeking: false,
-              splitPosition: widget.settings.splitPosition,
-              disposer: _disposer,
-              drawGrid: true,
-            ),
-          ),
+          builder: (context, _) {
+            if (_blur.isCurrent &&
+                _blur.image != null &&
+                _settled != widget.settings) {
+              _settled = widget.settings;
+              final settings = widget.settings;
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) widget.onSettled?.call(settings);
+              });
+            }
+            return CustomPaint(
+              size: Size.infinite,
+              painter: ValuePainter(
+                shader: shader,
+                source: image,
+                blurred: _blur.image,
+                settings: widget.settings,
+                view: view,
+                devicePixelRatio: dpr,
+                peeking: false,
+                splitPosition: widget.settings.splitPosition,
+                disposer: _disposer,
+                drawGrid: true,
+              ),
+            );
+          },
         );
       },
     );
