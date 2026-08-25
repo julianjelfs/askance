@@ -2,6 +2,9 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
+import '../../data/qr_transfer/still_decode.dart';
+import '../pick_image.dart';
 import '../../data/qr_transfer/transfer.dart';
 import '../../model/study.dart';
 import '../../state/providers.dart';
@@ -37,9 +40,33 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
   bool _failed = false;
 
   Future<void> _onDetect(BarcodeCapture capture) async {
-    if (_receiver != null) return;
     final payload = capture.barcodes.firstOrNull?.rawValue;
     if (payload == null || !payload.startsWith('askance1:')) return;
+    await _begin(payload);
+  }
+
+  /// The live camera view does not render on every browser — some tablets
+  /// composite the platform view to nothing — so a photograph of the code,
+  /// taken through the native capture UI and decoded in Dart, is offered as
+  /// the way past it.
+  Future<void> _photoOfCode() async {
+    final picked = await takePhoto();
+    if (picked == null || !mounted) return;
+    setState(() => _stage = 'Reading the code…');
+    final payload = await decodeQrFromPhoto(picked.bytes);
+    if (!mounted) return;
+    if (payload == null || !payload.startsWith('askance1:')) {
+      setState(() {
+        _failed = true;
+        _stage = 'No askance code found in that photo';
+      });
+      return;
+    }
+    await _begin(payload);
+  }
+
+  Future<void> _begin(String payload) async {
+    if (_receiver != null) return;
 
     final receiver = _receiver = QrReceiver(
       onProgress: (stage, fraction) {
@@ -160,6 +187,16 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
                       ),
                     ),
             ),
+            if (kIsWeb && stage == null)
+              Padding(
+                padding: EdgeInsets.fromLTRB(16 * s, 12 * s, 16 * s, 16 * s),
+                child: ActionButton(
+                  label: 'Photo of the code instead',
+                  solid: false,
+                  onDark: true,
+                  onPressed: _photoOfCode,
+                ),
+              ),
             if (_failed)
               Padding(
                 padding: EdgeInsets.all(16 * s),
