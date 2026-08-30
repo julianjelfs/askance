@@ -88,15 +88,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     (
       title: 'Grid when you want it.',
       body:
-          'Square or diamond, as fine as you like — then get it out of the way '
-          'with a single tap.',
+          'Halve the picture, then halve again, with the diagonals if you '
+          'want them — then get it out of the way with a single tap.',
       cta: 'Start a study',
       settings: StudySettings(
         steps: 3,
         detail: 0.45,
         scale: ValueScale.warm,
-        grid: GridMode.square,
-        gridDivisions: 4,
+        grid: GridMode.diagonals,
+        gridLevel: 2,
       ),
     ),
   ];

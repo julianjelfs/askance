@@ -37,7 +37,7 @@ engine leans on GPU round trips that WebGL makes expensive.
   over-exposed photograph needs.
 - **Root of the scale.** Neutral grey, or a tint of any hue, picked from a
   continuous strip. Moving the tint never moves a value.
-- **Grid** (square or diamond, 2–10 divisions), pinch/scroll **zoom** to 6×,
+- **Grid** (the picture halved 1–4 times, with or without diagonals), pinch/scroll **zoom** to 6×,
   press-and-hold **peek** at the photograph, and a **shelf** of saved studies,
   each remembered with its settings, its crop and its source image.
 - **Share.** Save, print or copy a PNG at screen (1200×1800) or print

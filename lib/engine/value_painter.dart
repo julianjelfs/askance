@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/rendering.dart';
@@ -88,9 +89,15 @@ class ValuePainter extends CustomPainter {
     if (drawGrid && settings.grid != GridMode.off) {
       // Divides the photograph, not the view: the grid is drawn across the
       // whole image at its current size and clipped to what shows, so
-      // zooming magnifies the squares with the picture instead of quietly
-      // re-dividing whatever happens to be on screen.
-      paintGrid(canvas, dest, area, settings.grid, settings.gridDivisions);
+      // zooming magnifies the cells with the picture — and, as they grow,
+      // halves them again, so the grid keeps roughly the density chosen.
+      paintGrid(
+        canvas,
+        dest,
+        area,
+        settings.grid,
+        gridLevelAt(settings.gridLevel, view.zoom),
+      );
     }
   }
 
@@ -170,47 +177,110 @@ class ValuePainter extends CustomPainter {
 /// baked into the processed raster so the rule weight never rides the zoom —
 /// but the spacing does, which is what makes the grid a division of the
 /// picture rather than of whatever is on screen.
+///
+/// The grid is built by halving. Depth 1 is the picture's two diagonals and
+/// its two midlines; every further depth repeats that inside each cell of
+/// the one before, so a cell is always the picture's own shape and each
+/// depth only adds rules — none moves. Because the cells are alike and
+/// aligned, a cell's diagonals chain corner to corner into unbroken rules.
+///
+/// [level] is continuous: the whole depths are drawn solid and the next one
+/// fades in over the fraction, which is what lets the grid follow the zoom
+/// without a rule ever appearing all at once. Depth is also attenuated —
+/// the coarsest rules are full strength and each finer one lighter — so a
+/// dense grid still reads as a hierarchy rather than a mesh.
 void paintGrid(
   Canvas canvas,
   Rect image,
   Rect visible,
   GridMode mode,
-  int divisions,
+  double level,
 ) {
   if (mode == GridMode.off || visible.isEmpty || image.isEmpty) return;
-  final paint = Paint()
-    ..color = AskanceColors.grid
-    ..strokeWidth = kRule;
-  final spacing = image.width / divisions;
   final size = image.size;
+  final deepest = level.ceil();
 
   canvas.save();
   canvas.clipRect(visible);
   canvas.translate(image.left, image.top);
-  if (mode == GridMode.square) {
-    for (var x = spacing; x < size.width - 0.01; x += spacing) {
+  for (var depth = 1; depth <= deepest; depth++) {
+    final alpha = gridRuleAlpha(depth, level);
+    if (alpha <= 0) continue;
+    final paint = Paint()
+      ..color = AskanceColors.grid.withValues(
+        alpha: AskanceColors.grid.a * alpha,
+      )
+      ..strokeWidth = kRule;
+
+    // The midlines of every cell of the depth above: the rules at the odd
+    // multiples of this depth's cell size, the even ones being already drawn.
+    final n = StudySettings.divisionsAt(depth);
+    final cell = Size(size.width / n, size.height / n);
+    for (var i = 1; i < n; i += 2) {
+      final x = i * cell.width;
+      final y = i * cell.height;
       canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-    for (var y = spacing; y < size.height - 0.01; y += spacing) {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
     }
-  } else {
-    // Rules at +/-45 degrees, at the same spacing measured perpendicular to
-    // the lines, so a diamond grid reads at the same density as a square one.
-    final step = spacing * 1.41421356;
-    final extent = size.width + size.height;
-    for (var c = -extent; c <= extent; c += step) {
+    if (mode != GridMode.diagonals) continue;
+
+    // The diagonals of every cell of the depth above, indexed by the corner
+    // they leave the top or left edge from. The even-indexed ones coincide
+    // with the coarser depth's diagonals, so only the odd ones are new —
+    // except at depth 1, where the picture's own pair is all there is.
+    final m = StudySettings.divisionsAt(depth - 1);
+    final parent = Size(size.width / m, size.height / m);
+    for (var k = -(m - 1); k < m; k++) {
+      if (depth > 1 && k.isEven) continue;
+      // Falling: x/parent.width - y/parent.height = k.
       canvas.drawLine(
-        Offset(c, 0),
-        Offset(c + size.height, size.height),
+        k >= 0 ? Offset(k * parent.width, 0) : Offset(0, -k * parent.height),
+        k >= 0
+            ? Offset(size.width, (m - k) * parent.height)
+            : Offset((m + k) * parent.width, size.height),
         paint,
       );
+      // Rising: x/parent.width + y/parent.height = m + k.
       canvas.drawLine(
-        Offset(c, 0),
-        Offset(c - size.height, size.height),
+        k <= 0
+            ? Offset((m + k) * parent.width, 0)
+            : Offset(size.width, k * parent.height),
+        k <= 0
+            ? Offset(0, (m + k) * parent.height)
+            : Offset(k * parent.width, size.height),
         paint,
       );
     }
   }
   canvas.restore();
+}
+
+/// How deep the grid goes on screen: the chosen [level] at 1×, one depth
+/// more for every doubling of [zoom], so a cell on screen stays between one
+/// and two of the chosen size however far in the picture is taken.
+double gridLevelAt(int level, double zoom) =>
+    (level + math.log(zoom) / math.ln2).clamp(1.0, maxGridDepth.toDouble());
+
+/// Deeper than any zoom reaches from the deepest chosen level; bounds the
+/// rule count.
+const int maxGridDepth = 7;
+
+/// Strength of the rules at [depth] when the grid is drawn to [level], 0–1.
+///
+/// Two things at once. A rule that has just arrived is half strength and
+/// gains as the zoom leaves it behind, so what the zoom has added is lighter
+/// than what was there before; and a rule is never lighter than its place
+/// from the top, so at 1× the coarsest is always full strength and the
+/// chosen grid never looks tentative. The depth still arriving is eased in
+/// over the fraction, from nothing.
+double gridRuleAlpha(int depth, double level) {
+  final behind = level - depth;
+  if (behind <= -1) return 0;
+  const gain = 1.5;
+  final fromBelow = math.min(1.0, 0.5 * math.pow(gain, math.max(0, behind)));
+  final fromTop = math.pow(gain, -(depth - 1)).toDouble();
+  final settled = math.max(fromBelow, fromTop);
+  if (behind >= 0) return settled;
+  final t = behind + 1;
+  return settled * t * t * (3 - 2 * t);
 }

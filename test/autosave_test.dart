@@ -78,8 +78,8 @@ void main() {
       t.session
         ..setScale(ValueScale.sepia)
         ..setMode(ViewMode.skeleton)
-        ..setGrid(GridMode.diamond)
-        ..setGridDivisions(7)
+        ..setGrid(GridMode.diagonals)
+        ..setGridLevel(3)
         ..cycleSkeletonFill()
         ..rename('Renamed');
       async.elapse(const Duration(seconds: 2));
@@ -87,8 +87,8 @@ void main() {
       final (_, settings, name) = t.writes.single;
       expect(settings.scale, ValueScale.sepia);
       expect(settings.mode, ViewMode.skeleton);
-      expect(settings.grid, GridMode.diamond);
-      expect(settings.gridDivisions, 7);
+      expect(settings.grid, GridMode.diagonals);
+      expect(settings.gridLevel, 3);
       expect(settings.skeletonFill, 1);
       expect(name, 'Renamed');
     });

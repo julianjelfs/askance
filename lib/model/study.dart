@@ -3,13 +3,25 @@ import 'dart:ui' show Offset;
 import '../engine/engine.dart';
 import '../engine/value_scale.dart';
 
+/// The grid divides the photograph, not the view: at every level each cell is
+/// halved both ways, so the cells are always the picture's own shape. LINES
+/// is the verticals and horizontals alone; DIAGONALS adds both diagonals of
+/// every cell as it is halved, which chain corner to corner into rules across
+/// the whole picture.
 enum GridMode {
   off('OFF'),
-  square('SQUARE'),
-  diamond('DIAMOND');
+  lines('LINES'),
+  diagonals('DIAGONALS');
 
   const GridMode(this.label);
   final String label;
+
+  /// Manifests written before the grid was a division of the whole.
+  static GridMode fromLegacyName(Object? name) => switch (name) {
+    'square' => lines,
+    'diamond' => diagonals,
+    _ => off,
+  };
 }
 
 /// Everything a study remembers. Zoom, pan, peek, chrome visibility and the
@@ -21,7 +33,7 @@ class StudySettings {
     this.detail = 0.5,
     this.mode = ViewMode.value,
     this.grid = GridMode.off,
-    this.gridDivisions = 4,
+    this.gridLevel = 2,
     this.skeletonFill = 0,
     this.smoothing = Smoothing.gaussian,
     this.lockDetail = false,
@@ -37,7 +49,15 @@ class StudySettings {
   final double detail;
   final ViewMode mode;
   final GridMode grid;
-  final int gridDivisions;
+
+  /// How many times the picture has been halved at 1×: level 1 is the four
+  /// quadrants, level 2 halves each of those, and so on. Zooming in halves
+  /// further on its own, so this is a density rather than a fixed grid.
+  final int gridLevel;
+
+  /// Cells across (and down) at the current level.
+  int get gridDivisions => divisionsAt(gridLevel);
+  static int divisionsAt(int level) => 1 << level;
 
   /// Skeleton only: how many bands, darkest first, are blocked in with their
   /// ramp colour over the white ground — the way a painting is actually
@@ -81,8 +101,8 @@ class StudySettings {
 
   static const int minSteps = 2;
   static const int maxSteps = 7;
-  static const int minDivisions = 2;
-  static const int maxDivisions = 10;
+  static const int minGridLevel = 1;
+  static const int maxGridLevel = 4;
 
   /// A quarter of the L* range in either direction is far more than anyone
   /// needs and still leaves every step reachable.
@@ -94,7 +114,7 @@ class StudySettings {
     double? detail,
     ViewMode? mode,
     GridMode? grid,
-    int? gridDivisions,
+    int? gridLevel,
     int? skeletonFill,
     Smoothing? smoothing,
     bool? lockDetail,
@@ -109,7 +129,7 @@ class StudySettings {
     detail: detail ?? this.detail,
     mode: mode ?? this.mode,
     grid: grid ?? this.grid,
-    gridDivisions: gridDivisions ?? this.gridDivisions,
+    gridLevel: gridLevel ?? this.gridLevel,
     skeletonFill: skeletonFill ?? this.skeletonFill,
     smoothing: smoothing ?? this.smoothing,
     lockDetail: lockDetail ?? this.lockDetail,
@@ -126,7 +146,7 @@ class StudySettings {
     'detail': detail,
     'mode': mode.name,
     'grid': grid.name,
-    'gridDivisions': gridDivisions,
+    'gridLevel': gridLevel,
     'skeletonFill': skeletonFill,
     'smoothing': smoothing.name,
     'lockDetail': lockDetail,
@@ -146,11 +166,12 @@ class StudySettings {
     scale: ValueScale.fromJson(json['scale']),
     detail: _double(json['detail'], 0.5).clamp(0.0, 1.0),
     mode: _enumByName(ViewMode.values, json['mode'], ViewMode.value),
-    grid: _enumByName(GridMode.values, json['grid'], GridMode.off),
-    gridDivisions: _int(
-      json['gridDivisions'],
-      4,
-    ).clamp(minDivisions, maxDivisions),
+    grid: _enumByName(
+      GridMode.values,
+      json['grid'],
+      GridMode.fromLegacyName(json['grid']),
+    ),
+    gridLevel: _gridLevel(json),
     skeletonFill: _int(json['skeletonFill'], 0).clamp(0, maxSteps),
     smoothing: _enumByName(
       Smoothing.values,
@@ -188,7 +209,7 @@ class StudySettings {
       other.detail == detail &&
       other.mode == mode &&
       other.grid == grid &&
-      other.gridDivisions == gridDivisions &&
+      other.gridLevel == gridLevel &&
       other.skeletonFill == skeletonFill &&
       other.smoothing == smoothing &&
       other.lockDetail == lockDetail &&
@@ -205,7 +226,7 @@ class StudySettings {
     detail,
     mode,
     grid,
-    gridDivisions,
+    gridLevel,
     skeletonFill,
     smoothing,
     lockDetail,
@@ -298,6 +319,25 @@ int _int(Object? value, int fallback) =>
 
 double _double(Object? value, double fallback) =>
     value is num ? value.toDouble() : fallback;
+
+/// The level, or the nearest level to a legacy division count: 2–10 cells
+/// across becomes 1, 2 or 3 halvings.
+int _gridLevel(Map<String, Object?> json) {
+  if (json['gridLevel'] is num) {
+    return _int(
+      json['gridLevel'],
+      2,
+    ).clamp(StudySettings.minGridLevel, StudySettings.maxGridLevel);
+  }
+  final divisions = _int(json['gridDivisions'], 4);
+  var level = StudySettings.minGridLevel;
+  while (level < StudySettings.maxGridLevel &&
+      StudySettings.divisionsAt(level + 1) - divisions <
+          divisions - StudySettings.divisionsAt(level)) {
+    level++;
+  }
+  return level;
+}
 
 T _enumByName<T extends Enum>(List<T> values, Object? name, T fallback) {
   for (final v in values) {

@@ -48,9 +48,7 @@ void main() {
     return opacity;
   }
 
-  testWidgets('the panels crossfade, quickly and completely', (
-    tester,
-  ) async {
+  testWidgets('the panels crossfade, quickly and completely', (tester) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);

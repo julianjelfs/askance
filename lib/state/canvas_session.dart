@@ -245,13 +245,13 @@ class CanvasSession extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setGridDivisions(int divisions) {
-    final next = divisions.clamp(
-      StudySettings.minDivisions,
-      StudySettings.maxDivisions,
+  void setGridLevel(int level) {
+    final next = level.clamp(
+      StudySettings.minGridLevel,
+      StudySettings.maxGridLevel,
     );
-    if (next == settings.gridDivisions) return;
-    settings = settings.copyWith(gridDivisions: next);
+    if (next == settings.gridLevel) return;
+    settings = settings.copyWith(gridLevel: next);
     _persistSoon();
     notifyListeners();
   }

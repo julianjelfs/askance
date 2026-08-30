@@ -206,17 +206,22 @@ class GridControl extends StatelessWidget {
           fontSize: 10,
         ),
         SizedBox(height: 12 * s),
-        Row(
-          children: [
-            Text('DIVISIONS', style: AskanceText.sectionLabel().by(s)),
-            const Spacer(),
-            RuleStepper(
-              value: session.settings.gridDivisions,
-              min: StudySettings.minDivisions,
-              max: StudySettings.maxDivisions,
-              onChanged: session.setGridDivisions,
-            ),
+        // Each level halves every cell both ways, so the choice is how many
+        // cells across at 1×: 2, 4, 8 or 16 — never a count that leaves a
+        // partial cell at one edge. Zooming in halves further by itself.
+        SegmentedControl<int>(
+          values: [
+            for (
+              var level = StudySettings.minGridLevel;
+              level <= StudySettings.maxGridLevel;
+              level++
+            )
+              level,
           ],
+          selected: session.settings.gridLevel,
+          labelOf: (level) => '${StudySettings.divisionsAt(level)}',
+          onChanged: session.setGridLevel,
+          fontSize: 10,
         ),
       ],
     );
