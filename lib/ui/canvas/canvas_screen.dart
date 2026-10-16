@@ -128,7 +128,24 @@ class _CanvasBody extends ConsumerWidget {
                   Positioned(
                     top: padding.top + 60 * s,
                     right: 14 * s,
-                    child: _ModeRail(session: session),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        _ModeRail(session: session),
+                        if (session.settings.mode.paintsOnlyPalette) ...[
+                          SizedBox(height: 8 * s),
+                          Container(
+                            width: 44 * s,
+                            padding: const EdgeInsets.all(kRule),
+                            color: AskanceColors.ink,
+                            child: PaletteSwatch(
+                              session: session,
+                              chipHeight: 32,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                   // Full-bleed at phone widths; on a desktop-sized screen —
                   // browser fullscreen — a bar stretched across the whole

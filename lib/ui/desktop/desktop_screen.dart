@@ -56,6 +56,11 @@ class _DesktopScreenState extends ConsumerState<DesktopScreen> {
   }
 }
 
+/// The floating palette beside the picture: wide enough that each colour can
+/// be judged on its own, which a strip in the rail was too small for.
+const double _paletteWidth = 88;
+const double _paletteGap = 20;
+
 /// Ground #eae9e9, with the image centred in a 496 x 744 frame. The image sits
 /// *whole on the ground* here rather than filling the frame.
 class _Stage extends ConsumerWidget {
@@ -81,8 +86,15 @@ class _Stage extends ConsumerWidget {
             // that images are shown whole it would letterbox a landscape
             // inside a portrait frame on top of that.
             const margin = 28.0;
+            // The palette floats beside the picture, so the picture gives up
+            // that much width rather than being overlapped by it.
+            final palette = session.settings.mode.paintsOnlyPalette;
+            final paletteRoom = palette ? _paletteWidth + _paletteGap : 0.0;
             final available = Size(
-              (constraints.maxWidth - margin * 2).clamp(80.0, double.infinity),
+              (constraints.maxWidth - margin * 2 - paletteRoom).clamp(
+                80.0,
+                double.infinity,
+              ),
               (constraints.maxHeight - margin * 2).clamp(80.0, double.infinity),
             );
             final image = session.image!;
@@ -91,7 +103,7 @@ class _Stage extends ConsumerWidget {
               available,
             ).size;
 
-            return Container(
+            final picture = Container(
               width: frame.width,
               height: frame.height,
               foregroundDecoration: const BoxDecoration(
@@ -115,6 +127,33 @@ class _Stage extends ConsumerWidget {
                     Positioned.fill(child: SplitHandle(session: session)),
                 ],
               ),
+            );
+            if (!palette) return picture;
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                picture,
+                const SizedBox(width: _paletteGap),
+                Container(
+                  width: _paletteWidth,
+                  padding: const EdgeInsets.all(kRule),
+                  decoration: const BoxDecoration(
+                    color: AskanceColors.ink,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0x33201E1D),
+                        blurRadius: 14,
+                        offset: Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: PaletteSwatch(
+                    session: session,
+                    // Seven of these still fit a 760px window with room over.
+                    chipHeight: 64,
+                  ),
+                ),
+              ],
             );
           },
         ),

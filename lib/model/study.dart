@@ -1,6 +1,7 @@
-import 'dart:ui' show Offset;
+import 'dart:ui' show Color, Offset;
 
 import '../engine/engine.dart';
+import '../engine/random_ramp.dart';
 import '../engine/value_scale.dart';
 
 /// The grid divides the photograph, not the view: at every level each cell is
@@ -98,6 +99,17 @@ class StudySettings {
   /// come back to should look like the one you left, and the shelf thumbnail
   /// should show the passage you were actually working on.
   final ViewTransform view;
+
+  /// The colours the processed image is painted in, darkest first: the
+  /// scale's ramp, or the random deal when RANDOM is showing or is what split
+  /// and skeleton are laid over. The painter and the palette swatch both read
+  /// this, so the swatch can never show a colour the picture doesn't use.
+  List<Color> get palette =>
+      mode == ViewMode.random ||
+          ((mode == ViewMode.split || mode == ViewMode.skeleton) &&
+              splitBase == ViewMode.random)
+      ? randomRamp(scale: scale, steps: steps, seed: randomSeed)
+      : scale.ramp(steps);
 
   static const int minSteps = 2;
   static const int maxSteps = 7;

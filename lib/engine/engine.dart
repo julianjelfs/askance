@@ -21,6 +21,10 @@ enum ViewMode {
 
   const ViewMode(this.railLabel, this.longLabel);
 
+  /// The modes whose picture is nothing but the palette, so the palette
+  /// swatch has something to say and a band can be isolated.
+  bool get paintsOnlyPalette => this == value || this == random;
+
   /// Label used on the phone's right-edge rail, which is 44px wide.
   final String railLabel;
 

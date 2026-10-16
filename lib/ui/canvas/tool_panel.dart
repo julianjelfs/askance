@@ -188,6 +188,55 @@ class ScaleControl extends StatelessWidget {
   }
 }
 
+/// Every colour the picture is painted in, each on its own: the palette to
+/// mix, easier to judge in isolation than scattered across the image. Tap a
+/// colour to see only where it falls; tap it again to see them all. Shown in
+/// the modes where the picture is nothing but these colours.
+class PaletteSwatch extends StatelessWidget {
+  const PaletteSwatch({
+    super.key,
+    required this.session,
+    required this.chipHeight,
+  });
+
+  final CanvasSession session;
+
+  /// Before the design scale. Each chip takes the full width it is given.
+  final double chipHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = DesignScale.of(context);
+    final palette = session.settings.palette;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Lightest at the top, as a value scale stands.
+        for (var band = palette.length - 1; band >= 0; band--) ...[
+          if (band < palette.length - 1) const SizedBox(height: kRule),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => session.toggleIsolatedBand(band),
+            child: Container(
+              height: chipHeight * s,
+              color: palette[band],
+              foregroundDecoration: session.isolatedBand == band
+                  ? BoxDecoration(
+                      border: Border.all(
+                        color: AskanceColors.accent,
+                        width: kRule * 2,
+                      ),
+                    )
+                  : null,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 class GridControl extends StatelessWidget {
   const GridControl({super.key, required this.session});
   final CanvasSession session;

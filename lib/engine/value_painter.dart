@@ -7,7 +7,7 @@ import '../model/study.dart';
 import '../theme.dart';
 import 'deferred_disposer.dart';
 import 'engine.dart';
-import 'random_ramp.dart';
+import 'value_scale.dart';
 
 /// Paints the study: the quantised value map, the untouched photograph, the
 /// split of the two, or the skeleton — plus the grid, which is always drawn
@@ -24,6 +24,7 @@ class ValuePainter extends CustomPainter {
     required this.splitPosition,
     required this.disposer,
     required this.drawGrid,
+    this.isolatedBand,
     super.repaint,
   });
 
@@ -44,6 +45,10 @@ class ValuePainter extends CustomPainter {
 
   final DeferredDisposer disposer;
   final bool drawGrid;
+
+  /// When set, only this band (darkest first) keeps its colour. A way of
+  /// looking, like [peeking]: never part of a study, never exported.
+  final int? isolatedBand;
 
   ui.FragmentShader? _fragment;
 
@@ -128,17 +133,13 @@ class ValuePainter extends CustomPainter {
       area: area,
       devicePx: devicePx,
       steps: settings.steps,
-      ramp:
-          settings.mode == ViewMode.random ||
-              ((settings.mode == ViewMode.split ||
-                      settings.mode == ViewMode.skeleton) &&
-                  settings.splitBase == ViewMode.random)
-          ? randomRamp(
-              scale: settings.scale,
-              steps: settings.steps,
-              seed: settings.randomSeed,
-            )
-          : settings.scale.ramp(settings.steps),
+      ramp: switch (isolatedBand) {
+        final band? when band < settings.steps => isolateBand(
+          settings.palette,
+          band,
+        ),
+        _ => settings.palette,
+      },
       skeleton: settings.mode == ViewMode.skeleton,
       // Clamped so a steps change never asks for bands that no longer exist.
       skeletonFill: settings.skeletonFill.clamp(0, settings.steps),
@@ -167,6 +168,7 @@ class ValuePainter extends CustomPainter {
         old.splitPosition != splitPosition ||
         old.source != source ||
         old.drawGrid != drawGrid ||
+        old.isolatedBand != isolatedBand ||
         old.devicePixelRatio != devicePixelRatio;
   }
 }

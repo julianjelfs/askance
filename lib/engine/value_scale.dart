@@ -150,6 +150,26 @@ class ValueScale {
   int get hashCode => hue.hashCode;
 }
 
+/// [palette] with only [band] left in its colour, every other band painted
+/// flat in whichever of the app's ink and ground stands further from it in
+/// value — ground behind a dark band, ink behind a light one — so the isolated
+/// shapes always read, even when they are the palest or darkest value.
+List<Color> isolateBand(List<Color> palette, int band) {
+  final keep = palette[band];
+  final l = lstarOfSrgb8(
+    (keep.r * 255).round(),
+    (keep.g * 255).round(),
+    (keep.b * 255).round(),
+  );
+  final rest = l < 50 ? _isolationGround : _isolationInk;
+  return [for (var i = 0; i < palette.length; i++) i == band ? keep : rest];
+}
+
+/// The app's ground and ink (theme.dart), kept here so the engine stays free
+/// of UI imports.
+const Color _isolationGround = Color(0xFFF3F2F2);
+const Color _isolationInk = Color(0xFF201E1D);
+
 /// A colour of exactly [lstar], at [saturation] of the widest chroma the sRGB
 /// gamut allows at that luminance and [hue].
 ///

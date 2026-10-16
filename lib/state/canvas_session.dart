@@ -36,6 +36,11 @@ class CanvasSession extends ChangeNotifier {
   ViewTransform view = const ViewTransform();
 
   bool peeking = false;
+
+  /// The one band, darkest first, the picture is showing on its own after a
+  /// tap on the palette swatch; null shows them all. View state like
+  /// [peeking]: a study never records it.
+  int? isolatedBand;
   bool chromeVisible = true;
   CanvasTool? openTool;
 
@@ -88,6 +93,7 @@ class CanvasSession extends ChangeNotifier {
     splitPosition = study.settings.splitPosition;
     // Come back to the passage you were working on, at the zoom you left it.
     view = study.settings.view;
+    isolatedBand = null;
     openTool = null;
     chromeVisible = true;
     notifyListeners();
@@ -105,6 +111,7 @@ class CanvasSession extends ChangeNotifier {
     settings = const StudySettings();
     splitPosition = settings.splitPosition;
     view = const ViewTransform();
+    isolatedBand = null;
     imageBytes = null;
     final old = image;
     image = null;
@@ -126,6 +133,7 @@ class CanvasSession extends ChangeNotifier {
     settings = const StudySettings();
     splitPosition = settings.splitPosition;
     view = const ViewTransform();
+    isolatedBand = null;
     openTool = null;
     chromeVisible = true;
     notifyListeners();
@@ -150,6 +158,7 @@ class CanvasSession extends ChangeNotifier {
     settings = incoming;
     splitPosition = incoming.splitPosition;
     view = incoming.view;
+    isolatedBand = null;
     notifyListeners();
   }
 
@@ -160,6 +169,8 @@ class CanvasSession extends ChangeNotifier {
     settings = settings.copyWith(
       steps: steps.clamp(StudySettings.minSteps, StudySettings.maxSteps),
     );
+    // Band n of five is not band n of three; start from the whole picture.
+    isolatedBand = null;
     _persistSoon();
     notifyListeners();
   }
@@ -234,6 +245,9 @@ class CanvasSession extends ChangeNotifier {
             : null,
       );
     }
+    // VALUE and RANDOM share bands, so an isolated band survives moving
+    // between them, and a new deal; anywhere else has no swatch to undo it.
+    if (!settings.mode.paintsOnlyPalette) isolatedBand = null;
     _persistSoon();
     notifyListeners();
   }
@@ -298,6 +312,12 @@ class CanvasSession extends ChangeNotifier {
     view = next;
     // Debounced, so a pinch writes once when it settles rather than per frame.
     _persistSoon();
+    notifyListeners();
+  }
+
+  /// Tapping a band shows it alone; tapping it again shows them all.
+  void toggleIsolatedBand(int band) {
+    isolatedBand = isolatedBand == band ? null : band;
     notifyListeners();
   }
 

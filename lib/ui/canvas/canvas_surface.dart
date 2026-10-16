@@ -209,6 +209,7 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
                     splitPosition: session.splitPosition,
                     disposer: _disposer,
                     drawGrid: widget.drawGrid,
+                    isolatedBand: session.isolatedBand,
                   ),
                 ),
               ),
