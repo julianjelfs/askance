@@ -10,7 +10,7 @@ One Flutter codebase; runs on Android, iOS, macOS and the web. A phone layout
 and a desktop/web layout share every control.
 
 A build of the web version is published at
-<https://julianjelfs.github.io/askance-web/> and installs as a PWA. The web
+<https://askance.julianjelfs.co.uk/> and installs as a PWA. The web
 build works everywhere but renders noticeably slower than a device build — the
 engine leans on GPU round trips that WebGL makes expensive.
 

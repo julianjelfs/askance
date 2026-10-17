@@ -133,13 +133,17 @@ serve: build-web
 # engine markedly faster than the JavaScript fallback; browsers without
 # WasmGC get that fallback automatically from the same build.
 # The build stamp shows in the UI, so a device can prove which build it runs.
+# Served from the root of its own domain. The force-push replaces the whole askance-web
+# repo, so the CNAME file that holds GitHub Pages' custom domain is written every time;
+# leave it out and the domain is dropped on the next deploy.
 deploy-web:
-	flutter build web --wasm --release --base-href /askance-web/ \
+	flutter build web --wasm --release --base-href / \
 		--dart-define=BUILD_STAMP=$$(git rev-parse --short HEAD)
-	cd build/web && touch .nojekyll && git init -q -b main && \
+	cd build/web && touch .nojekyll && echo askance.julianjelfs.co.uk > CNAME && \
+	git init -q -b main && \
 	git add -A && (git commit -q -m "Deploy web build" || true) && \
 	git push -q --force git@github.com:julianjelfs/askance-web.git main
-	@echo "https://julianjelfs.github.io/askance-web/"
+	@echo "https://askance.julianjelfs.co.uk/"
 
 # --- housekeeping ----------------------------------------------------------
 
