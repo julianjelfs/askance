@@ -26,6 +26,55 @@ enum GridMode {
   };
 }
 
+/// How PHOTO shows the photograph: in colour or black and white, with
+/// brightness and contrast. Only PHOTO: the split's photograph and a peek are
+/// always the untouched reference, and the value map never sees any of it.
+class PhotoTone {
+  const PhotoTone({this.mono = false, this.brightness = 0, this.contrast = 0});
+
+  final bool mono;
+
+  /// -1..1, 0 untouched.
+  final double brightness;
+
+  /// -1..1, 0 untouched.
+  final double contrast;
+
+  bool get isNeutral => !mono && brightness == 0 && contrast == 0;
+
+  PhotoTone copyWith({bool? mono, double? brightness, double? contrast}) =>
+      PhotoTone(
+        mono: mono ?? this.mono,
+        brightness: brightness ?? this.brightness,
+        contrast: contrast ?? this.contrast,
+      );
+
+  Map<String, Object?> toJson() => {
+    'mono': mono,
+    'brightness': brightness,
+    'contrast': contrast,
+  };
+
+  static PhotoTone fromJson(Object? json) {
+    if (json is! Map) return const PhotoTone();
+    return PhotoTone(
+      mono: json['mono'] == true,
+      brightness: _double(json['brightness'], 0).clamp(-1.0, 1.0),
+      contrast: _double(json['contrast'], 0).clamp(-1.0, 1.0),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is PhotoTone &&
+      other.mono == mono &&
+      other.brightness == brightness &&
+      other.contrast == contrast;
+
+  @override
+  int get hashCode => Object.hash(mono, brightness, contrast);
+}
+
 /// Everything a study remembers. Zoom, pan, peek, chrome visibility and the
 /// open tool are deliberately absent: they are view state, not the study.
 class StudySettings {
@@ -45,6 +94,7 @@ class StudySettings {
     this.splitBase = ViewMode.value,
     this.view = const ViewTransform(),
     this.crop = kWholeImage,
+    this.tone = const PhotoTone(),
   });
 
   final int steps;
@@ -108,6 +158,9 @@ class StudySettings {
   /// board.
   final Rect crop;
 
+  /// How PHOTO shows the photograph.
+  final PhotoTone tone;
+
   /// The colours the processed image is painted in, darkest first: the
   /// scale's ramp, or the random deal when RANDOM is showing or is what split
   /// and skeleton are laid over. The painter and the palette swatch both read
@@ -166,6 +219,7 @@ class StudySettings {
     ViewMode? splitBase,
     ViewTransform? view,
     Rect? crop,
+    PhotoTone? tone,
   }) => StudySettings(
     steps: steps ?? this.steps,
     scale: scale ?? this.scale,
@@ -182,6 +236,7 @@ class StudySettings {
     splitBase: splitBase ?? this.splitBase,
     view: view ?? this.view,
     crop: crop ?? this.crop,
+    tone: tone ?? this.tone,
   );
 
   Map<String, Object?> toJson() => {
@@ -202,6 +257,7 @@ class StudySettings {
     'panX': view.offset.dx,
     'panY': view.offset.dy,
     'crop': cropToJson(crop),
+    'tone': tone.toJson(),
   };
 
   /// Tolerant by design: a manifest written by an older build, or one that has
@@ -245,6 +301,7 @@ class StudySettings {
       offset: Offset(_double(json['panX'], 0), _double(json['panY'], 0)),
     ),
     crop: cropFromJson(json['crop']),
+    tone: PhotoTone.fromJson(json['tone']),
   );
 
   @override
@@ -264,7 +321,8 @@ class StudySettings {
       other.randomSeed == randomSeed &&
       other.splitBase == splitBase &&
       other.view == view &&
-      other.crop == crop;
+      other.crop == crop &&
+      other.tone == tone;
 
   @override
   int get hashCode => Object.hash(
@@ -283,6 +341,7 @@ class StudySettings {
     splitBase,
     view,
     crop,
+    tone,
   );
 }
 

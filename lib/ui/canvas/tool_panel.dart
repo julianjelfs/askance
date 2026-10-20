@@ -258,6 +258,52 @@ class PaletteSwatch extends StatelessWidget {
   }
 }
 
+/// How PHOTO shows the photograph: colour or black and white, brightness and
+/// contrast. Shared by the phone's tone panel and the desktop rail.
+class ToneControl extends StatelessWidget {
+  const ToneControl({super.key, required this.session});
+  final CanvasSession session;
+
+  static String readout(double v) {
+    final n = (v * 50).round();
+    return n == 0 ? '0' : (n > 0 ? '+$n' : '$n');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = DesignScale.of(context);
+    final tone = session.settings.tone;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SegmentedControl<bool>(
+          values: const [false, true],
+          selected: tone.mono,
+          labelOf: (v) => v ? 'BLACK & WHITE' : 'COLOUR',
+          onChanged: (v) => session.setTone(tone.copyWith(mono: v)),
+          fontSize: 10,
+        ),
+        SizedBox(height: 16 * s),
+        ControlLabelRow(label: 'BRIGHTNESS', value: readout(tone.brightness)),
+        RuleSlider(
+          origin: 0.5,
+          value: tone.brightness / 2 + 0.5,
+          onChanged: (v) =>
+              session.setTone(tone.copyWith(brightness: v * 2 - 1)),
+        ),
+        SizedBox(height: 12 * s),
+        ControlLabelRow(label: 'CONTRAST', value: readout(tone.contrast)),
+        RuleSlider(
+          origin: 0.5,
+          value: tone.contrast / 2 + 0.5,
+          onChanged: (v) => session.setTone(tone.copyWith(contrast: v * 2 - 1)),
+        ),
+      ],
+    );
+  }
+}
+
 class GridControl extends StatelessWidget {
   const GridControl({super.key, required this.session});
   final CanvasSession session;
@@ -396,6 +442,10 @@ class ToolPanel extends StatelessWidget {
           CanvasTool.grid => [
             const ControlLabelRow(label: 'GRID'),
             GridControl(session: session),
+          ],
+          CanvasTool.tone => [
+            const ControlLabelRow(label: 'HOW THE PHOTOGRAPH SHOWS'),
+            ToneControl(session: session),
           ],
         },
       ),

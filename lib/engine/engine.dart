@@ -637,12 +637,40 @@ Object blurKeyFor({
 
 /// Wraps the compiled fragment program and knows how to set its uniforms.
 class ValueShader {
-  ValueShader(this._program);
+  ValueShader(this._program, this._photo);
 
   final ui.FragmentProgram _program;
 
-  static Future<ValueShader> load() async =>
-      ValueShader(await ui.FragmentProgram.fromAsset('shaders/askance.frag'));
+  /// PHOTO's own program: black and white, brightness and contrast.
+  final ui.FragmentProgram _photo;
+
+  static Future<ValueShader> load() async => ValueShader(
+    await ui.FragmentProgram.fromAsset('shaders/askance.frag'),
+    await ui.FragmentProgram.fromAsset('shaders/photo.frag'),
+  );
+
+  /// The photograph drawn into [dest], toned: [crop] is the part of [source]
+  /// it stands for, as fractions of each side.
+  ui.FragmentShader buildPhoto({
+    required ui.Image source,
+    required Rect dest,
+    required Rect crop,
+    required bool mono,
+    required double brightness,
+    required double contrast,
+  }) => _photo.fragmentShader()
+    ..setFloat(0, dest.left)
+    ..setFloat(1, dest.top)
+    ..setFloat(2, dest.width)
+    ..setFloat(3, dest.height)
+    ..setFloat(4, crop.left)
+    ..setFloat(5, crop.top)
+    ..setFloat(6, crop.right)
+    ..setFloat(7, crop.bottom)
+    ..setFloat(8, mono ? 1 : 0)
+    ..setFloat(9, brightness)
+    ..setFloat(10, contrast)
+    ..setImageSampler(0, source);
 
   ui.FragmentShader build({
     required Rect area,

@@ -411,6 +411,12 @@ class _ModeRail extends StatelessWidget {
               active: session.settings.mode == mode,
               onTap: () => session.setMode(mode),
             ),
+          if (session.settings.mode == ViewMode.photo)
+            cell(
+              label: 'TONE',
+              active: session.openTool == CanvasTool.tone,
+              onTap: () => session.toggleTool(CanvasTool.tone),
+            ),
           if (skeleton)
             cell(
               label: session.settings.skeletonFill == 0
@@ -441,6 +447,7 @@ class _ToolBar extends StatelessWidget {
       CanvasTool.detail => 'DETAIL',
       CanvasTool.scale => 'SCALE',
       CanvasTool.grid => 'GRID',
+      CanvasTool.tone => 'TONE',
     };
 
     return Container(
@@ -450,7 +457,7 @@ class _ToolBar extends StatelessWidget {
         height: 44 * s,
         child: Row(
           children: [
-            for (final tool in CanvasTool.values)
+            for (final tool in CanvasTool.bar)
               Expanded(
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,

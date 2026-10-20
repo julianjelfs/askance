@@ -49,6 +49,7 @@ flutter:
   shaders:
     - shaders/askance.frag
     - shaders/kuwahara.frag
+    - shaders/photo.frag
 
   assets:
     # Onboarding shows the engine working on a real photograph rather than

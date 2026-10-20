@@ -469,6 +469,10 @@ class _RailState extends ConsumerState<_Rail> {
             active: session.settings.mode == mode,
             onTap: () => session.setMode(mode),
           ),
+        if (session.settings.mode == ViewMode.photo) ...[
+          const SizedBox(height: 6),
+          ToneControl(session: session),
+        ],
         if (session.settings.mode == ViewMode.skeleton) ...[
           // The fill as a sibling of the value selector: 0 is edges alone,
           // the rest block the values in darkest-first — and a click jumps

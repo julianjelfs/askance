@@ -52,6 +52,7 @@ class ValuePainter extends CustomPainter {
   final int? isolatedBand;
 
   ui.FragmentShader? _fragment;
+  ui.FragmentShader? _photoFragment;
 
   /// The crop, in the photograph's pixels: the part of it this study is of.
   Rect get _cropPx => cropPixels(
@@ -80,7 +81,15 @@ class ValuePainter extends CustomPainter {
     // ground behind this, and they differ — ink on the canvas, the lighter
     // surface on the desktop stage and on a shelf card.
     if (showPhoto || blurred == null) {
-      _paintPhoto(canvas, size, dest);
+      // Only PHOTO is toned. A peek, and the picture before the first pass
+      // lands, are the photograph as it is.
+      if (settings.mode == ViewMode.photo &&
+          !peeking &&
+          !settings.tone.isNeutral) {
+        _paintTonedPhoto(canvas, size, dest);
+      } else {
+        _paintPhoto(canvas, size, dest);
+      }
     } else {
       _paintProcessed(canvas, area, devicePx);
       if (settings.mode == ViewMode.split) {
@@ -124,6 +133,25 @@ class ValuePainter extends CustomPainter {
     canvas.restore();
   }
 
+  void _paintTonedPhoto(Canvas canvas, Size size, Rect dest) {
+    // A fresh shader every paint, for the reason given in _paintProcessed.
+    final old = _photoFragment;
+    if (old != null) disposer.retire(old.dispose);
+    final tone = settings.tone;
+    _photoFragment = shader.buildPhoto(
+      source: source,
+      dest: dest,
+      crop: settings.crop,
+      mono: tone.mono,
+      brightness: tone.brightness,
+      contrast: tone.contrast,
+    );
+    canvas.drawRect(
+      dest.intersect(Offset.zero & size),
+      Paint()..shader = _photoFragment!,
+    );
+  }
+
   void _paintProcessed(Canvas canvas, Rect area, Size devicePx) {
     final source = blurred;
     if (source == null || area.isEmpty) return;
@@ -160,6 +188,8 @@ class ValuePainter extends CustomPainter {
   void disposeResources() {
     _fragment?.dispose();
     _fragment = null;
+    _photoFragment?.dispose();
+    _photoFragment = null;
   }
 
   @override
@@ -167,6 +197,7 @@ class ValuePainter extends CustomPainter {
     // Carry the in-flight shader across so the disposer, not the garbage
     // collector, decides when it goes.
     _fragment = old._fragment;
+    _photoFragment = old._photoFragment;
     return old.settings != settings ||
         old.blurred != blurred ||
         old.view != view ||

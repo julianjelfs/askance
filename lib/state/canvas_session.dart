@@ -12,7 +12,18 @@ import '../engine/blur_pass.dart';
 import '../engine/value_scale.dart';
 import '../model/study.dart';
 
-enum CanvasTool { steps, detail, scale, grid }
+enum CanvasTool {
+  steps,
+  detail,
+  scale,
+  grid,
+
+  /// PHOTO's own tool, opened from the mode rail rather than the tool bar.
+  tone;
+
+  /// The tools on the tool bar, which work on the value map.
+  static const bar = [steps, detail, scale, grid];
+}
 
 /// The open study, plus the view state that is deliberately *not* part of a
 /// study: zoom, pan, peek, chrome visibility and which tool is open.
@@ -259,9 +270,20 @@ class CanvasSession extends ChangeNotifier {
             : null,
       );
     }
+    // The tone panel belongs to PHOTO and goes when it does.
+    if (openTool == CanvasTool.tone && settings.mode != ViewMode.photo) {
+      openTool = null;
+    }
     // VALUE and RANDOM share bands, so an isolated band survives moving
     // between them, and a new deal; anywhere else has no swatch to undo it.
     if (!settings.mode.paintsOnlyPalette) isolatedBand = null;
+    _persistSoon();
+    notifyListeners();
+  }
+
+  void setTone(PhotoTone tone) {
+    if (tone == settings.tone) return;
+    settings = settings.copyWith(tone: tone);
     _persistSoon();
     notifyListeners();
   }
