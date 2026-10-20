@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Ink. The ground of every dark surface in the app. -->
-    <color name="ic_launcher_background">#201E1D</color>
-    <color name="askance_ink">#201E1D</color>
+    <!-- Gesso. The ground of the shelf the app opens on, and of the icon. -->
+    <color name="ic_launcher_background">#F3F1EC</color>
+    <color name="askance_ground">#F3F1EC</color>
 </resources>

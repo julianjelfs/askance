@@ -7,10 +7,10 @@
 // real dart:ui with a rasteriser attached. Nothing here asserts anything; it
 // writes PNGs and prints what it wrote.
 //
-// The artwork is redrawn rather than traced from the SVG: it is a circle, a
-// vertical gradient, three bands and a rule, so painting it with the same
-// engine the app uses keeps the colours exact and gives proper antialiasing at
-// every size.
+// The artwork is the app's own painter, not a traced file: four steps
+// climbing from graphite to the accent. Painting it with the same engine the
+// app uses keeps the colours exact and gives proper antialiasing at every
+// size.
 
 import 'dart:io';
 import 'dart:typed_data';
@@ -20,18 +20,18 @@ import 'package:askance/ui/widgets/askance_mark.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-// The ground behind the mark; the mark itself comes from lib/, so the icons
-// and the app header cannot drift apart.
-const _ink = Color(0xFF201E1D);
+// The ground behind the mark: gesso, the app's panels. The mark itself comes
+// from lib/, so the icons and the app header cannot drift apart. Its darkest
+// step is graphite, which would vanish on a dark ground.
+const _ink = Color(0xFFF3F1EC);
 
-/// Disc diameter as a fraction of the frame, from the source SVG: r 332 of 1024.
-const _sourceDiscFraction = 664 / 1024;
+/// The mark's side as a fraction of the frame.
+const _sourceDiscFraction = 0.54;
 
-/// Below this the source proportions stop reading and the disc is scaled up.
-/// A 16px favicon drawn at the source ratio is a 10px disc carrying three
-/// bands and a hairline; it turns to mush.
+/// Below this the proportions stop reading and the mark is scaled up. A 16px
+/// favicon drawn at the large ratio is four steps two pixels wide.
 const _opticalFloor = 120.0;
-const _opticalMaxDiscFraction = 0.80;
+const _opticalMaxDiscFraction = 0.78;
 
 double _discFractionFor(double size) {
   if (size >= _opticalFloor) return _sourceDiscFraction;
