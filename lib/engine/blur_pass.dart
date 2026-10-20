@@ -36,6 +36,30 @@ class _BlurRequest {
   final Object key;
 }
 
+/// How long BLOCK waits for a size to stop changing before tracing it.
+///
+/// A BLOCK pass is CPU work that can hold the thread for a large fraction of
+/// a second on a phone — on the web, the only thread there is. Opening a tool
+/// panel resizes the picture every frame for a third of a second, and a pass
+/// per frame froze the screen for each one in turn. Longer than a frame, so a
+/// running animation keeps putting it off; short enough not to be noticed
+/// once it stops.
+const Duration kBlockSettle = Duration(milliseconds: 150);
+
+/// Renders one pass; [renderBlurredSource] in the app, a stand-in in tests.
+typedef BlurRenderer =
+    Future<ui.Image> Function({
+      required ui.Image source,
+      required Size outputPx,
+      required double detail,
+      required ViewTransform view,
+      Smoothing smoothing,
+      bool lockDetail,
+      Rect crop,
+      int steps,
+      double bias,
+    });
+
 /// Owns the blurred offscreen that the shader samples.
 ///
 /// Kept out of `paint()` on purpose: the blur is a GPU render that has to be
@@ -43,6 +67,9 @@ class _BlurRequest {
 /// pass they want and paint with whatever is currently ready, so a detail or
 /// zoom change lands on the next frame rather than blocking this one.
 class BlurPass extends ChangeNotifier {
+  BlurPass({this._render = renderBlurredSource});
+
+  final BlurRenderer _render;
   ui.Image? _image;
   Object? _key;
 
@@ -58,13 +85,14 @@ class BlurPass extends ChangeNotifier {
   _BlurRequest? _queued;
   bool _rendering = false;
   bool _disposed = false;
+  Timer? _settle;
   Completer<void>? _settled;
 
   /// The most recent completed blur, or null until the first one lands.
   ui.Image? get image => _image;
 
   /// Whether [image] reflects the settings last asked for.
-  bool get isCurrent => _queued == null && !_rendering;
+  bool get isCurrent => _queued == null && !_rendering && _settle == null;
 
   /// Completes once nothing is queued or in flight, so a caller can make sure
   /// there is a finished pass to show before putting it on screen.
@@ -111,7 +139,20 @@ class BlurPass extends ChangeNotifier {
       bias: bias,
       key: key,
     );
-    if (!_rendering) unawaited(_drain());
+    if (_rendering) return;
+    // The first pass is never held: there is nothing on screen to keep.
+    // After that, BLOCK waits until the requests stop coming.
+    if (smoothing == Smoothing.block && _image != null) {
+      _settle?.cancel();
+      _settle = Timer(kBlockSettle, () {
+        _settle = null;
+        if (!_rendering) unawaited(_drain());
+      });
+      return;
+    }
+    _settle?.cancel();
+    _settle = null;
+    unawaited(_drain());
   }
 
   Future<void> _drain() async {
@@ -123,7 +164,7 @@ class BlurPass extends ChangeNotifier {
 
         final ui.Image next;
         try {
-          next = await renderBlurredSource(
+          next = await _render(
             source: request.source,
             outputPx: request.outputPx,
             detail: request.detail,
@@ -169,6 +210,8 @@ class BlurPass extends ChangeNotifier {
 
   @override
   void dispose() {
+    _settle?.cancel();
+    _settle = null;
     _disposed = true;
     _queued = null;
     _settled?.complete();

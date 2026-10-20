@@ -92,19 +92,23 @@ List<List<Offset>> traceMask(Uint8List mask, int width, int height) {
   int h(int i, int j) => (j * pw + i) * 2;
   int v(int i, int j) => (j * pw + i) * 2 + 1;
 
-  // Every midpoint on an outline lies on exactly two segments.
-  final first = <int, int>{};
-  final second = <int, int>{};
+  // Every midpoint on an outline lies on exactly two segments. Flat arrays
+  // indexed by the midpoint's key rather than maps: this runs over every
+  // pixel for every value, and on the web it runs on the only thread there
+  // is.
+  final size = pw * ph * 2;
+  final first = Int32List(size)..fillRange(0, size, -1);
+  final second = Int32List(size)..fillRange(0, size, -1);
   void link(int a, int b) {
-    if (first.containsKey(a)) {
-      second[a] = b;
-    } else {
+    if (first[a] < 0) {
       first[a] = b;
-    }
-    if (first.containsKey(b)) {
-      second[b] = a;
     } else {
+      second[a] = b;
+    }
+    if (first[b] < 0) {
       first[b] = a;
+    } else {
+      second[b] = a;
     }
   }
 
@@ -150,17 +154,18 @@ List<List<Offset>> traceMask(Uint8List mask, int width, int height) {
   }
 
   final loops = <List<Offset>>[];
-  final visited = <int>{};
-  for (final start in first.keys) {
-    if (!visited.add(start)) continue;
+  final visited = Uint8List(size);
+  for (var start = 0; start < size; start++) {
+    if (first[start] < 0 || visited[start] != 0) continue;
+    visited[start] = 1;
     final loop = <Offset>[position(start)];
     var previous = start;
-    var current = first[start]!;
+    var current = first[start];
     while (current != start) {
-      visited.add(current);
+      visited[current] = 1;
       loop.add(position(current));
-      final a = first[current]!;
-      final next = a != previous ? a : second[current]!;
+      final a = first[current];
+      final next = a != previous ? a : second[current];
       previous = current;
       current = next;
     }
