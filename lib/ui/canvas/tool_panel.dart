@@ -38,8 +38,8 @@ class StageControl extends StatelessWidget {
   );
 
   static String readout(StudySettings settings) => switch (settings.stage) {
-    final stage? => 'STAGE ${stage + 1}',
-    null => 'SET BY HAND',
+    final stage? => '${stage + 1} OF ${StudySettings.stages.length}',
+    null => 'BY HAND',
   };
 }
 
@@ -313,8 +313,15 @@ class ControlLabelRow extends StatelessWidget {
       padding: EdgeInsets.only(bottom: 10 * s),
       child: Row(
         children: [
-          Text(label, style: AskanceText.sectionLabel().by(s)),
-          const Spacer(),
+          // Gives way to the readout rather than overflowing the panel.
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AskanceText.sectionLabel().by(s),
+            ),
+          ),
           if (value != null)
             Text(
               value!,
@@ -356,7 +363,7 @@ class ToolPanel extends StatelessWidget {
         children: switch (tool) {
           CanvasTool.steps => [
             ControlLabelRow(
-              label: 'VALUES AND DETAIL TOGETHER',
+              label: 'STAGE',
               value: StageControl.readout(session.settings),
             ),
             StageControl(session: session),

@@ -228,7 +228,7 @@ class _RailState extends ConsumerState<_Rail> {
                   _viewBlock(session),
                   const SizedBox(height: kRule),
                   _controlBlock(
-                    'VALUES AND DETAIL TOGETHER',
+                    'STAGE',
                     StageControl.readout(session.settings),
                     StageControl(session: session),
                   ),
@@ -486,8 +486,15 @@ class _RailState extends ConsumerState<_Rail> {
       children: [
         Row(
           children: [
-            Text(label, style: AskanceText.sectionLabel()),
-            const Spacer(),
+            // Gives way to the readout rather than overflowing the rail.
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AskanceText.sectionLabel(),
+              ),
+            ),
             if (value != null)
               Text(
                 value,
