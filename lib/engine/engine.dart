@@ -4,6 +4,8 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
+import 'crop.dart';
+
 /// How the quantised image is presented.
 enum ViewMode {
   value('VAL', 'VALUE MAP'),
@@ -301,9 +303,14 @@ Future<ui.Image> renderBlurredSource({
   required ViewTransform view,
   Smoothing smoothing = Smoothing.gaussian,
   bool lockDetail = false,
+  Rect crop = kWholeImage,
   double quadrantRadius = kKuwaharaRadius,
 }) async {
-  final sourceSize = Size(source.width.toDouble(), source.height.toDouble());
+  final cropPx = cropPixels(
+    Size(source.width.toDouble(), source.height.toDouble()),
+    crop,
+  );
+  final sourceSize = cropPx.size;
   final dest = view.destination(sourceSize, outputPx);
   // Only the part of the frame the photograph occupies. Rendering the whole
   // frame instead would leave transparent margins whenever the image is shown
@@ -399,7 +406,7 @@ Future<ui.Image> renderBlurredSource({
   );
   canvas.drawImageRect(
     source,
-    Offset.zero & sourceSize,
+    cropPx,
     placed,
     Paint()..filterQuality = FilterQuality.medium,
   );
@@ -484,6 +491,7 @@ Object blurKeyFor({
   required ViewTransform view,
   required Smoothing smoothing,
   required bool lockDetail,
+  Rect crop = kWholeImage,
 }) => Object.hash(
   // The pass belongs to a particular photograph. Without this a new image
   // loaded under identical settings collided with the old key, and the
@@ -496,6 +504,7 @@ Object blurKeyFor({
   view.offset,
   smoothing,
   lockDetail,
+  crop,
 );
 
 /// Wraps the compiled fragment program and knows how to set its uniforms.

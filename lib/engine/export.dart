@@ -4,26 +4,45 @@ import 'dart:ui' as ui;
 import 'package:flutter/rendering.dart';
 
 import '../model/study.dart';
+import 'crop.dart';
 import 'deferred_disposer.dart';
 import 'engine.dart';
 import 'value_painter.dart';
 
-/// The two export sizes. Both 2:3, matching the shape a study is composed in.
+/// The two export sizes, as the box the picture is fitted into: the long side
+/// and the short side, turned to match the picture.
 enum ExportSize {
   screen('SCREEN', 1200, 1800),
   print('PRINT', 2480, 3720);
 
-  const ExportSize(this.label, this.width, this.height);
+  const ExportSize(this.label, this.short, this.long);
 
   final String label;
-  final int width;
-  final int height;
+  final int short;
+  final int long;
 
-  Size get size => Size(width.toDouble(), height.toDouble());
+  /// The frame a [picture]-shaped study exports into: the picture's own
+  /// shape, as large as fits. A fixed 2:3 frame letterboxed every picture of
+  /// any other shape, and an A4 crop exported at print size would not have
+  /// come out 2480 × 3507, which is A4 at 300 dpi.
+  Size frameFor(Size picture) {
+    if (picture.isEmpty) return Size(short.toDouble(), long.toDouble());
+    final landscape = picture.width > picture.height;
+    final box = landscape
+        ? Size(long.toDouble(), short.toDouble())
+        : Size(short.toDouble(), long.toDouble());
+    final fitted = containRect(picture, box).size;
+    return Size(
+      fitted.width.round().clamp(1, box.width.toInt()).toDouble(),
+      fitted.height.round().clamp(1, box.height.toInt()).toDouble(),
+    );
+  }
 
-  String get note => label == 'PRINT'
-      ? '$width × $height px · 300 dpi'
-      : '$width × $height px';
+  String noteFor(Size picture) {
+    final frame = frameFor(picture);
+    final px = '${frame.width.toInt()} × ${frame.height.toInt()} px';
+    return this == print ? '$px · 300 dpi' : px;
+  }
 }
 
 /// Re-runs the engine at the target size from the original image — never an
@@ -37,7 +56,12 @@ Future<Uint8List?> renderExport({
   required ExportSize target,
   required double splitPosition,
 }) async {
-  final size = target.size;
+  final size = target.frameFor(
+    croppedSize(
+      Size(source.width.toDouble(), source.height.toDouble()),
+      settings.crop,
+    ),
+  );
 
   // The view is resolution independent, so the same transform describes the
   // same crop at export size with nothing to convert.
@@ -50,6 +74,7 @@ Future<Uint8List?> renderExport({
     view: exportView,
     smoothing: settings.smoothing,
     lockDetail: settings.lockDetail,
+    crop: settings.crop,
   );
 
   final disposer = DeferredDisposer();
@@ -73,7 +98,7 @@ Future<Uint8List?> renderExport({
   painter.paint(canvas, size);
 
   final picture = recorder.endRecording();
-  final image = await picture.toImage(target.width, target.height);
+  final image = await picture.toImage(size.width.toInt(), size.height.toInt());
   picture.dispose();
 
   final png = await image.toByteData(format: ui.ImageByteFormat.png);
@@ -84,5 +109,5 @@ Future<Uint8List?> renderExport({
   return png?.buffer.asUint8List();
 }
 
-String exportFilename(String studyName, ExportSize target) =>
-    '${slugify(studyName)}-${target.width}x${target.height}.png';
+String exportFilename(String studyName, Size frame) =>
+    '${slugify(studyName)}-${frame.width.toInt()}x${frame.height.toInt()}.png';

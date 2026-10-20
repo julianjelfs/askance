@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../engine/blur_pass.dart';
+import '../../engine/crop.dart';
 import '../../engine/engine.dart';
 import '../../engine/deferred_disposer.dart';
 import '../../engine/value_painter.dart';
@@ -241,7 +242,10 @@ class _StudyThumbnailState extends ConsumerState<StudyThumbnail> {
         // shelf of letterboxed thumbnails reads as gaps rather than pictures.
         final view = coveringView(
           widget.study.settings.view,
-          Size(image.width.toDouble(), image.height.toDouble()),
+          croppedSize(
+            Size(image.width.toDouble(), image.height.toDouble()),
+            widget.study.settings.crop,
+          ),
           constraints.biggest,
         );
 
@@ -252,6 +256,7 @@ class _StudyThumbnailState extends ConsumerState<StudyThumbnail> {
           view: view,
           smoothing: widget.study.settings.smoothing,
           lockDetail: widget.study.settings.lockDetail,
+          crop: widget.study.settings.crop,
         );
         return ListenableBuilder(
           listenable: _blur,

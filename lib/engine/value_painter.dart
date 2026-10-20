@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 
 import '../model/study.dart';
 import '../theme.dart';
+import 'crop.dart';
 import 'deferred_disposer.dart';
 import 'engine.dart';
 import 'value_scale.dart';
@@ -52,8 +53,13 @@ class ValuePainter extends CustomPainter {
 
   ui.FragmentShader? _fragment;
 
-  Size get _sourceSize =>
-      Size(source.width.toDouble(), source.height.toDouble());
+  /// The crop, in the photograph's pixels: the part of it this study is of.
+  Rect get _cropPx => cropPixels(
+    Size(source.width.toDouble(), source.height.toDouble()),
+    settings.crop,
+  );
+
+  Size get _sourceSize => _cropPx.size;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -111,7 +117,7 @@ class ValuePainter extends CustomPainter {
     canvas.clipRect(Offset.zero & size);
     canvas.drawImageRect(
       source,
-      Offset.zero & _sourceSize,
+      _cropPx,
       dest,
       Paint()..filterQuality = FilterQuality.medium,
     );

@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../engine/deferred_disposer.dart';
 import 'screen_awake.dart';
+import '../../engine/crop.dart';
 import '../../engine/engine.dart';
 import '../../engine/value_painter.dart';
 import '../../state/canvas_session.dart';
@@ -71,7 +72,10 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
 
   Size get _sourceSize {
     final image = widget.session.image!;
-    return Size(image.width.toDouble(), image.height.toDouble());
+    return croppedSize(
+      Size(image.width.toDouble(), image.height.toDouble()),
+      widget.session.settings.crop,
+    );
   }
 
   void _onScaleStart(ScaleStartDetails details) {
@@ -163,6 +167,7 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
             view: session.view,
             smoothing: session.settings.smoothing,
             lockDetail: session.settings.lockDetail,
+            crop: session.settings.crop,
           );
         }
 

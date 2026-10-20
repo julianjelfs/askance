@@ -8,6 +8,7 @@ import '../../engine/engine.dart';
 import '../../state/canvas_session.dart';
 import '../../state/providers.dart';
 import '../../theme.dart';
+import '../crop/crop_screen.dart';
 import '../share/share_sheet.dart';
 import '../shelf/shelf_screen.dart';
 import '../fullscreen/fullscreen_stub.dart'
@@ -469,6 +470,26 @@ class _ToolBar extends StatelessWidget {
                   ),
                 ),
               ),
+            // Not a tool: cropping takes the whole screen, because it is done
+            // on the whole photograph rather than on the study.
+            Expanded(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  session.closeTool();
+                  showCropScreen(context, session);
+                },
+                child: Center(
+                  child: Text(
+                    'CROP',
+                    style: AskanceText.controlLabel(
+                      10,
+                      color: AskanceColors.ground,
+                    ).by(s),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),

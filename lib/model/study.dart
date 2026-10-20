@@ -1,5 +1,6 @@
-import 'dart:ui' show Color, Offset;
+import 'dart:ui' show Color, Offset, Rect;
 
+import '../engine/crop.dart';
 import '../engine/engine.dart';
 import '../engine/random_ramp.dart';
 import '../engine/value_scale.dart';
@@ -43,6 +44,7 @@ class StudySettings {
     this.randomSeed = 0,
     this.splitBase = ViewMode.value,
     this.view = const ViewTransform(),
+    this.crop = kWholeImage,
   });
 
   final int steps;
@@ -100,6 +102,12 @@ class StudySettings {
   /// should show the passage you were actually working on.
   final ViewTransform view;
 
+  /// The part of the photograph the study is of, as a fraction of each side.
+  /// Everything else — the framing, the zoom, the grid, the exports — treats
+  /// the crop as the photograph, so a grid laid over an A4 crop divides an A4
+  /// board.
+  final Rect crop;
+
   /// The colours the processed image is painted in, darkest first: the
   /// scale's ramp, or the random deal when RANDOM is showing or is what split
   /// and skeleton are laid over. The painter and the palette swatch both read
@@ -135,6 +143,7 @@ class StudySettings {
     int? randomSeed,
     ViewMode? splitBase,
     ViewTransform? view,
+    Rect? crop,
   }) => StudySettings(
     steps: steps ?? this.steps,
     scale: scale ?? this.scale,
@@ -150,6 +159,7 @@ class StudySettings {
     randomSeed: randomSeed ?? this.randomSeed,
     splitBase: splitBase ?? this.splitBase,
     view: view ?? this.view,
+    crop: crop ?? this.crop,
   );
 
   Map<String, Object?> toJson() => {
@@ -169,6 +179,7 @@ class StudySettings {
     'zoom': view.zoom,
     'panX': view.offset.dx,
     'panY': view.offset.dy,
+    'crop': cropToJson(crop),
   };
 
   /// Tolerant by design: a manifest written by an older build, or one that has
@@ -211,6 +222,7 @@ class StudySettings {
       ).clamp(ViewTransform.minZoom, ViewTransform.maxZoom),
       offset: Offset(_double(json['panX'], 0), _double(json['panY'], 0)),
     ),
+    crop: cropFromJson(json['crop']),
   );
 
   @override
@@ -229,7 +241,8 @@ class StudySettings {
       other.splitPosition == splitPosition &&
       other.randomSeed == randomSeed &&
       other.splitBase == splitBase &&
-      other.view == view;
+      other.view == view &&
+      other.crop == crop;
 
   @override
   int get hashCode => Object.hash(
@@ -247,6 +260,7 @@ class StudySettings {
     randomSeed,
     splitBase,
     view,
+    crop,
   );
 }
 

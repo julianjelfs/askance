@@ -6,6 +6,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
+import '../../engine/crop.dart';
 import '../../engine/export.dart';
 import '../../state/canvas_session.dart';
 import '../../state/providers.dart';
@@ -77,6 +78,16 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
 
   CanvasSession get _session => ref.read(sessionProvider);
 
+  /// The shape the export takes: the study's crop of its photograph.
+  Size get _pictureSize {
+    final image = _session.image;
+    if (image == null) return Size.zero;
+    return croppedSize(
+      Size(image.width.toDouble(), image.height.toDouble()),
+      _session.settings.crop,
+    );
+  }
+
   void _report(String message) {
     if (mounted) setState(() => _status = message);
   }
@@ -115,7 +126,7 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
   Future<void> _save() => _withRender((png) async {
     final result = await saveImageBytes(
       png,
-      exportFilename(_session.name, _size),
+      exportFilename(_session.name, _size.frameFor(_pictureSize)),
     );
     _report(result.message);
   });
@@ -123,7 +134,7 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
   Future<void> _copy() => _withRender((png) async {
     final result = await copyImageToClipboard(
       png,
-      exportFilename(_session.name, _size),
+      exportFilename(_session.name, _size.frameFor(_pictureSize)),
     );
     _report(result.message);
   });
@@ -212,7 +223,7 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
                   ),
                   SizedBox(height: 10 * s),
                   Text(
-                    'Image size · ${_size.note} · exactly what you see',
+                    'Image size · ${_size.noteFor(_pictureSize)} · exactly what you see',
                     style: AskanceText.caption(
                       11,
                       color: AskanceColors.mutedDark,

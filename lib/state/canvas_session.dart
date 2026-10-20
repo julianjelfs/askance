@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter/scheduler.dart';
 
+import '../engine/crop.dart';
 import '../engine/engine.dart';
 import '../engine/blur_pass.dart';
 import '../engine/value_scale.dart';
@@ -290,6 +291,17 @@ class CanvasSession extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Crops the study to [crop], a fraction of each side of the photograph,
+  /// and shows the new picture whole: a zoom and pan chosen inside the old
+  /// crop describe a different passage inside the new one.
+  void setCrop(Rect crop) {
+    if (crop == settings.crop) return;
+    settings = settings.copyWith(crop: crop);
+    view = const ViewTransform();
+    _persistSoon();
+    notifyListeners();
+  }
+
   void rename(String value) {
     name = value;
     _persistSoon();
@@ -367,7 +379,10 @@ class CanvasSession extends ChangeNotifier {
 
   Size get _sourceSize => image == null
       ? Size.zero
-      : Size(image!.width.toDouble(), image!.height.toDouble());
+      : croppedSize(
+          Size(image!.width.toDouble(), image!.height.toDouble()),
+          settings.crop,
+        );
 
   // --- keeping a saved study up to date -----------------------------------
 
@@ -406,6 +421,7 @@ class CanvasSession extends ChangeNotifier {
       view: view,
       smoothing: settings.smoothing,
       lockDetail: settings.lockDetail,
+      crop: settings.crop,
     );
     await blur.settled;
   }

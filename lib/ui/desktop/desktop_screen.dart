@@ -3,6 +3,7 @@ import 'package:flutter/material.dart'
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../engine/crop.dart';
 import '../../engine/engine.dart';
 import '../../model/study.dart';
 import '../../state/canvas_session.dart';
@@ -12,6 +13,7 @@ import '../fullscreen/fullscreen_stub.dart'
     if (dart.library.js_interop) '../fullscreen/fullscreen_web.dart';
 import '../canvas/canvas_surface.dart';
 import '../canvas/tool_panel.dart';
+import '../crop/crop_screen.dart';
 import '../share/share_sheet.dart';
 import '../widgets/askance_mark.dart';
 import '../widgets/controls.dart';
@@ -99,7 +101,10 @@ class _Stage extends ConsumerWidget {
             );
             final image = session.image!;
             final frame = containRect(
-              Size(image.width.toDouble(), image.height.toDouble()),
+              croppedSize(
+                Size(image.width.toDouble(), image.height.toDouble()),
+                session.settings.crop,
+              ),
               available,
             ).size;
 
@@ -260,6 +265,20 @@ class _RailState extends ConsumerState<_Rail> {
                   ),
                   const SizedBox(height: kRule),
                   _controlBlock('GRID', null, GridControl(session: session)),
+                  const SizedBox(height: kRule),
+                  _controlBlock(
+                    'CROP',
+                    _cropLabel(session),
+                    ActionButton(
+                      label: 'Crop to the board',
+                      trailing: '→',
+                      height: 36,
+                      fontSize: 12,
+                      solid: false,
+                      onDark: true,
+                      onPressed: () => showCropScreen(context, session),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -437,6 +456,22 @@ class _RailState extends ConsumerState<_Rail> {
       child: Text(label, style: AskanceText.controlLabel(11, tracking: 0.06)),
     ),
   );
+
+  static String? _cropLabel(CanvasSession session) {
+    final image = session.image;
+    if (image == null) return null;
+    final found = cropShapeOf(
+      Size(image.width.toDouble(), image.height.toDouble()),
+      session.settings.crop,
+    );
+    return switch (found) {
+      null => 'CUSTOM',
+      (shape: CropShape.whole, landscape: _) => 'WHOLE',
+      (shape: CropShape.square, landscape: _) => CropShape.square.label,
+      (:final shape, :final landscape) =>
+        '${shape.label} ${landscape ? 'LANDSCAPE' : 'PORTRAIT'}',
+    };
+  }
 
   Widget _controlBlock(String label, String? value, Widget control) => Padding(
     padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),

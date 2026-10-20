@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter/scheduler.dart';
 
+import 'crop.dart';
 import 'engine.dart';
 
 /// What a blur render needs to know.
@@ -17,6 +18,7 @@ class _BlurRequest {
     required this.view,
     required this.smoothing,
     required this.lockDetail,
+    required this.crop,
     required this.key,
   });
 
@@ -26,6 +28,7 @@ class _BlurRequest {
   final ViewTransform view;
   final Smoothing smoothing;
   final bool lockDetail;
+  final Rect crop;
   final Object key;
 }
 
@@ -75,6 +78,7 @@ class BlurPass extends ChangeNotifier {
     required ViewTransform view,
     Smoothing smoothing = Smoothing.gaussian,
     bool lockDetail = false,
+    Rect crop = kWholeImage,
   }) {
     if (_disposed || outputPx.isEmpty) return;
     final key = blurKeyFor(
@@ -84,6 +88,7 @@ class BlurPass extends ChangeNotifier {
       view: view,
       smoothing: smoothing,
       lockDetail: lockDetail,
+      crop: crop,
     );
     if (key == _key || key == _queued?.key) return;
     _queued = _BlurRequest(
@@ -93,6 +98,7 @@ class BlurPass extends ChangeNotifier {
       view: view,
       smoothing: smoothing,
       lockDetail: lockDetail,
+      crop: crop,
       key: key,
     );
     if (!_rendering) unawaited(_drain());
@@ -114,6 +120,7 @@ class BlurPass extends ChangeNotifier {
             view: request.view,
             smoothing: request.smoothing,
             lockDetail: request.lockDetail,
+            crop: request.crop,
           );
         } catch (e) {
           // Whatever asked for this can ask again; a failed pass should not
