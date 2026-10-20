@@ -28,9 +28,47 @@ class DesktopScreen extends ConsumerStatefulWidget {
 }
 
 class _DesktopScreenState extends ConsumerState<DesktopScreen> {
+  /// Set while a crop is being chosen. The rail gives way to the crop's own
+  /// controls and the stage to the whole photograph, rather than a phone
+  /// screen being stretched over the window.
+  CropDraft? _cropDraft;
+
+  void _startCrop(CanvasSession session) =>
+      setState(() => _cropDraft = CropDraft(session));
+
+  void _endCrop({required bool apply}) {
+    final draft = _cropDraft;
+    if (draft == null) return;
+    if (apply) draft.apply();
+    setState(() => _cropDraft = null);
+    // After the frame: the stage may still be listening to it until then.
+    WidgetsBinding.instance.addPostFrameCallback((_) => draft.dispose());
+  }
+
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(sessionProvider);
+    final draft = _cropDraft;
+    if (draft != null) {
+      return ColoredBox(
+        color: AskanceColors.surface,
+        child: SafeArea(
+          child: Row(
+            children: [
+              SizedBox(
+                width: 284,
+                child: _CropRail(
+                  draft: draft,
+                  onCancel: () => _endCrop(apply: false),
+                  onApply: () => _endCrop(apply: true),
+                ),
+              ),
+              Expanded(child: CropPicture(draft: draft)),
+            ],
+          ),
+        ),
+      );
+    }
 
     return ColoredBox(
       color: AskanceColors.surface,
@@ -43,6 +81,7 @@ class _DesktopScreenState extends ConsumerState<DesktopScreen> {
                 width: 284,
                 child: _Rail(
                   session: session,
+                  onCrop: () => _startCrop(session),
                   // Leaving the study: the route's disposal clears the
                   // session and drops fullscreen, so the shelf arrives with
                   // nothing selected.
@@ -168,10 +207,15 @@ class _Stage extends ConsumerWidget {
 }
 
 class _Rail extends ConsumerStatefulWidget {
-  const _Rail({required this.session, required this.onShelf});
+  const _Rail({
+    required this.session,
+    required this.onShelf,
+    required this.onCrop,
+  });
 
   final CanvasSession session;
   final VoidCallback onShelf;
+  final VoidCallback onCrop;
 
   @override
   ConsumerState<_Rail> createState() => _RailState();
@@ -282,7 +326,7 @@ class _RailState extends ConsumerState<_Rail> {
                       fontSize: 12,
                       solid: false,
                       onDark: true,
-                      onPressed: () => showCropScreen(context, session),
+                      onPressed: widget.onCrop,
                     ),
                   ),
                 ],
@@ -509,6 +553,52 @@ class _RailState extends ConsumerState<_Rail> {
         const SizedBox(height: 10),
         control,
       ],
+    ),
+  );
+}
+
+/// The rail while a crop is being chosen: the shape, which way round, and
+/// the way out.
+class _CropRail extends StatelessWidget {
+  const _CropRail({
+    required this.draft,
+    required this.onCancel,
+    required this.onApply,
+  });
+
+  final CropDraft draft;
+  final VoidCallback onCancel;
+  final VoidCallback onApply;
+
+  @override
+  Widget build(BuildContext context) => ColoredBox(
+    color: AskanceColors.ink,
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Crop to the board',
+            style: AskanceText.screenTitle(
+              color: AskanceColors.ground,
+            ).copyWith(fontSize: 22, letterSpacing: 22 * -0.02),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Pick the shape of the board, then drag the frame to the part '
+            'of the photograph you want. Scroll to make it larger or '
+            'smaller.',
+            style: AskanceText.body(12, color: AskanceColors.mutedDark),
+          ),
+          const SizedBox(height: 22),
+          Text('SHAPE', style: AskanceText.sectionLabel()),
+          const SizedBox(height: 10),
+          CropShapeControls(draft: draft),
+          const Spacer(),
+          CropActions(onCancel: onCancel, onApply: onApply),
+        ],
+      ),
     ),
   );
 }
