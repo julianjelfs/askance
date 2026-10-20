@@ -66,8 +66,11 @@ class SliderEnds extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(start, style: style),
-        Text(end, style: style),
+        Flexible(child: Text(start, style: style)),
+        const SizedBox(width: 12),
+        Flexible(
+          child: Text(end, textAlign: TextAlign.end, style: style),
+        ),
       ],
     );
   }

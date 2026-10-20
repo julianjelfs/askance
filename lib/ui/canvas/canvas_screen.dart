@@ -184,21 +184,47 @@ class _CanvasBodyState extends ConsumerState<_CanvasBody>
             ),
             fromTop: true,
           ),
-          Expanded(child: surface),
+          // The picture keeps its size while a tool is open: the tool's
+          // sheet rises over it from the bar rather than pushing it up, so
+          // what you are judging stays put while you adjust it.
+          Expanded(
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(child: surface),
+                      if (session.settings.mode.paintsOnlyPalette)
+                        collapsing(
+                          IgnorePointer(
+                            ignoring: !session.chromeVisible,
+                            child: Padding(
+                              padding: EdgeInsets.only(
+                                top: 2 * s,
+                                bottom: 12 * s,
+                              ),
+                              child: PaletteChips(session: session),
+                            ),
+                          ),
+                          fromTop: false,
+                        ),
+                    ],
+                  ),
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: _ToolSheet(session: session),
+                ),
+              ],
+            ),
+          ),
           collapsing(
             IgnorePointer(
               ignoring: !session.chromeVisible,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (session.settings.mode.paintsOnlyPalette)
-                    Padding(
-                      padding: EdgeInsets.only(top: 2 * s, bottom: 12 * s),
-                      child: PaletteChips(session: session),
-                    ),
-                  _ToolDeck(session: session, bottomInset: padding.bottom),
-                ],
-              ),
+              child: _ToolDeck(session: session, bottomInset: padding.bottom),
             ),
             fromTop: false,
           ),
@@ -365,9 +391,81 @@ class _ViewSelector extends StatelessWidget {
   );
 }
 
-/// The open tool, if any, above the tool bar, on a gesso panel. On a tablet
-/// held upright the panel spans the glass but its contents keep to a
-/// hand-sized column.
+/// The open tool, on a gesso sheet that rises from the tool bar over the
+/// foot of the picture. On a tablet held upright the sheet spans the glass
+/// but its contents keep to a hand-sized column.
+class _ToolSheet extends StatelessWidget {
+  const _ToolSheet({required this.session});
+
+  final CanvasSession session;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = DesignScale.of(context);
+    final tool = session.openTool;
+    return AnimatedSwitcher(
+      duration: AskanceMotion.sheetSlide,
+      switchInCurve: AskanceMotion.slide,
+      switchOutCurve: AskanceMotion.slide.flipped,
+      // Keyed on whether a sheet is open at all, so moving between tools
+      // swaps the contents in place and only opening and closing slide.
+      transitionBuilder: (child, animation) => SlideTransition(
+        position: Tween(
+          begin: const Offset(0, 1),
+          end: Offset.zero,
+        ).animate(animation),
+        child: child,
+      ),
+      layoutBuilder: (current, previous) => Stack(
+        alignment: Alignment.bottomCenter,
+        children: [...previous, ?current],
+      ),
+      child: tool == null
+          ? const SizedBox(key: ValueKey(false), width: double.infinity)
+          : Container(
+              key: const ValueKey(true),
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: AskanceColors.gesso,
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(AskanceRadius.sheet * s),
+                ),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x40000000),
+                    blurRadius: 24,
+                    offset: Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: kToolsMaxWidth * s),
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      18 * s,
+                      18 * s,
+                      18 * s,
+                      16 * s,
+                    ),
+                    child: ToolPanel(
+                      session: session,
+                      tool: tool,
+                      onEditCrop: () {
+                        session.closeTool();
+                        showCropScreen(context, session);
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ),
+    );
+  }
+}
+
+/// The tool bar, on gesso. Its top corners round off when it stands alone
+/// and square up when a sheet sits on it, so the two read as one piece.
 class _ToolDeck extends StatelessWidget {
   const _ToolDeck({required this.session, required this.bottomInset});
 
@@ -377,48 +475,21 @@ class _ToolDeck extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = DesignScale.of(context);
-    final tool = session.openTool;
-    return Container(
+    final open = session.openTool != null;
+    return AnimatedContainer(
+      duration: AskanceMotion.sheetSlide,
+      curve: AskanceMotion.slide,
       decoration: BoxDecoration(
         color: AskanceColors.gesso,
         borderRadius: BorderRadius.vertical(
-          top: Radius.circular(AskanceRadius.sheet * s),
+          top: Radius.circular(open ? 0 : AskanceRadius.sheet * s),
         ),
       ),
       padding: EdgeInsets.only(bottom: bottomInset),
       child: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: kToolsMaxWidth * s),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              AnimatedSize(
-                duration: AskanceMotion.sheetSlide,
-                curve: AskanceMotion.slide,
-                alignment: Alignment.bottomCenter,
-                child: tool == null
-                    ? const SizedBox(width: double.infinity)
-                    : Padding(
-                        padding: EdgeInsets.fromLTRB(
-                          18 * s,
-                          18 * s,
-                          18 * s,
-                          16 * s,
-                        ),
-                        child: ToolPanel(
-                          session: session,
-                          tool: tool,
-                          onEditCrop: () {
-                            session.closeTool();
-                            showCropScreen(context, session);
-                          },
-                        ),
-                      ),
-              ),
-              _ToolBar(session: session, divided: tool != null),
-            ],
-          ),
+          child: _ToolBar(session: session, divided: open),
         ),
       ),
     );
@@ -454,7 +525,9 @@ class _ToolBar extends StatelessWidget {
     };
 
     return Container(
-      decoration: BoxDecoration(
+      // In the foreground, so the hairline costs the bar no height and the
+      // picture above does not move by a pixel when a sheet opens.
+      foregroundDecoration: BoxDecoration(
         border: divided
             ? const Border(
                 top: BorderSide(color: AskanceColors.rule, width: kRule),

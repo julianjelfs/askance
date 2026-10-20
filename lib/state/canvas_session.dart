@@ -400,6 +400,16 @@ class CanvasSession extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// A single tap on the picture. With a tool's sheet open over it, the tap
+  /// closes the sheet; otherwise it hides or shows the controls.
+  void tapPicture() {
+    if (chromeVisible && openTool != null) {
+      closeTool();
+      return;
+    }
+    toggleChrome();
+  }
+
   void setChromeVisible(bool value) {
     if (value == chromeVisible) return;
     chromeVisible = value;

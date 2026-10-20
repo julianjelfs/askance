@@ -127,7 +127,7 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
     _pendingTap = Timer(AskanceMotion.doubleTapWindow, () {
       _pendingTap = null;
       widget.onTap?.call();
-      if (widget.allowChromeToggle) widget.session.toggleChrome();
+      if (widget.allowChromeToggle) widget.session.tapPicture();
     });
   }
 
