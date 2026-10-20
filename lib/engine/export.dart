@@ -75,6 +75,8 @@ Future<Uint8List?> renderExport({
     smoothing: settings.smoothing,
     lockDetail: settings.lockDetail,
     crop: settings.crop,
+    steps: settings.steps,
+    bias: settings.bias,
   );
 
   final disposer = DeferredDisposer();

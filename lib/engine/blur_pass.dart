@@ -19,6 +19,8 @@ class _BlurRequest {
     required this.smoothing,
     required this.lockDetail,
     required this.crop,
+    required this.steps,
+    required this.bias,
     required this.key,
   });
 
@@ -29,6 +31,8 @@ class _BlurRequest {
   final Smoothing smoothing;
   final bool lockDetail;
   final Rect crop;
+  final int steps;
+  final double bias;
   final Object key;
 }
 
@@ -79,6 +83,8 @@ class BlurPass extends ChangeNotifier {
     Smoothing smoothing = Smoothing.gaussian,
     bool lockDetail = false,
     Rect crop = kWholeImage,
+    int steps = 3,
+    double bias = 0,
   }) {
     if (_disposed || outputPx.isEmpty) return;
     final key = blurKeyFor(
@@ -89,6 +95,8 @@ class BlurPass extends ChangeNotifier {
       smoothing: smoothing,
       lockDetail: lockDetail,
       crop: crop,
+      steps: steps,
+      bias: bias,
     );
     if (key == _key || key == _queued?.key) return;
     _queued = _BlurRequest(
@@ -99,6 +107,8 @@ class BlurPass extends ChangeNotifier {
       smoothing: smoothing,
       lockDetail: lockDetail,
       crop: crop,
+      steps: steps,
+      bias: bias,
       key: key,
     );
     if (!_rendering) unawaited(_drain());
@@ -121,6 +131,8 @@ class BlurPass extends ChangeNotifier {
             smoothing: request.smoothing,
             lockDetail: request.lockDetail,
             crop: request.crop,
+            steps: request.steps,
+            bias: request.bias,
           );
         } catch (e) {
           // Whatever asked for this can ask again; a failed pass should not

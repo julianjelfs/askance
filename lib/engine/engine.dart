@@ -4,7 +4,9 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
+import 'blocks.dart';
 import 'crop.dart';
+import 'lstar.dart';
 
 /// How the quantised image is presented.
 enum ViewMode {
@@ -46,7 +48,12 @@ enum Smoothing {
   /// The same blur, followed by a Kuwahara pass that turns the gradients it
   /// left back into flat patches with definite edges. The blur decides what
   /// merges; this only decides how the result reads.
-  kuwahara('ROUGH');
+  kuwahara('ROUGH'),
+
+  /// The same blur, then every boundary between values traced and pulled
+  /// straight: flat blocks with straight edges, the way a drawing is begun.
+  /// Worked on the CPU, so it lands a beat after the others.
+  block('BLOCK');
 
   const Smoothing(this.label);
 
@@ -304,8 +311,22 @@ Future<ui.Image> renderBlurredSource({
   Smoothing smoothing = Smoothing.gaussian,
   bool lockDetail = false,
   Rect crop = kWholeImage,
+  int steps = 3,
+  double bias = 0,
   double quadrantRadius = kKuwaharaRadius,
 }) async {
+  if (smoothing == Smoothing.block) {
+    return _renderBlocks(
+      source: source,
+      outputPx: outputPx,
+      detail: detail,
+      view: view,
+      lockDetail: lockDetail,
+      crop: crop,
+      steps: steps,
+      bias: bias,
+    );
+  }
   final cropPx = cropPixels(
     Size(source.width.toDouble(), source.height.toDouble()),
     crop,
@@ -432,6 +453,107 @@ Future<ui.Image> renderBlurredSource({
   return flattened;
 }
 
+/// Width the BLOCK outlines are traced at, in pixels. The blur has already
+/// taken out everything much finer than the shapes being kept, so tracing at
+/// full resolution only multiplies the work.
+const double kBlockTraceWidth = 600;
+
+/// How far, as a share of the blur's sigma, an outline may stray from the
+/// straight run that replaces it. Larger is fewer, longer edges.
+const double kBlockStraightness = 0.75;
+
+/// BLOCK: the blur, quantised and traced on the CPU, every outline pulled
+/// straight, and the result filled in flat greys that the value shader reads
+/// back as the bands they came from — so every mode, palette and isolated band
+/// works over it unchanged.
+Future<ui.Image> _renderBlocks({
+  required ui.Image source,
+  required Size outputPx,
+  required double detail,
+  required ViewTransform view,
+  required bool lockDetail,
+  required Rect crop,
+  required int steps,
+  required double bias,
+}) async {
+  final sourceSize = croppedSize(
+    Size(source.width.toDouble(), source.height.toDouble()),
+    crop,
+  );
+  final area = view.visible(sourceSize, outputPx);
+  final w = math.max(1, area.width.round());
+  final h = math.max(1, area.height.round());
+
+  // The same blur, smaller. The sigma follows the output width, so the shapes
+  // are the ones the full-size pass would have made.
+  final f = math.min(1.0, kBlockTraceWidth / outputPx.width);
+  final traced = await renderBlurredSource(
+    source: source,
+    outputPx: outputPx * f,
+    detail: detail,
+    view: view,
+    lockDetail: lockDetail,
+    crop: crop,
+  );
+  final rgba = (await traced.toByteData(
+    format: ui.ImageByteFormat.rawRgba,
+  ))!.buffer.asUint8List();
+  final tw = traced.width, th = traced.height;
+  traced.dispose();
+
+  final sigma =
+      blurSigma(detail, outputPx.width * f) * (lockDetail ? view.zoom : 1);
+  final shapes = await compute(blockShapes, (
+    rgba: rgba,
+    width: tw,
+    height: th,
+    steps: steps,
+    bias: bias,
+    tolerance: math.max(1.0, sigma * kBlockStraightness),
+  ));
+
+  Color grey(int band) {
+    final v = clampChannel8(
+      luminanceOfLstar(bandCentreLstar(band, steps, bias)),
+    );
+    return Color.fromARGB(255, v, v, v);
+  }
+
+  final recorder = ui.PictureRecorder();
+  final canvas = ui.Canvas(
+    recorder,
+    Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble()),
+  );
+  // Aliased: a softened edge would be an in-between grey, and the shader
+  // would read it as a sliver of some other value along every boundary.
+  canvas.drawRect(
+    Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble()),
+    Paint()
+      ..color = grey(steps - 1)
+      ..isAntiAlias = false,
+  );
+  canvas.scale(w / shapes.width, h / shapes.height);
+  // Lightest first, each darker mask over the last.
+  for (var k = shapes.masks.length - 1; k >= 0; k--) {
+    final loops = shapes.masks[k];
+    if (loops.isEmpty) continue;
+    final path = Path()..fillType = PathFillType.evenOdd;
+    for (final loop in loops) {
+      path.addPolygon(loop, true);
+    }
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = grey(k)
+        ..isAntiAlias = false,
+    );
+  }
+  final picture = recorder.endRecording();
+  final image = await picture.toImage(w, h);
+  picture.dispose();
+  return image;
+}
+
 /// Turns the soft gradients a blur leaves into flat patches with definite
 /// edges, by replacing each pixel with the mean of whichever of four
 /// overlapping quadrants around it is flattest.
@@ -492,6 +614,8 @@ Object blurKeyFor({
   required Smoothing smoothing,
   required bool lockDetail,
   Rect crop = kWholeImage,
+  int steps = 3,
+  double bias = 0,
 }) => Object.hash(
   // The pass belongs to a particular photograph. Without this a new image
   // loaded under identical settings collided with the old key, and the
@@ -505,6 +629,10 @@ Object blurKeyFor({
   smoothing,
   lockDetail,
   crop,
+  // Only BLOCK draws the bands into the pass itself; for the others a change
+  // of values is the shader's business and must not cost a new blur.
+  smoothing == Smoothing.block ? steps : 0,
+  smoothing == Smoothing.block ? bias : 0,
 );
 
 /// Wraps the compiled fragment program and knows how to set its uniforms.

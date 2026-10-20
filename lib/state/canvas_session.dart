@@ -435,6 +435,8 @@ class CanvasSession extends ChangeNotifier {
       smoothing: settings.smoothing,
       lockDetail: settings.lockDetail,
       crop: settings.crop,
+      steps: settings.steps,
+      bias: settings.bias,
     );
     await blur.settled;
   }

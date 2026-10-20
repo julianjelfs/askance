@@ -257,6 +257,8 @@ class _StudyThumbnailState extends ConsumerState<StudyThumbnail> {
           smoothing: widget.study.settings.smoothing,
           lockDetail: widget.study.settings.lockDetail,
           crop: widget.study.settings.crop,
+          steps: widget.study.settings.steps,
+          bias: widget.study.settings.bias,
         );
         return ListenableBuilder(
           listenable: _blur,

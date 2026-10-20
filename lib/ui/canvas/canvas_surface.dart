@@ -168,6 +168,8 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
             smoothing: session.settings.smoothing,
             lockDetail: session.settings.lockDetail,
             crop: session.settings.crop,
+            steps: session.settings.steps,
+            bias: session.settings.bias,
           );
         }
 
