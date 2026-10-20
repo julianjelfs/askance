@@ -367,8 +367,11 @@ class _TopBarState extends ConsumerState<_TopBar> {
   /// "4 values · grey · A4 portrait": what the study is, at a glance.
   static String _caption(CanvasSession session) {
     final settings = session.settings;
-    final scale = settings.scale.hue == null ? 'grey' : 'tinted';
-    return '${settings.steps} values · $scale · ${cropSummary(session)}';
+    // Grey goes without saying while the tint is hidden.
+    final scale = settings.scale.hue == null
+        ? (kShowTint ? 'grey · ' : '')
+        : 'tinted · ';
+    return '${settings.steps} values · $scale${cropSummary(session)}';
   }
 }
 

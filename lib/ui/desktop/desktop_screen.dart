@@ -349,11 +349,12 @@ class _RailState extends ConsumerState<_Rail> {
                     DetailControl(session: session),
                     const SizedBox(height: 4),
                     LockDetailControl(session: session),
-                    _section(
-                      'Root of the scale',
-                      null,
-                      ScaleControl(session: session),
-                    ),
+                    if (kShowTint)
+                      _section(
+                        'Root of the scale',
+                        null,
+                        ScaleControl(session: session),
+                      ),
                   ],
                   _section(
                     'Board',

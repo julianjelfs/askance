@@ -39,10 +39,15 @@ enum CanvasTool {
   /// everything else, and fill only means something under the edges.
   static List<CanvasTool> barFor(ViewMode mode) => switch (mode) {
     ViewMode.photo => const [tone, grid],
-    ViewMode.skeleton => const [steps, detail, scale, fill, grid],
-    _ => const [steps, detail, scale, grid],
+    ViewMode.skeleton => [steps, detail, if (kShowTint) scale, fill, grid],
+    _ => [steps, detail, if (kShowTint) scale, grid],
   };
 }
+
+/// Whether the tint (the root of the scale) is offered anywhere. Hidden for
+/// now because it went unused; the scale is still stored, rendered and
+/// exported, so turning this back on restores it as it was.
+const bool kShowTint = false;
 
 /// The open study, plus the view state that is deliberately *not* part of a
 /// study: zoom, pan, peek, chrome visibility and which tool is open.
