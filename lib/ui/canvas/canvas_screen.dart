@@ -545,44 +545,76 @@ class _ToolBar extends StatelessWidget {
               child: Builder(
                 builder: (context) {
                   final (glyph, label) = look(tool);
-                  final open = session.openTool == tool;
-                  final colour = open
-                      ? AskanceColors.accentInk
-                      : AskanceColors.muted;
-                  return Semantics(
-                    button: true,
-                    selected: open,
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      // Tapping the open tool closes it, and the picture takes
-                      // the room back.
-                      onTap: () => session.toggleTool(tool),
-                      child: SizedBox(
-                        height: 54 * s,
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            GlyphIcon(glyph, size: 21 * s, color: colour),
-                            SizedBox(height: 4 * s),
-                            Text(
-                              label,
-                              style: AskanceText.control(
-                                12.5,
-                                color: colour,
-                                weight: open
-                                    ? FontWeight.w600
-                                    : FontWeight.w500,
-                              ).by(s),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                  return _BarItem(
+                    glyph: glyph,
+                    label: label,
+                    selected: session.openTool == tool,
+                    // Tapping the open tool closes it, and the picture takes
+                    // the room back.
+                    onTap: () => session.toggleTool(tool),
                   );
                 },
               ),
             ),
+          // An action rather than a tool: there is nothing to adjust, only
+          // another deal. Repeat-tapping RANDOM at the top does the same, but
+          // nothing there says so.
+          if (session.settings.mode == ViewMode.random)
+            Expanded(
+              child: _BarItem(
+                glyph: Glyph.dice,
+                label: 'New colours',
+                selected: false,
+                onTap: session.dealColours,
+              ),
+            ),
         ],
+      ),
+    );
+  }
+}
+
+class _BarItem extends StatelessWidget {
+  const _BarItem({
+    required this.glyph,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final Glyph glyph;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = DesignScale.of(context);
+    final colour = selected ? AskanceColors.accentInk : AskanceColors.muted;
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: SizedBox(
+          height: 54 * s,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              GlyphIcon(glyph, size: 21 * s, color: colour),
+              SizedBox(height: 4 * s),
+              Text(
+                label,
+                style: AskanceText.control(
+                  12.5,
+                  color: colour,
+                  weight: selected ? FontWeight.w600 : FontWeight.w500,
+                ).by(s),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

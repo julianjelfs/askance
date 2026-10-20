@@ -267,10 +267,8 @@ class CanvasSession extends ChangeNotifier {
       // another deal of colours over the same values. Every other mode,
       // SPLIT included, treats a repeat tap as nothing new.
       if (mode != ViewMode.random) return;
-      // A fresh draw, not seed + 1: every study starts at seed 0, so an
-      // incrementing seed dealt every study the same palette sequence. The
-      // draw is still stored, so the palette survives repaint and reopening.
-      settings = settings.copyWith(randomSeed: math.Random().nextInt(1 << 31));
+      dealColours();
+      return;
     } else {
       settings = settings.copyWith(
         mode: mode,
@@ -302,6 +300,16 @@ class CanvasSession extends ChangeNotifier {
     // VALUE and RANDOM share bands, so an isolated band survives moving
     // between them, and a new deal; anywhere else has no swatch to undo it.
     if (!settings.mode.paintsOnlyPalette) isolatedBand = null;
+    _persistSoon();
+    notifyListeners();
+  }
+
+  /// Another deal of RANDOM's colours over the same values.
+  void dealColours() {
+    // A fresh draw, not seed + 1: every study starts at seed 0, so an
+    // incrementing seed dealt every study the same palette sequence. The
+    // draw is still stored, so the palette survives repaint and reopening.
+    settings = settings.copyWith(randomSeed: math.Random().nextInt(1 << 31));
     _persistSoon();
     notifyListeners();
   }

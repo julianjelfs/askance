@@ -298,6 +298,22 @@ class _RailState extends ConsumerState<_Rail> {
                     height: 36,
                     fontSize: 12.5,
                   ),
+                  if (mode == ViewMode.random) ...[
+                    const SizedBox(height: 10),
+                    ActionButton(
+                      label: 'New colours',
+                      solid: false,
+                      centred: true,
+                      height: 38,
+                      fontSize: 14,
+                      leadingIcon: const GlyphIcon(
+                        Glyph.dice,
+                        size: 18,
+                        color: AskanceColors.graphite,
+                      ),
+                      onPressed: session.dealColours,
+                    ),
+                  ],
                   // Like the phone's tool bar, the rail only offers what
                   // adjusts the view on screen: the photograph has its tone,
                   // and nothing of the value map's.

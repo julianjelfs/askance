@@ -26,6 +26,7 @@ enum Glyph {
   board,
   tone,
   fill,
+  dice,
 }
 
 class GlyphIcon extends StatelessWidget {
@@ -90,6 +91,8 @@ class _GlyphPainter extends CustomPainter {
         _tone(canvas, size);
       case Glyph.fill:
         _fill(canvas, size);
+      case Glyph.dice:
+        _dice(canvas, size);
     }
   }
 
@@ -237,6 +240,22 @@ class _GlyphPainter extends CustomPainter {
       Paint()..color = color,
     );
     canvas.drawRect(box, _line(u));
+  }
+
+  /// A die showing three: another deal of colours.
+  void _dice(Canvas canvas, Size size) {
+    final u = size.shortestSide;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTRB(u * 0.16, u * 0.16, u * 0.84, u * 0.84),
+        Radius.circular(u * 0.14),
+      ),
+      _line(u),
+    );
+    final pip = Paint()..color = color;
+    for (final f in const [0.34, 0.5, 0.66]) {
+      canvas.drawCircle(Offset(u * f, u * f), u * 0.06, pip);
+    }
   }
 
   /// Four corner brackets pointing outwards: Lucide `maximize`.
