@@ -124,12 +124,12 @@ class StudySettings {
   /// study is blocked in with two values and a few big shapes and then
   /// refined. Edit freely; nothing is stored against a stage's position.
   static const List<({int steps, double detail})> stages = [
-    (steps: 2, detail: 0.1),
-    (steps: 3, detail: 0.25),
-    (steps: 4, detail: 0.4),
-    (steps: 5, detail: 0.55),
+    (steps: 2, detail: 0.3),
+    (steps: 3, detail: 0.4),
+    (steps: 4, detail: 0.5),
+    (steps: 5, detail: 0.6),
     (steps: 6, detail: 0.7),
-    (steps: 7, detail: 0.85),
+    (steps: 7, detail: 0.8),
   ];
 
   /// Which of [stages] the values and detail are at, or null once either has
