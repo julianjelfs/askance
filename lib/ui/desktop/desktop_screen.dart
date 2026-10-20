@@ -271,49 +271,57 @@ class _RailState extends ConsumerState<_Rail> {
                 children: [
                   _viewBlock(session),
                   const SizedBox(height: kRule),
-                  _controlBlock(
-                    'STAGE',
-                    StageControl.readout(session.settings),
-                    StageControl(session: session),
-                  ),
-                  const SizedBox(height: kRule),
-                  _controlBlock(
-                    'VALUES',
-                    '${session.settings.steps} STEPS',
-                    ValuesControl(session: session),
-                  ),
-                  const SizedBox(height: kRule),
-                  _controlBlock(
-                    'WHERE THE STEPS FALL',
-                    BiasControl.readout(session.settings.bias),
-                    BiasControl(session: session),
-                  ),
-                  const SizedBox(height: kRule),
-                  _controlBlock(
-                    'HOW THE SHAPES FORM',
-                    null,
-                    SmoothingControl(session: session),
-                  ),
-                  const SizedBox(height: kRule),
-                  _controlBlock(
-                    'DETAIL',
-                    '${(session.settings.detail * 100).round()}',
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        DetailControl(session: session),
-                        const SizedBox(height: 12),
-                        LockDetailControl(session: session),
-                      ],
+                  // Like the phone's tool bar, the rail only offers what
+                  // adjusts the view on screen: the photograph has its tone,
+                  // and nothing of the value map's.
+                  if (session.settings.mode == ViewMode.photo) ...[
+                    _controlBlock('TONE', null, ToneControl(session: session)),
+                    const SizedBox(height: kRule),
+                  ] else ...[
+                    _controlBlock(
+                      'STAGE',
+                      StageControl.readout(session.settings),
+                      StageControl(session: session),
                     ),
-                  ),
-                  const SizedBox(height: kRule),
-                  _controlBlock(
-                    'ROOT OF THE SCALE',
-                    null,
-                    ScaleControl(session: session),
-                  ),
-                  const SizedBox(height: kRule),
+                    const SizedBox(height: kRule),
+                    _controlBlock(
+                      'VALUES',
+                      '${session.settings.steps} STEPS',
+                      ValuesControl(session: session),
+                    ),
+                    const SizedBox(height: kRule),
+                    _controlBlock(
+                      'WHERE THE STEPS FALL',
+                      BiasControl.readout(session.settings.bias),
+                      BiasControl(session: session),
+                    ),
+                    const SizedBox(height: kRule),
+                    _controlBlock(
+                      'HOW THE SHAPES FORM',
+                      null,
+                      SmoothingControl(session: session),
+                    ),
+                    const SizedBox(height: kRule),
+                    _controlBlock(
+                      'DETAIL',
+                      '${(session.settings.detail * 100).round()}',
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          DetailControl(session: session),
+                          const SizedBox(height: 12),
+                          LockDetailControl(session: session),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: kRule),
+                    _controlBlock(
+                      'ROOT OF THE SCALE',
+                      null,
+                      ScaleControl(session: session),
+                    ),
+                    const SizedBox(height: kRule),
+                  ],
                   _controlBlock('GRID', null, GridControl(session: session)),
                   const SizedBox(height: kRule),
                   _controlBlock(
@@ -469,10 +477,6 @@ class _RailState extends ConsumerState<_Rail> {
             active: session.settings.mode == mode,
             onTap: () => session.setMode(mode),
           ),
-        if (session.settings.mode == ViewMode.photo) ...[
-          const SizedBox(height: 6),
-          ToneControl(session: session),
-        ],
         if (session.settings.mode == ViewMode.skeleton) ...[
           // The fill as a sibling of the value selector: 0 is edges alone,
           // the rest block the values in darkest-first — and a click jumps
