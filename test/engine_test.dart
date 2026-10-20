@@ -199,4 +199,20 @@ void main() {
       expect(view.zoom, 2, reason: 'the zoom it was left at');
     });
   });
+
+  group('scroll zoom', () {
+    test('zooms by the distance scrolled, not by the number of events', () {
+      // A trackpad's hundred small events against a wheel's one big one.
+      var trackpad = 1.0;
+      for (var i = 0; i < 100; i++) {
+        trackpad *= scrollZoomFactor(-1);
+      }
+      expect(trackpad, closeTo(scrollZoomFactor(-100), 1e-9));
+    });
+
+    test('a wheel notch is a modest step, in and out', () {
+      expect(scrollZoomFactor(-100), inInclusiveRange(1.1, 1.3));
+      expect(scrollZoomFactor(100) * scrollZoomFactor(-100), closeTo(1, 1e-9));
+    });
+  });
 }

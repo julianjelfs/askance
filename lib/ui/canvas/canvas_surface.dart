@@ -134,7 +134,7 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
   void _onScroll(PointerSignalEvent event) {
     if (event is! PointerScrollEvent) return;
     final session = widget.session;
-    final factor = event.scrollDelta.dy > 0 ? 0.9 : 1.1;
+    final factor = scrollZoomFactor(event.scrollDelta.dy);
     session.setView(
       session.view.zoomedAt(
         event.localPosition,

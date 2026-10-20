@@ -273,7 +273,7 @@ class _CropPictureState extends State<CropPicture> {
         return Listener(
           onPointerSignal: (event) {
             if (event is PointerScrollEvent) {
-              draft.resizeBy(event.scrollDelta.dy > 0 ? 0.95 : 1.05);
+              draft.resizeBy(scrollZoomFactor(event.scrollDelta.dy));
             }
           },
           child: GestureDetector(

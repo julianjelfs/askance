@@ -247,6 +247,16 @@ class ViewTransform {
   int get hashCode => Object.hash(zoom, offset);
 }
 
+/// How far one scroll event zooms: a factor to multiply the zoom by, in
+/// proportion to the distance scrolled, so a scroll that arrives as many
+/// small events zooms exactly as far as the same scroll in one.
+///
+/// A fixed step per event made a trackpad, which sends dozens of tiny events
+/// for one gentle swipe, many times as sensitive as a mouse wheel, which sends
+/// one per notch. At this rate a wheel notch (100 logical pixels) zooms
+/// about 1.2×. Scrolling down zooms out.
+double scrollZoomFactor(double scrollDy) => math.exp(-scrollDy / 550);
+
 /// [base] zoomed just far enough that the photograph covers [output].
 ///
 /// A study is shown whole, but a thumbnail or a backdrop is an indication of
