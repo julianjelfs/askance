@@ -33,10 +33,10 @@ Size croppedSize(Size image, Rect crop) => cropPixels(image, crop).size;
 /// crop is an A3 crop and an A5 one, so a study squared up for one board
 /// transfers to any of them.
 enum CropShape {
-  whole('WHOLE', null),
+  whole('Whole', null),
   aSeries('A4', math.sqrt1_2),
   fourFive('4:5', 0.8),
-  square('1:1', 1);
+  square('Square', 1);
 
   const CropShape(this.label, this.shortOverLong);
 

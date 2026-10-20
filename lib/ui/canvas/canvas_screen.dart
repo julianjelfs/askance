@@ -13,13 +13,13 @@ import '../share/share_sheet.dart';
 import '../shelf/shelf_screen.dart';
 import '../fullscreen/fullscreen_stub.dart'
     if (dart.library.js_interop) '../fullscreen/fullscreen_web.dart';
-import '../widgets/glyphs.dart';
 import '../widgets/controls.dart';
+import '../widgets/glyphs.dart';
 import 'canvas_surface.dart';
 import 'tool_panel.dart';
 
-/// The app. A fullscreen image with chrome over it that can be dismissed
-/// entirely.
+/// The study on a phone or a tablet held upright: the picture on its grey
+/// surround, the view selector above it and the tools below.
 class CanvasScreen extends ConsumerWidget {
   const CanvasScreen({super.key});
 
@@ -29,7 +29,7 @@ class CanvasScreen extends ConsumerWidget {
     final shader = ref.watch(shaderProvider);
 
     return Container(
-      color: AskanceColors.ink,
+      color: AskanceColors.surround,
       child: ListenableBuilder(
         listenable: session,
         builder: (context, _) {
@@ -51,9 +51,6 @@ class _CanvasBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final s = DesignScale.of(context);
-    final padding = MediaQuery.paddingOf(context);
-    final chromeVisible = session.chromeVisible;
     // While the open transition runs, the canvas is also the widget flying
     // between the card and the screen, and it must not re-render as it grows.
     // Listening to the route's own animation is what lets it start rendering
@@ -64,25 +61,37 @@ class _CanvasBody extends ConsumerWidget {
 
     return ListenableBuilder(
       listenable: routeAnimation,
-      builder: (context, _) => _body(
-        context,
-        ref,
-        s,
-        padding,
-        chromeVisible,
-        flying: routeAnimation.isAnimating,
-      ),
+      builder: (context, _) =>
+          _body(context, ref, flying: routeAnimation.isAnimating),
     );
   }
 
-  Widget _body(
-    BuildContext context,
-    WidgetRef ref,
-    double s,
-    EdgeInsets padding,
-    bool chromeVisible, {
-    required bool flying,
-  }) {
+  Widget _body(BuildContext context, WidgetRef ref, {required bool flying}) {
+    final s = DesignScale.of(context);
+    final padding = MediaQuery.paddingOf(context);
+    final chrome = session.chromeVisible;
+
+    final surface = Stack(
+      fit: StackFit.expand,
+      children: [
+        // A study opened from the shelf grows out of its thumbnail. A study
+        // that has never been saved has no thumbnail to grow from.
+        if (session.studyId case final id?)
+          Hero(
+            tag: studyHeroTag(id),
+            child: CanvasSurface(
+              session: session,
+              shader: shader,
+              freezeBlur: flying,
+            ),
+          )
+        else
+          CanvasSurface(session: session, shader: shader, freezeBlur: flying),
+        if (session.settings.mode == ViewMode.split && !session.peeking)
+          SplitHandle(session: session),
+      ],
+    );
+
     return PopScope(
       canPop: true,
       // Settings persist on a short debounce, so leaving immediately after a
@@ -90,136 +99,48 @@ class _CanvasBody extends ConsumerWidget {
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) session.flushPersist();
       },
-      child: Stack(
-        fit: StackFit.expand,
+      // A single tap on the picture hides everything else, and the picture
+      // takes the whole screen; another brings it back.
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // A study opened from the shelf grows out of its thumbnail. A study
-          // that has never been saved has no thumbnail to grow from.
-          if (session.studyId case final id?)
-            Hero(
-              tag: studyHeroTag(id),
-              child: CanvasSurface(
-                session: session,
-                shader: shader,
-                freezeBlur: flying,
-              ),
-            )
-          else
-            CanvasSurface(session: session, shader: shader, freezeBlur: flying),
-
-          if (session.settings.mode == ViewMode.split && !session.peeking)
-            SplitHandle(session: session),
-
-          // Chrome fades out entirely on a single tap, and stops taking hits
-          // while it is gone.
-          IgnorePointer(
-            ignoring: !chromeVisible,
-            child: AnimatedOpacity(
-              opacity: chromeVisible ? 1 : 0,
-              duration: AskanceMotion.chromeFade,
-              child: Stack(
-                fit: StackFit.expand,
+          if (chrome)
+            Container(
+              color: AskanceColors.graphite,
+              padding: EdgeInsets.only(top: padding.top),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Positioned(
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    child: _TopBar(session: session, topInset: padding.top),
-                  ),
-                  Positioned(
-                    top: padding.top + 60 * s,
-                    right: 14 * s,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        _ModeRail(session: session),
-                        if (session.settings.mode.paintsOnlyPalette) ...[
-                          SizedBox(height: 8 * s),
-                          Container(
-                            width: 44 * s,
-                            padding: const EdgeInsets.all(kRule),
-                            color: AskanceColors.ink,
-                            child: PaletteSwatch(
-                              session: session,
-                              chipHeight: 32,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  // Full-bleed at phone widths; on a desktop-sized screen —
-                  // browser fullscreen — a bar stretched across the whole
-                  // glass reads wrong, so past kToolsMaxWidth it becomes a
-                  // floating panel in the bottom-left corner instead.
-                  Positioned(
-                    left: 0,
-                    right: null,
-                    bottom: 0,
-                    child: LayoutBuilder(
-                      builder: (context, _) {
-                        final width = MediaQuery.sizeOf(context).width;
-                        final floating = width > kToolsMaxWidth;
-                        final tools = Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            if (session.openTool != null)
-                              ToolPanel(
-                                session: session,
-                                tool: session.openTool!,
-                              ),
-                            _ToolBar(
-                              session: session,
-                              bottomInset: floating ? 0 : padding.bottom,
-                            ),
-                          ],
-                        );
-                        if (!floating) {
-                          return SizedBox(width: width, child: tools);
-                        }
-                        return Padding(
-                          padding: EdgeInsets.fromLTRB(
-                            14 * s,
-                            0,
-                            0,
-                            14 * s + padding.bottom,
-                          ),
-                          child: Container(
-                            width: kToolsMaxWidth,
-                            decoration: const BoxDecoration(
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Color(0x33201E1D),
-                                  blurRadius: 14,
-                                  offset: Offset(0, 5),
-                                ),
-                              ],
-                            ),
-                            child: tools,
-                          ),
-                        );
-                      },
+                  _TopBar(session: session),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(14 * s, 4 * s, 14 * s, 12 * s),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(maxWidth: 520 * s),
+                        child: _ViewSelector(session: session),
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-          ),
+          Expanded(child: surface),
+          if (chrome && session.settings.mode.paintsOnlyPalette)
+            Padding(
+              padding: EdgeInsets.only(top: 2 * s, bottom: 12 * s),
+              child: PaletteChips(session: session),
+            ),
+          if (chrome) _ToolDeck(session: session, bottomInset: padding.bottom),
         ],
       ),
     );
   }
 }
 
-/// Wider than this and the tool bar stops stretching: a hand-sized control
-/// block has no business spanning a desktop.
-const double kToolsMaxWidth = 550;
-
 class _TopBar extends ConsumerStatefulWidget {
-  const _TopBar({required this.session, required this.topInset});
+  const _TopBar({required this.session});
 
   final CanvasSession session;
-  final double topInset;
 
   @override
   ConsumerState<_TopBar> createState() => _TopBarState();
@@ -258,176 +179,126 @@ class _TopBarState extends ConsumerState<_TopBar> {
   Widget build(BuildContext context) {
     final s = DesignScale.of(context);
     final session = widget.session;
-    final nameStyle =
-        AskanceText.controlLabel(
-              10,
-              tracking: 0.05,
-              color: AskanceColors.ground,
-            )
-            .by(s)
-            .copyWith(
-              shadows: const [Shadow(color: Color(0x99000000), blurRadius: 6)],
-            );
+    final nameStyle = AskanceText.title(16.5, color: AskanceColors.gesso).by(s);
 
-    return Container(
-      padding: EdgeInsets.only(top: widget.topInset),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0x8C201E1D), Color(0x00201E1D)],
-        ),
-      ),
-      child: SizedBox(
-        height: 46 * s,
-        child: Row(
-          children: [
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () {
-                widget.session.flushPersist();
-                Navigator.of(context).maybePop();
-              },
-              child: SizedBox(
-                width: 42 * s,
-                height: 32 * s,
-                child: Center(
-                  child: Text(
-                    '←',
-                    style: AskanceText.button(
-                      16,
-                      color: AskanceColors.ground,
-                    ).by(s),
-                  ),
+    Widget iconButton(Glyph glyph, String label, VoidCallback onTap) =>
+        Semantics(
+          button: true,
+          label: label,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onTap,
+            child: SizedBox(
+              width: 44 * s,
+              height: 48 * s,
+              child: Center(
+                child: GlyphIcon(
+                  glyph,
+                  size: 22 * s,
+                  color: AskanceColors.gesso,
                 ),
               ),
             ),
-            Expanded(
-              child: _editing
-                  ? TextField(
-                      controller: _controller,
-                      focusNode: _focus,
-                      autofocus: true,
-                      style: nameStyle,
-                      cursorColor: AskanceColors.accent,
-                      cursorWidth: kRule,
-                      textInputAction: TextInputAction.done,
-                      onSubmitted: (_) => _commit(),
-                      decoration: const InputDecoration(
-                        isDense: true,
-                        contentPadding: EdgeInsets.zero,
-                        border: InputBorder.none,
-                      ),
-                    )
-                  : GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () {
-                        _controller.text = session.name;
-                        setState(() => _editing = true);
-                      },
-                      child: Text(
-                        session.name.toUpperCase(),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: nameStyle,
-                      ),
-                    ),
-            ),
-            if (canToggleFullscreen)
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: toggleFullscreen,
-                child: SizedBox(
-                  width: 42 * s,
-                  height: 46 * s,
-                  child: Center(
-                    child: GlyphIcon(
-                      Glyph.expand,
-                      size: 17 * s,
-                      color: AskanceColors.ground,
-                    ),
-                  ),
-                ),
-              ),
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => showShareSheet(context, ref),
-              child: SizedBox(
-                width: 42 * s,
-                height: 46 * s,
-                child: Center(
-                  child: ShareIcon(size: 18 * s, color: AskanceColors.ground),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+          ),
+        );
 
-class _ModeRail extends StatelessWidget {
-  const _ModeRail({required this.session});
-
-  final CanvasSession session;
-
-  @override
-  Widget build(BuildContext context) {
-    final s = DesignScale.of(context);
-    final skeleton = session.settings.mode == ViewMode.skeleton;
-
-    Widget cell({
-      required String label,
-      required bool active,
-      required VoidCallback onTap,
-    }) => GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Container(
-        width: 44 * s,
-        height: 44 * s,
-        alignment: Alignment.center,
-        color: active ? AskanceColors.accent : null,
-        child: Text(
-          label,
-          style: AskanceText.controlLabel(
-            9,
-            tracking: 0.06,
-            color: AskanceColors.ground,
-          ).by(s),
-        ),
-      ),
-    );
-
-    return Container(
-      color: AskanceColors.ink,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+    return SizedBox(
+      height: 56 * s,
+      child: Row(
         children: [
-          for (final mode in ViewMode.values)
-            cell(
-              label: mode.railLabel,
-              active: session.settings.mode == mode,
-              onTap: () => session.setMode(mode),
-            ),
-          if (skeleton)
-            cell(
-              label: session.settings.skeletonFill == 0
-                  ? 'FILL'
-                  : '${session.settings.skeletonFill.clamp(0, session.settings.steps)}'
-                        '/${session.settings.steps}',
-              active: session.settings.skeletonFill > 0,
-              onTap: session.cycleSkeletonFill,
-            ),
+          SizedBox(width: 4 * s),
+          iconButton(Glyph.back, 'Back to the shelf', () {
+            session.flushPersist();
+            Navigator.of(context).maybePop();
+          }),
+          Expanded(
+            child: _editing
+                ? TextField(
+                    controller: _controller,
+                    focusNode: _focus,
+                    autofocus: true,
+                    style: nameStyle,
+                    cursorColor: AskanceColors.accent,
+                    cursorWidth: 2,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _commit(),
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
+                      border: InputBorder.none,
+                    ),
+                  )
+                : GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      _controller.text = session.name;
+                      setState(() => _editing = true);
+                    },
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          session.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: nameStyle,
+                        ),
+                        SizedBox(height: 2 * s),
+                        Text(
+                          _caption(session),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AskanceText.caption(
+                            12.5,
+                            color: AskanceColors.mutedOnDark,
+                          ).by(s),
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+          if (canToggleFullscreen)
+            iconButton(Glyph.expand, 'Full screen', toggleFullscreen),
+          iconButton(Glyph.share, 'Share', () => showShareSheet(context, ref)),
+          SizedBox(width: 6 * s),
         ],
       ),
     );
   }
+
+  /// "4 values · grey · A4 portrait": what the study is, at a glance.
+  static String _caption(CanvasSession session) {
+    final settings = session.settings;
+    final scale = settings.scale.hue == null ? 'grey' : 'tinted';
+    return '${settings.steps} values · $scale · ${cropSummary(session)}';
+  }
 }
 
-class _ToolBar extends StatelessWidget {
-  const _ToolBar({required this.session, required this.bottomInset});
+/// How to look at the study, across the top.
+class _ViewSelector extends StatelessWidget {
+  const _ViewSelector({required this.session});
+
+  final CanvasSession session;
+
+  @override
+  Widget build(BuildContext context) => SegmentedControl<ViewMode>(
+    values: ViewMode.values,
+    selected: session.settings.mode,
+    labelOf: (mode) => mode.railLabel,
+    // Tapping RANDOM again deals another palette, so a repeat tap is passed
+    // through rather than swallowed.
+    onChanged: session.setMode,
+    onDark: true,
+    fontSize: 13,
+  );
+}
+
+/// The open tool, if any, above the tool bar, on a gesso panel. On a tablet
+/// held upright the panel spans the glass but its contents keep to a
+/// hand-sized column.
+class _ToolDeck extends StatelessWidget {
+  const _ToolDeck({required this.session, required this.bottomInset});
 
   final CanvasSession session;
   final double bottomInset;
@@ -435,64 +306,136 @@ class _ToolBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = DesignScale.of(context);
+    final tool = session.openTool;
+    return Container(
+      decoration: BoxDecoration(
+        color: AskanceColors.gesso,
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AskanceRadius.sheet * s),
+        ),
+      ),
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: kToolsMaxWidth * s),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AnimatedSize(
+                duration: AskanceMotion.sheetSlide,
+                curve: AskanceMotion.slide,
+                alignment: Alignment.bottomCenter,
+                child: tool == null
+                    ? const SizedBox(width: double.infinity)
+                    : Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          18 * s,
+                          18 * s,
+                          18 * s,
+                          16 * s,
+                        ),
+                        child: ToolPanel(
+                          session: session,
+                          tool: tool,
+                          onEditCrop: () {
+                            session.closeTool();
+                            showCropScreen(context, session);
+                          },
+                        ),
+                      ),
+              ),
+              _ToolBar(session: session, divided: tool != null),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
-    String labelFor(CanvasTool tool) => switch (tool) {
-      CanvasTool.steps => '${session.settings.steps} VAL',
-      CanvasTool.detail => 'DETAIL',
-      CanvasTool.scale => 'SCALE',
-      CanvasTool.grid => 'GRID',
-      CanvasTool.tone => 'TONE',
+/// Wider than this and the tools stop stretching: a hand-sized control block
+/// has no business spanning a tablet.
+const double kToolsMaxWidth = 560;
+
+class _ToolBar extends StatelessWidget {
+  const _ToolBar({required this.session, required this.divided});
+
+  final CanvasSession session;
+
+  /// A hairline above the bar, when a panel sits over it.
+  final bool divided;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = DesignScale.of(context);
+
+    (Glyph, String) look(CanvasTool tool) => switch (tool) {
+      CanvasTool.steps => (
+        Glyph.staircase,
+        'Values · ${session.settings.steps}',
+      ),
+      CanvasTool.detail => (Glyph.shapes, 'Shapes'),
+      CanvasTool.scale => (Glyph.tint, 'Tint'),
+      CanvasTool.grid => (Glyph.board, 'Board'),
+      CanvasTool.tone => (Glyph.tone, 'Tone'),
+      CanvasTool.fill => (Glyph.fill, 'Fill'),
     };
 
     return Container(
-      color: AskanceColors.ink,
-      padding: EdgeInsets.only(bottom: bottomInset),
-      child: SizedBox(
-        height: 44 * s,
-        child: Row(
-          children: [
-            for (final tool in CanvasTool.barFor(session.settings.mode))
-              Expanded(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => session.toggleTool(tool),
-                  child: Container(
-                    alignment: Alignment.center,
-                    color: session.openTool == tool
-                        ? AskanceColors.accent
-                        : null,
-                    child: Text(
-                      labelFor(tool),
-                      style: AskanceText.controlLabel(
-                        10,
-                        color: AskanceColors.ground,
-                      ).by(s),
-                    ),
-                  ),
-                ),
-              ),
-            // Not a tool: cropping takes the whole screen, because it is done
-            // on the whole photograph rather than on the study.
+      decoration: BoxDecoration(
+        border: divided
+            ? const Border(
+                top: BorderSide(color: AskanceColors.rule, width: kRule),
+              )
+            : null,
+      ),
+      padding: EdgeInsets.symmetric(vertical: 4 * s),
+      child: Row(
+        children: [
+          for (final tool in CanvasTool.barFor(session.settings.mode))
             Expanded(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () {
-                  session.closeTool();
-                  showCropScreen(context, session);
+              child: Builder(
+                builder: (context) {
+                  final (glyph, label) = look(tool);
+                  final open = session.openTool == tool;
+                  final colour = open
+                      ? AskanceColors.accentInk
+                      : AskanceColors.muted;
+                  return Semantics(
+                    button: true,
+                    selected: open,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      // Tapping the open tool closes it, and the picture takes
+                      // the room back.
+                      onTap: () => session.toggleTool(tool),
+                      child: SizedBox(
+                        height: 54 * s,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            GlyphIcon(glyph, size: 21 * s, color: colour),
+                            SizedBox(height: 4 * s),
+                            Text(
+                              label,
+                              style: AskanceText.control(
+                                12.5,
+                                color: colour,
+                                weight: open
+                                    ? FontWeight.w600
+                                    : FontWeight.w500,
+                              ).by(s),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
                 },
-                child: Center(
-                  child: Text(
-                    'CROP',
-                    style: AskanceText.controlLabel(
-                      10,
-                      color: AskanceColors.ground,
-                    ).by(s),
-                  ),
-                ),
               ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }

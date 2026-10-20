@@ -51,19 +51,24 @@ class _DesktopScreenState extends ConsumerState<DesktopScreen> {
     final draft = _cropDraft;
     if (draft != null) {
       return ColoredBox(
-        color: AskanceColors.surface,
+        color: AskanceColors.gesso,
         child: SafeArea(
           child: Row(
             children: [
               SizedBox(
-                width: 284,
+                width: _railWidth,
                 child: _CropRail(
                   draft: draft,
                   onCancel: () => _endCrop(apply: false),
                   onApply: () => _endCrop(apply: true),
                 ),
               ),
-              Expanded(child: CropPicture(draft: draft)),
+              Expanded(
+                child: ColoredBox(
+                  color: AskanceColors.surround,
+                  child: CropPicture(draft: draft),
+                ),
+              ),
             ],
           ),
         ),
@@ -71,14 +76,14 @@ class _DesktopScreenState extends ConsumerState<DesktopScreen> {
     }
 
     return ColoredBox(
-      color: AskanceColors.surface,
+      color: AskanceColors.gesso,
       child: SafeArea(
         child: ListenableBuilder(
           listenable: session,
           builder: (context, _) => Row(
             children: [
               SizedBox(
-                width: 284,
+                width: _railWidth,
                 child: _Rail(
                   session: session,
                   onCrop: () => _startCrop(session),
@@ -97,13 +102,15 @@ class _DesktopScreenState extends ConsumerState<DesktopScreen> {
   }
 }
 
+/// Wide enough for six stage swatches side by side at a size worth tapping.
+const double _railWidth = 340;
+
 /// The floating palette beside the picture: wide enough that each colour can
 /// be judged on its own, which a strip in the rail was too small for.
 const double _paletteWidth = 88;
-const double _paletteGap = 20;
+const double _paletteGap = 24;
 
-/// Ground #eae9e9, with the image centred in a 496 x 744 frame. The image sits
-/// *whole on the ground* here rather than filling the frame.
+/// The picture whole on the middle-grey surround, with its palette beside it.
 class _Stage extends ConsumerWidget {
   const _Stage({required this.session});
 
@@ -113,11 +120,11 @@ class _Stage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final shader = ref.watch(shaderProvider).valueOrNull;
     if (!session.hasImage || shader == null) {
-      return const ColoredBox(color: AskanceColors.surface);
+      return const ColoredBox(color: AskanceColors.surround);
     }
 
     return ColoredBox(
-      color: AskanceColors.surface,
+      color: AskanceColors.surround,
       child: Center(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -150,10 +157,14 @@ class _Stage extends ConsumerWidget {
             final picture = Container(
               width: frame.width,
               height: frame.height,
-              foregroundDecoration: const BoxDecoration(
-                border: Border.fromBorderSide(
-                  BorderSide(color: AskanceColors.dividerLight, width: kRule),
-                ),
+              decoration: const BoxDecoration(
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x40000000),
+                    blurRadius: 40,
+                    offset: Offset(0, 16),
+                  ),
+                ],
               ),
               child: Stack(
                 children: [
@@ -178,16 +189,19 @@ class _Stage extends ConsumerWidget {
               children: [
                 picture,
                 const SizedBox(width: _paletteGap),
+                // On a card of its own: the middle value is the surround's
+                // own grey, and would vanish against it.
                 Container(
                   width: _paletteWidth,
-                  padding: const EdgeInsets.all(kRule),
-                  decoration: const BoxDecoration(
-                    color: AskanceColors.ink,
-                    boxShadow: [
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: AskanceColors.gesso,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: const [
                       BoxShadow(
-                        color: Color(0x33201E1D),
-                        blurRadius: 14,
-                        offset: Offset(0, 5),
+                        color: Color(0x33000000),
+                        blurRadius: 24,
+                        offset: Offset(0, 8),
                       ),
                     ],
                   ),
@@ -252,102 +266,112 @@ class _RailState extends ConsumerState<_Rail> {
   Widget build(BuildContext context) {
     final session = widget.session;
     final studies = ref.watch(studiesProvider).valueOrNull ?? const <Study>[];
+    final mode = session.settings.mode;
 
-    return ColoredBox(
-      color: AskanceColors.ink,
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: AskanceColors.gesso,
+        border: Border(
+          right: BorderSide(color: AskanceColors.rule, width: kRule),
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _brand(),
-          const SizedBox(height: kRule),
+          const Rule(),
           _studyBlock(session),
-          const SizedBox(height: kRule),
-          // Brand, study and footer are pinned; View through Grid scrolls,
-          // because the tallest state overflows 760px.
+          const Rule(),
+          // Brand, study and footer are pinned; the controls scroll, because
+          // the tallest state overflows a laptop's height.
           Expanded(
             child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _viewBlock(session),
-                  const SizedBox(height: kRule),
+                  SegmentedControl<ViewMode>(
+                    values: ViewMode.values,
+                    selected: mode,
+                    labelOf: (mode) => mode.railLabel,
+                    onChanged: session.setMode,
+                    height: 36,
+                    fontSize: 12.5,
+                  ),
                   // Like the phone's tool bar, the rail only offers what
                   // adjusts the view on screen: the photograph has its tone,
                   // and nothing of the value map's.
-                  if (session.settings.mode == ViewMode.photo) ...[
-                    _controlBlock('TONE', null, ToneControl(session: session)),
-                    const SizedBox(height: kRule),
-                  ] else ...[
-                    _controlBlock(
-                      'STAGE',
+                  if (mode == ViewMode.photo)
+                    _section('Tone', null, ToneControl(session: session))
+                  else ...[
+                    _section(
+                      'Stages',
                       StageControl.readout(session.settings),
-                      StageControl(session: session),
+                      StageControl(session: session, height: 36),
                     ),
-                    const SizedBox(height: kRule),
-                    _controlBlock(
-                      'VALUES',
-                      '${session.settings.steps} STEPS',
-                      ValuesControl(session: session),
+                    _gap,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text('Values', style: AskanceText.label(14.5)),
+                        ),
+                        RuleStepper(
+                          value: session.settings.steps,
+                          min: StudySettings.minSteps,
+                          max: StudySettings.maxSteps,
+                          onChanged: session.setSteps,
+                          size: 34,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: kRule),
-                    _controlBlock(
-                      'WHERE THE STEPS FALL',
-                      BiasControl.readout(session.settings.bias),
-                      BiasControl(session: session),
+                    _gap,
+                    ControlLabelRow(
+                      label: 'Where the steps fall',
+                      value: BiasControl.readout(session.settings.bias),
                     ),
-                    const SizedBox(height: kRule),
-                    _controlBlock(
-                      'HOW THE SHAPES FORM',
-                      null,
-                      SmoothingControl(session: session),
-                    ),
-                    const SizedBox(height: kRule),
-                    _controlBlock(
-                      'DETAIL',
-                      '${(session.settings.detail * 100).round()}',
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          DetailControl(session: session),
-                          const SizedBox(height: 12),
-                          LockDetailControl(session: session),
-                        ],
+                    BiasControl(session: session),
+                    if (mode == ViewMode.skeleton)
+                      _section(
+                        'Blocked in under the lines',
+                        null,
+                        FillControl(session: session),
                       ),
+                    _section(
+                      'Shapes',
+                      null,
+                      SmoothingControl(session: session, height: 52),
                     ),
-                    const SizedBox(height: kRule),
-                    _controlBlock(
-                      'ROOT OF THE SCALE',
+                    _gap,
+                    ControlLabelRow(
+                      label: 'Detail',
+                      value: '${(session.settings.detail * 100).round()}',
+                    ),
+                    DetailControl(session: session),
+                    const SizedBox(height: 4),
+                    LockDetailControl(session: session),
+                    _section(
+                      'Root of the scale',
                       null,
                       ScaleControl(session: session),
                     ),
-                    const SizedBox(height: kRule),
                   ],
-                  _controlBlock('GRID', null, GridControl(session: session)),
-                  const SizedBox(height: kRule),
-                  _controlBlock(
-                    'CROP',
-                    _cropLabel(session),
-                    ActionButton(
-                      label: 'Crop to the board',
-                      trailing: '→',
-                      height: 36,
-                      fontSize: 12,
-                      solid: false,
-                      onDark: true,
-                      onPressed: widget.onCrop,
-                    ),
+                  _section(
+                    'Board',
+                    null,
+                    BoardControl(session: session, onEditCrop: widget.onCrop),
+                    showLabel: false,
                   ),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: kRule),
+          const Rule(),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 14),
             child: Text(
               '${studies.length} ${studies.length == 1 ? 'study' : 'studies'} '
               'on the shelf · scroll to zoom · hold to peek',
-              style: AskanceText.body(11, color: const Color(0x8CF3F2F2)),
+              style: AskanceText.caption(12),
             ),
           ),
         ],
@@ -355,51 +379,63 @@ class _RailState extends ConsumerState<_Rail> {
     );
   }
 
+  static const _gap = SizedBox(height: 16);
+
+  /// A group of controls, set off from the one above by a hairline.
+  Widget _section(
+    String label,
+    String? value,
+    Widget control, {
+    bool showLabel = true,
+  }) => Padding(
+    padding: const EdgeInsets.only(top: 18),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Rule(),
+        const SizedBox(height: 16),
+        if (showLabel) ControlLabelRow(label: label, value: value),
+        control,
+      ],
+    ),
+  );
+
   Widget _brand() => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+    padding: const EdgeInsets.fromLTRB(20, 14, 16, 14),
     child: Row(
       children: [
         const AskanceMark(size: 22),
-        const SizedBox(width: 9),
-        Expanded(
-          child: Text(
-            'Askance',
-            style: AskanceText.screenTitle(
-              color: AskanceColors.ground,
-            ).copyWith(fontSize: 22, letterSpacing: 22 * -0.02),
-          ),
-        ),
+        const SizedBox(width: 10),
+        Expanded(child: Text('Askance', style: AskanceText.display(22))),
         // Web only: a landscape tablet in a browser lands in this layout,
         // and reference use wants the glass to itself there too.
         if (canToggleFullscreen) ...[
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: toggleFullscreen,
-            child: Container(
-              width: 30,
-              height: 30,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: AskanceColors.ground,
-                  width: kRuleThin,
+          Semantics(
+            button: true,
+            label: 'Full screen',
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: toggleFullscreen,
+              child: const SizedBox(
+                width: 36,
+                height: 36,
+                child: Center(
+                  child: GlyphIcon(
+                    Glyph.expand,
+                    size: 18,
+                    color: AskanceColors.graphite,
+                  ),
                 ),
-              ),
-              child: const GlyphIcon(
-                Glyph.expand,
-                size: 15,
-                color: AskanceColors.ground,
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
         ],
         ActionButton(
-          label: 'SHELF',
-          height: 30,
-          fontSize: 10,
+          label: 'Shelf',
+          height: 34,
+          fontSize: 13.5,
           solid: false,
-          onDark: true,
           onPressed: widget.onShelf,
         ),
       ],
@@ -407,159 +443,63 @@ class _RailState extends ConsumerState<_Rail> {
   );
 
   Widget _studyBlock(CanvasSession session) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    padding: const EdgeInsets.fromLTRB(20, 14, 16, 16),
+    child: Row(
       children: [
-        Text('STUDY', style: AskanceText.sectionLabel()),
-        const SizedBox(height: 10),
-        if (_editingName)
-          TextField(
-            controller: _controller,
-            focusNode: _focus,
-            autofocus: true,
-            style: AskanceText.cardName(
-              color: AskanceColors.ground,
-            ).copyWith(fontSize: 14),
-            cursorColor: AskanceColors.accent,
-            cursorWidth: kRule,
-            onSubmitted: (_) => _commit(),
-            decoration: const InputDecoration(
-              isDense: true,
-              contentPadding: EdgeInsets.zero,
-              border: InputBorder.none,
-            ),
-          )
-        else
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () {
-              _controller.text = session.name;
-              setState(() => _editingName = true);
-            },
-            child: Text(
-              session.hasImage ? session.name : 'No study open',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AskanceText.cardName(
-                color: AskanceColors.ground,
-              ).copyWith(fontSize: 14),
-            ),
-          ),
-        const SizedBox(height: 14),
+        Expanded(
+          child: _editingName
+              ? TextField(
+                  controller: _controller,
+                  focusNode: _focus,
+                  autofocus: true,
+                  style: AskanceText.title(18),
+                  cursorColor: AskanceColors.accent,
+                  cursorWidth: 2,
+                  onSubmitted: (_) => _commit(),
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                    border: InputBorder.none,
+                  ),
+                )
+              : GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () {
+                    _controller.text = session.name;
+                    setState(() => _editingName = true);
+                  },
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        session.hasImage ? session.name : 'No study open',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AskanceText.title(18),
+                      ),
+                      if (session.hasImage) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          '${session.settings.steps} values · '
+                          '${cropSummary(session)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AskanceText.caption(13),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+        ),
+        const SizedBox(width: 12),
         ActionButton(
-          label: 'SHARE',
-          trailingIcon: const GlyphIcon(
-            Glyph.arrowUpRight,
-            size: 13,
-            color: AskanceColors.ground,
-          ),
+          label: 'Share',
           height: 38,
-          fontSize: 11,
+          fontSize: 14,
           onPressed: session.hasImage
               ? () => showShareSheet(context, ref)
               : null,
         ),
-      ],
-    ),
-  );
-
-  Widget _viewBlock(CanvasSession session) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text('VIEW', style: AskanceText.sectionLabel()),
-        const SizedBox(height: 10),
-        for (final mode in ViewMode.values)
-          _railButton(
-            label: mode.longLabel,
-            active: session.settings.mode == mode,
-            onTap: () => session.setMode(mode),
-          ),
-        if (session.settings.mode == ViewMode.skeleton) ...[
-          // The fill as a sibling of the value selector: 0 is edges alone,
-          // the rest block the values in darkest-first — and a click jumps
-          // straight to a count instead of cycling through the rest.
-          // The same height as the value selector above it, whatever the
-          // step count, so the two read as siblings.
-          SegmentedControl<int>(
-            values: [for (var i = 0; i <= session.settings.steps; i++) i],
-            selected: session.settings.skeletonFill.clamp(
-              0,
-              session.settings.steps,
-            ),
-            labelOf: (v) => '$v',
-            onChanged: session.setSkeletonFill,
-            fontSize: 10,
-            underline: true,
-          ),
-        ],
-      ],
-    ),
-  );
-
-  Widget _railButton({
-    required String label,
-    required bool active,
-    required VoidCallback onTap,
-  }) => GestureDetector(
-    behavior: HitTestBehavior.opaque,
-    onTap: onTap,
-    child: Container(
-      height: 38,
-      alignment: Alignment.centerLeft,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      color: active ? AskanceColors.accent : null,
-      child: Text(label, style: AskanceText.controlLabel(11, tracking: 0.06)),
-    ),
-  );
-
-  static String? _cropLabel(CanvasSession session) {
-    final image = session.image;
-    if (image == null) return null;
-    final found = cropShapeOf(
-      Size(image.width.toDouble(), image.height.toDouble()),
-      session.settings.crop,
-    );
-    return switch (found) {
-      null => 'CUSTOM',
-      (shape: CropShape.whole, landscape: _) => 'WHOLE',
-      (shape: CropShape.square, landscape: _) => CropShape.square.label,
-      (:final shape, :final landscape) =>
-        '${shape.label} ${landscape ? 'LANDSCAPE' : 'PORTRAIT'}',
-    };
-  }
-
-  Widget _controlBlock(String label, String? value, Widget control) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            // Gives way to the readout rather than overflowing the rail.
-            Expanded(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AskanceText.sectionLabel(),
-              ),
-            ),
-            if (value != null)
-              Text(
-                value,
-                style: AskanceText.controlLabel(
-                  10,
-                  tracking: 0.06,
-                  color: AskanceColors.accent,
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        control,
       ],
     ),
   );
@@ -579,29 +519,30 @@ class _CropRail extends StatelessWidget {
   final VoidCallback onApply;
 
   @override
-  Widget build(BuildContext context) => ColoredBox(
-    color: AskanceColors.ink,
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: const BoxDecoration(
+      color: AskanceColors.gesso,
+      border: Border(
+        right: BorderSide(color: AskanceColors.rule, width: kRule),
+      ),
+    ),
     child: Padding(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Crop to the board',
-            style: AskanceText.screenTitle(
-              color: AskanceColors.ground,
-            ).copyWith(fontSize: 22, letterSpacing: 22 * -0.02),
+            "Match the board you're painting on",
+            style: AskanceText.heading(24),
           ),
           const SizedBox(height: 10),
           Text(
             'Pick the shape of the board, then drag the frame to the part '
             'of the photograph you want. Scroll to make it larger or '
             'smaller.',
-            style: AskanceText.body(12, color: AskanceColors.mutedDark),
+            style: AskanceText.body(13.5, color: AskanceColors.muted),
           ),
           const SizedBox(height: 22),
-          Text('SHAPE', style: AskanceText.sectionLabel()),
-          const SizedBox(height: 10),
           CropShapeControls(draft: draft),
           const Spacer(),
           CropActions(onCancel: onCancel, onApply: onApply),

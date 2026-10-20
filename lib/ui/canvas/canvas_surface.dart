@@ -217,6 +217,7 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
                     disposer: _disposer,
                     drawGrid: widget.drawGrid,
                     isolatedBand: session.isolatedBand,
+                    outline: true,
                   ),
                 ),
               ),
@@ -229,7 +230,7 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
 }
 
 /// A 44px-wide invisible drag target centred on the split boundary, carrying a
-/// 2px rule and a 32x32 grip. The handle travels the full width, edge to edge.
+/// round grip on the rule. The handle travels the full width, edge to edge.
 class SplitHandle extends StatelessWidget {
   const SplitHandle({super.key, required this.session});
 
@@ -267,14 +268,20 @@ class SplitHandle extends StatelessWidget {
                 ),
                 child: Center(
                   child: Container(
-                    width: 32 * s,
-                    height: 32 * s,
-                    color: AskanceColors.accent,
+                    width: 36 * s,
+                    height: 36 * s,
                     alignment: Alignment.center,
+                    decoration: const BoxDecoration(
+                      color: AskanceColors.accent,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(color: Color(0x40000000), blurRadius: 6),
+                      ],
+                    ),
                     child: GlyphIcon(
                       Glyph.splitGrip,
                       size: 11 * s,
-                      color: AskanceColors.ground,
+                      color: AskanceColors.paper,
                     ),
                   ),
                 ),

@@ -10,7 +10,9 @@ import '../../model/study.dart';
 import '../../state/canvas_session.dart';
 import '../../theme.dart';
 import '../shelf/shelf_screen.dart' show NoTransitionRoute;
+import '../canvas/tool_panel.dart' show GridControl;
 import '../widgets/controls.dart';
+import '../widgets/glyphs.dart';
 
 Future<void> showCropScreen(BuildContext context, CanvasSession session) =>
     Navigator.of(
@@ -129,41 +131,110 @@ class _CropScreenState extends State<CropScreen> {
   Widget build(BuildContext context) {
     final s = DesignScale.of(context);
     final padding = MediaQuery.paddingOf(context);
+    final session = widget.session;
     return ColoredBox(
-      color: AskanceColors.ink,
+      color: AskanceColors.gesso,
       child: Padding(
         padding: EdgeInsets.only(top: padding.top, bottom: padding.bottom),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(16 * s, 14 * s, 16 * s, 0),
-              child: Text(
-                'CROP TO THE BOARD',
-                style: AskanceText.sectionLabel().by(s),
-              ),
-            ),
-            Expanded(child: CropPicture(draft: _draft)),
-            Container(
-              constraints: const BoxConstraints(maxWidth: 550),
-              padding: EdgeInsets.fromLTRB(16 * s, 4 * s, 16 * s, 14 * s),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  CropShapeControls(draft: _draft),
-                  SizedBox(height: 14 * s),
-                  CropActions(
-                    onCancel: () => Navigator.of(context).pop(),
-                    onApply: () {
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: 560 * s),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  height: 52 * s,
+                  child: Row(
+                    children: [
+                      SizedBox(width: 6 * s),
+                      Semantics(
+                        button: true,
+                        label: 'Cancel',
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => Navigator.of(context).pop(),
+                          child: SizedBox(
+                            width: 44 * s,
+                            height: 44 * s,
+                            child: Center(
+                              child: GlyphIcon(
+                                Glyph.close,
+                                size: 22 * s,
+                                color: AskanceColors.graphite,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          'Board',
+                          textAlign: TextAlign.center,
+                          style: AskanceText.label(14).by(s),
+                        ),
+                      ),
+                      SizedBox(width: 50 * s),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(20 * s, 6 * s, 20 * s, 14 * s),
+                  child: Text(
+                    "Match the board you're painting on",
+                    style: AskanceText.heading(26).by(s),
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 14 * s),
+                  child: CropShapeControls(draft: _draft),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(14 * s, 14 * s, 14 * s, 0),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(
+                        AskanceRadius.card * s,
+                      ),
+                      child: ColoredBox(
+                        color: AskanceColors.graphiteRaised,
+                        child: CropPicture(draft: _draft),
+                      ),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(14 * s, 14 * s, 14 * s, 0),
+                  child: ListenableBuilder(
+                    listenable: session,
+                    builder: (context, _) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'Grid to transfer the drawing',
+                          style: AskanceText.label(14.5).by(s),
+                        ),
+                        SizedBox(height: 8 * s),
+                        GridControl(session: session),
+                      ],
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(14 * s, 16 * s, 14 * s, 14 * s),
+                  child: ActionButton(
+                    label: 'Done',
+                    centred: true,
+                    height: 54,
+                    fontSize: 16.5,
+                    onPressed: () {
                       _draft.apply();
                       Navigator.of(context).pop();
                     },
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -252,25 +323,31 @@ class CropShapeControls extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SegmentedControl<CropShape>(
-            values: CropShape.values,
-            selected: draft.shape,
-            labelOf: (v) => v.label,
-            onChanged: draft.setShape,
-            fontSize: 10,
+          Row(
+            children: [
+              for (final shape in CropShape.values) ...[
+                if (shape.index > 0) SizedBox(width: 8 * s),
+                Expanded(
+                  child: _ShapeCard(
+                    shape: shape,
+                    landscape: draft.landscape,
+                    selected: draft.shape == shape,
+                    onTap: () => draft.setShape(shape),
+                  ),
+                ),
+              ],
+            ],
           ),
           SizedBox(height: 10 * s),
           IgnorePointer(
             ignoring: !draft.turnable,
             child: Opacity(
-              opacity: draft.turnable ? 1 : 0.35,
+              opacity: draft.turnable ? 1 : 0.4,
               child: SegmentedControl<bool>(
                 values: const [false, true],
                 selected: draft.landscape,
-                labelOf: (v) => v ? 'LANDSCAPE' : 'PORTRAIT',
+                labelOf: (v) => v ? 'Landscape' : 'Portrait',
                 onChanged: draft.setLandscape,
-                fontSize: 10,
-                underline: true,
               ),
             ),
           ),
@@ -295,23 +372,99 @@ class CropActions extends StatelessWidget {
           child: ActionButton(
             label: 'Cancel',
             solid: false,
-            onDark: true,
-            height: 40,
-            fontSize: 12,
+            centred: true,
+            height: 46,
             onPressed: onCancel,
           ),
         ),
         SizedBox(width: 8 * s),
         Expanded(
           child: ActionButton(
-            label: 'Crop',
-            trailing: '→',
-            height: 40,
-            fontSize: 12,
+            label: 'Done',
+            centred: true,
+            height: 46,
             onPressed: onApply,
           ),
         ),
       ],
+    );
+  }
+}
+
+/// A crop shape drawn at its own proportion, the way round it will be cut.
+class _ShapeCard extends StatelessWidget {
+  const _ShapeCard({
+    required this.shape,
+    required this.landscape,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final CropShape shape;
+  final bool landscape;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = DesignScale.of(context);
+    final ink = selected ? AskanceColors.gesso : AskanceColors.graphite;
+    final aspect = shape.aspect(landscape: landscape) ?? 0.68;
+    final box = 34 * s;
+    final w = aspect >= 1 ? box : box * aspect;
+    final h = aspect >= 1 ? box / aspect : box;
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: AskanceMotion.chromeFade,
+          height: 88 * s,
+          decoration: BoxDecoration(
+            color: selected ? AskanceColors.graphite : AskanceColors.paper,
+            borderRadius: BorderRadius.circular(12 * s),
+            border: selected
+                ? null
+                : Border.all(color: AskanceColors.rule, width: kRule),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                height: box,
+                child: Center(
+                  child: Container(
+                    width: w,
+                    height: h,
+                    decoration: BoxDecoration(
+                      color: selected && shape != CropShape.whole
+                          ? AskanceColors.gesso
+                          : null,
+                      border: Border.all(
+                        color: shape == CropShape.whole
+                            ? ink.withValues(alpha: 0.5)
+                            : ink,
+                        width: kRuleStrong,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: 8 * s),
+              Text(
+                shape.label,
+                style: AskanceText.control(
+                  12.5,
+                  color: ink,
+                  weight: FontWeight.w600,
+                ).by(s),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

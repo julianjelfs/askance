@@ -12,6 +12,7 @@ import '../pick_image.dart';
 import '../study_screen.dart';
 import '../widgets/askance_mark.dart';
 import '../widgets/controls.dart';
+import '../widgets/glyphs.dart';
 import 'qr_scan_screen.dart';
 import 'study_card.dart';
 
@@ -41,46 +42,42 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen> {
   Widget build(BuildContext context) {
     final s = DesignScale.of(context);
     final studies = ref.watch(studiesProvider).valueOrNull ?? const <Study>[];
-    // One shelf at every size: two columns in the hand, more across a
-    // desk. There is no rail here — with no study open it would have
-    // nothing true to say.
-    final columns = isWideLayout(context)
-        ? (MediaQuery.sizeOf(context).width ~/ 280).clamp(3, 6)
-        : 2;
+    final wide = isWideLayout(context);
+    final bottom = MediaQuery.paddingOf(context).bottom;
+    // One card per row in the hand; across a desk, as many columns of them
+    // as fit.
+    final columns = wide
+        ? (MediaQuery.sizeOf(context).width ~/ 420).clamp(1, 4)
+        : 1;
 
     final grid = SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(
-        18 * s,
-        16 * s,
-        18 * s,
-        24 * s + MediaQuery.paddingOf(context).bottom,
+        14 * s,
+        wide ? 24 : 8 * s,
+        14 * s,
+        // On a phone the ways in sit over the end of the list.
+        (wide ? 24 : 150 * s) + bottom,
       ),
-      // Pinned left: a grid narrower than the screen otherwise floats in
-      // the middle of it.
-      child: Align(
-        alignment: Alignment.topLeft,
-        child: ShelfGrid(
-          studies: studies,
-          columns: columns,
-          onOpen: (study) => openStudy(context, ref, study),
-          onNew: () => showImportSheet(context, ref),
-        ),
+      child: ShelfGrid(
+        studies: studies,
+        columns: columns,
+        onOpen: (study) => openStudy(context, ref, study),
+        onNew: () => showImportSheet(context, ref),
       ),
     );
 
     return ColoredBox(
-      color: AskanceColors.ground,
+      color: AskanceColors.gesso,
       child: SafeArea(
         bottom: false,
-        child: isWideLayout(context)
+        child: wide
             // On a desk the ways in live in a rail, so a first-run shelf is
-            // an invitation rather than a blank sheet; the phone keeps its
-            // header and the + sheet.
+            // an invitation rather than a blank sheet.
             ? Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   SizedBox(
-                    width: 284,
+                    width: 320,
                     child: _ShelfRail(
                       onHowItWorks: () => setState(() => _replayingTour = true),
                       onAction: _dismissTour,
@@ -101,10 +98,20 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen> {
                   ),
                 ],
               )
-            : Column(
+            : Stack(
                 children: [
-                  _TitleRow(),
-                  Expanded(child: grid),
+                  Column(
+                    children: [
+                      _TitleRow(count: studies.length),
+                      Expanded(child: grid),
+                    ],
+                  ),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: _WaysIn(bottomInset: bottom),
+                  ),
                 ],
               ),
       ),
@@ -112,8 +119,8 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen> {
   }
 }
 
-/// The card grid, shared by the phone shelf and the desktop shelf overlay,
-/// which differ only in column count.
+/// The card grid, shared by the phone shelf and the desktop shelf, which
+/// differ only in column count.
 class ShelfGrid extends ConsumerWidget {
   const ShelfGrid({
     super.key,
@@ -127,55 +134,135 @@ class ShelfGrid extends ConsumerWidget {
   final int columns;
   final void Function(Study) onOpen;
 
-  /// What the + in the empty slot does; null hides it.
+  /// What tapping the empty shelf does; null leaves it inert.
   final VoidCallback? onNew;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = DesignScale.of(context);
-    final gap = 14 * s;
+    final gap = 10 * s;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'RECENT STUDIES',
-          style: AskanceText.sectionLabel(color: const Color(0x80201E1D)).by(s),
+    if (studies.isEmpty) return EmptySlotCard(onNew: onNew);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // The first frame on Android can arrive with zero width, and a gap
+        // subtracted from nothing is a negative cell, which is a constraints
+        // assertion rather than an empty shelf.
+        final cellWidth =
+            ((constraints.maxWidth - gap * (columns - 1)) / columns).clamp(
+              0.0,
+              double.infinity,
+            );
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (final study in studies)
+              SizedBox(
+                width: cellWidth,
+                child: StudyCard(
+                  study: study,
+                  onOpen: () => onOpen(study),
+                  onDelete: () =>
+                      ref.read(studiesProvider.notifier).delete(study.id),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// The phone's ways in, over the foot of the list: a new study from a
+/// photograph, the camera, and a study sent from another device.
+class _WaysIn extends ConsumerWidget {
+  const _WaysIn({required this.bottomInset});
+
+  final double bottomInset;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = DesignScale.of(context);
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        14 * s,
+        28 * s,
+        14 * s,
+        10 * s + bottomInset,
+      ),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          stops: [0, 0.3],
+          colors: [Color(0x00F3F1EC), AskanceColors.gesso],
         ),
-        SizedBox(height: 10 * s),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            // The first frame on Android can arrive with zero width, and a
-            // gap subtracted from nothing is a negative cell, which is a
-            // constraints assertion rather than an empty shelf.
-            final cellWidth =
-                ((constraints.maxWidth - gap * (columns - 1)) / columns).clamp(
-                  0.0,
-                  double.infinity,
-                );
-            return Wrap(
-              spacing: gap,
-              runSpacing: gap,
-              children: [
-                for (final study in studies)
-                  SizedBox(
-                    width: cellWidth,
-                    child: StudyCard(
-                      study: study,
-                      onOpen: () => onOpen(study),
-                      onDelete: () =>
-                          ref.read(studiesProvider.notifier).delete(study.id),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: ActionButton(
+                  label: 'New study from a photo',
+                  trailing: '→',
+                  height: 56,
+                  fontSize: 16.5,
+                  onPressed: () => startStudy(context, ref, fromCamera: false),
+                ),
+              ),
+              // Without a camera, "open a file" would be this same picker
+              // wearing a different label — one button, not two.
+              if (canTakePhoto) ...[
+                SizedBox(width: 10 * s),
+                Semantics(
+                  button: true,
+                  label: 'Take a photo',
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => startStudy(context, ref, fromCamera: true),
+                    child: Container(
+                      width: 56 * s,
+                      height: 56 * s,
+                      decoration: BoxDecoration(
+                        color: AskanceColors.graphite,
+                        borderRadius: BorderRadius.circular(
+                          AskanceRadius.button * s,
+                        ),
+                      ),
+                      child: Center(
+                        child: GlyphIcon(
+                          Glyph.camera,
+                          size: 26 * s,
+                          color: AskanceColors.gesso,
+                        ),
+                      ),
                     ),
                   ),
-                SizedBox(
-                  width: cellWidth,
-                  child: EmptySlotCard(onNew: onNew),
                 ),
               ],
-            );
-          },
-        ),
-      ],
+            ],
+          ),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => Navigator.of(
+              context,
+            ).push(NoTransitionRoute(builder: (_) => const QrScanScreen())),
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 12 * s),
+              child: Text(
+                'Receive a study from another device',
+                textAlign: TextAlign.center,
+                style: AskanceText.body(14, color: AskanceColors.muted).by(s),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -194,197 +281,200 @@ class _ShelfRail extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => LayoutBuilder(
-    builder: (context, constraints) => Stack(
-      fit: StackFit.expand,
-      children: [
-        const ColoredBox(color: AskanceColors.ink),
-        // The portrait keeps to the lower half of the rail, whole, so what
-        // surfaces under the buttons is a head rendered as a value map rather
-        // than an anonymous midriff; its top edge dissolves into the ink the
-        // words sit on.
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
-          height: constraints.maxHeight * 0.52,
-          child: const Stack(
-            fit: StackFit.expand,
-            children: [
-              OnboardingBackdrop(
-                settings: StudySettings(steps: 3, detail: 0.45),
-              ),
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    stops: [0, 0.5, 1],
-                    colors: [
-                      AskanceColors.ink,
-                      Color(0x59201E1D),
-                      Color(0x26201E1D),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+    builder: (context, constraints) => DecoratedBox(
+      // Over the portrait too, so the rail keeps its edge all the way down.
+      position: DecorationPosition.foreground,
+      decoration: const BoxDecoration(
+        border: Border(
+          right: BorderSide(color: AskanceColors.rule, width: kRule),
         ),
-        Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  const AskanceMark(size: 22),
-                  const SizedBox(width: 9),
-                  Text(
-                    'Askance',
-                    style: AskanceText.screenTitle(
-                      color: AskanceColors.ground,
-                    ).copyWith(fontSize: 22, letterSpacing: 22 * -0.02),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Flattens a photograph into a handful of values, so you can '
-                'see the shapes light actually makes. Start with a photograph:',
-                style: AskanceText.body(13, color: AskanceColors.mutedDark),
-              ),
-              const SizedBox(height: 18),
-              ActionButton(
-                label: 'New study from photos',
-                trailing: '→',
-                height: 40,
-                fontSize: 12,
-                onPressed: () {
-                  onAction();
-                  startStudy(context, ref, fromCamera: false);
-                },
-              ),
-              if (canTakePhoto) ...[
-                const SizedBox(height: 8),
-                ActionButton(
-                  label: 'Take a photo',
-                  trailing: '→',
-                  height: 40,
-                  fontSize: 12,
-                  solid: false,
-                  onDark: true,
-                  onPressed: () {
-                    onAction();
-                    startStudy(context, ref, fromCamera: true);
-                  },
+      ),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          const ColoredBox(color: AskanceColors.gesso),
+          // The portrait keeps to the lower half of the rail, whole, so what
+          // surfaces under the buttons is a head rendered as a value map
+          // rather than an anonymous midriff; its top edge dissolves into the
+          // gesso the words sit on.
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: constraints.maxHeight * 0.48,
+            child: const Stack(
+              fit: StackFit.expand,
+              children: [
+                OnboardingBackdrop(
+                  settings: StudySettings(steps: 3, detail: 0.45),
                 ),
-              ],
-              const SizedBox(height: 8),
-              ActionButton(
-                label: 'Scan from QR code',
-                trailing: '→',
-                height: 40,
-                fontSize: 12,
-                solid: false,
-                onDark: true,
-                onPressed: () {
-                  onAction();
-                  Navigator.of(context).push(
-                    NoTransitionRoute(builder: (_) => const QrScanScreen()),
-                  );
-                },
-              ),
-              const Spacer(),
-              Row(
-                children: [
-                  Expanded(child: _howItWorks()),
-                  Text(
-                    kBuildStamp,
-                    style: AskanceText.caption(
-                      9,
-                      color: const Color(0x40F3F2F2),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: [0, 0.45, 1],
+                      colors: [
+                        AskanceColors.gesso,
+                        Color(0x40F3F1EC),
+                        Color(0x00F3F1EC),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
-    ),
-  );
-
-  Widget _howItWorks() => GestureDetector(
-    behavior: HitTestBehavior.opaque,
-    onTap: onHowItWorks,
-    child: Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Text(
-        'HOW IT WORKS',
-        style: AskanceText.controlLabel(
-          10,
-          tracking: 0.06,
-          color: AskanceColors.mutedDark,
-        ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    const AskanceMark(size: 26),
+                    const SizedBox(width: 10),
+                    Text('Askance', style: AskanceText.display(28)),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  'Flattens a photograph into a handful of values, so you can '
+                  'see the shapes light actually makes.',
+                  style: AskanceText.body(14.5, color: AskanceColors.muted),
+                ),
+                const SizedBox(height: 20),
+                ActionButton(
+                  label: 'New study from a photo',
+                  trailing: '→',
+                  onPressed: () {
+                    onAction();
+                    startStudy(context, ref, fromCamera: false);
+                  },
+                ),
+                if (canTakePhoto) ...[
+                  const SizedBox(height: 8),
+                  ActionButton(
+                    label: 'Take a photo',
+                    trailing: '→',
+                    solid: false,
+                    onPressed: () {
+                      onAction();
+                      startStudy(context, ref, fromCamera: true);
+                    },
+                  ),
+                ],
+                const SizedBox(height: 8),
+                ActionButton(
+                  label: 'Receive from another device',
+                  trailing: '→',
+                  solid: false,
+                  onPressed: () {
+                    onAction();
+                    Navigator.of(context).push(
+                      NoTransitionRoute(builder: (_) => const QrScanScreen()),
+                    );
+                  },
+                ),
+                const Spacer(),
+                Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: onHowItWorks,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Text(
+                            'How it works',
+                            style: AskanceText.label(
+                              14,
+                              color: AskanceColors.gesso,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Text(
+                      kBuildStamp,
+                      style: AskanceText.caption(
+                        10,
+                        color: const Color(0x99F3F1EC),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     ),
   );
 }
 
 class _TitleRow extends ConsumerWidget {
+  const _TitleRow({required this.count});
+
+  final int count;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = DesignScale.of(context);
-
-    Widget headerButton(String glyph, VoidCallback onTap) => GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Container(
-        width: 28 * s,
-        height: 28 * s,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          border: Border.all(
-            color: AskanceColors.dividerLight,
-            width: kRuleThin,
-          ),
-        ),
-        child: Text(
-          glyph,
-          style: AskanceText.button(13, color: AskanceColors.ink).by(s),
-        ),
-      ),
-    );
-
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 18 * s),
-      decoration: const BoxDecoration(
-        border: Border(
-          bottom: BorderSide(
-            color: AskanceColors.dividerLight,
-            width: kRuleThin,
-          ),
-        ),
-      ),
-      child: SizedBox(
-        height: 56 * s,
-        child: Row(
-          children: [
-            AskanceMark(size: 26 * s),
-            SizedBox(width: 10 * s),
-            Expanded(
-              child: Text('Askance', style: AskanceText.screenTitle().by(s)),
-            ),
-            headerButton('+', () => showImportSheet(context, ref)),
-            SizedBox(width: 8 * s),
-            headerButton(
-              '?',
-              () => Navigator.of(context).push(
-                NoTransitionRoute(builder: (_) => const OnboardingScreen()),
+    return Padding(
+      padding: EdgeInsets.fromLTRB(20 * s, 16 * s, 14 * s, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              AskanceMark(size: 28 * s),
+              SizedBox(width: 10 * s),
+              Expanded(
+                child: Text('Askance', style: AskanceText.display(30).by(s)),
               ),
-            ),
-          ],
-        ),
+              Semantics(
+                button: true,
+                label: 'How Askance works',
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => Navigator.of(context).push(
+                    NoTransitionRoute(builder: (_) => const OnboardingScreen()),
+                  ),
+                  child: Container(
+                    width: 40 * s,
+                    height: 40 * s,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AskanceColors.graphite,
+                        width: kRuleStrong,
+                      ),
+                    ),
+                    child: Text('?', style: AskanceText.title(17).by(s)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 22 * s),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Expanded(
+                child: Text('Studies', style: AskanceText.label(15.5).by(s)),
+              ),
+              if (count > 0)
+                Text(
+                  '$count on the shelf',
+                  style: AskanceText.caption(13).by(s),
+                ),
+            ],
+          ),
+          SizedBox(height: 10 * s),
+        ],
       ),
     );
   }
@@ -399,7 +489,7 @@ Future<void> showImportSheet(BuildContext context, WidgetRef ref) {
     context: context,
     barrierDismissible: true,
     barrierLabel: 'Start a study',
-    barrierColor: const Color(0x99201E1D),
+    barrierColor: const Color(0x991C1B1A),
     transitionDuration: AskanceMotion.sheetSlide,
     pageBuilder: (context, _, _) => const SizedBox.shrink(),
     transitionBuilder: (sheetContext, animation, _, _) {
@@ -440,25 +530,33 @@ Future<void> showImportSheet(BuildContext context, WidgetRef ref) {
       return presented(
         Container(
           width: double.infinity,
-          color: AskanceColors.ink,
-          foregroundDecoration: BoxDecoration(
-            border: wide
-                ? Border.all(color: AskanceColors.accent, width: kRule)
-                : const Border(
-                    top: BorderSide(color: AskanceColors.accent, width: kRule),
+          decoration: BoxDecoration(
+            color: AskanceColors.gesso,
+            borderRadius: wide
+                ? BorderRadius.circular(AskanceRadius.sheet)
+                : BorderRadius.vertical(
+                    top: Radius.circular(AskanceRadius.sheet * s),
                   ),
           ),
           padding: EdgeInsets.fromLTRB(
-            18 * s,
-            18 * s,
-            18 * s,
-            18 * s + (wide ? 0 : MediaQuery.paddingOf(context).bottom),
+            16 * s,
+            20 * s,
+            16 * s,
+            16 * s + (wide ? 0 : MediaQuery.paddingOf(context).bottom),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              Padding(
+                padding: EdgeInsets.fromLTRB(4 * s, 0, 4 * s, 14 * s),
+                child: Text(
+                  'Start a study',
+                  style: AskanceText.heading(22).by(s),
+                ),
+              ),
               ActionButton(
-                label: 'New study from photos',
+                label: 'New study from a photo',
                 trailing: '→',
                 onPressed: () => closeThen(
                   () => startStudy(context, ref, fromCamera: false),
@@ -467,23 +565,21 @@ Future<void> showImportSheet(BuildContext context, WidgetRef ref) {
               // Without a camera, "open a file" would be this same
               // picker wearing a different label — one button, not two.
               if (canTakePhoto) ...[
-                SizedBox(height: 10 * s),
+                SizedBox(height: 8 * s),
                 ActionButton(
                   label: 'Take a photo',
                   trailing: '→',
                   solid: false,
-                  onDark: true,
                   onPressed: () => closeThen(
                     () => startStudy(context, ref, fromCamera: true),
                   ),
                 ),
               ],
-              SizedBox(height: 10 * s),
+              SizedBox(height: 8 * s),
               ActionButton(
-                label: 'Scan from QR code',
+                label: 'Receive from another device',
                 trailing: '→',
                 solid: false,
-                onDark: true,
                 onPressed: () => closeThen(
                   () => Navigator.of(context).push(
                     NoTransitionRoute(builder: (_) => const QrScanScreen()),

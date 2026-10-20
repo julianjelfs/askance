@@ -14,6 +14,7 @@ import '../../state/providers.dart';
 import '../../theme.dart';
 import '../study_screen.dart';
 import '../widgets/controls.dart';
+import '../widgets/glyphs.dart';
 import 'shelf_screen.dart' show NoTransitionRoute;
 
 /// Scans a code off another askance's screen and receives the study it
@@ -130,39 +131,47 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
     final s = DesignScale.of(context);
     final stage = _stage;
     return ColoredBox(
-      color: AskanceColors.ink,
+      color: AskanceColors.graphite,
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SizedBox(
-              height: 46 * s,
+              height: 56 * s,
               child: Row(
                 children: [
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () async {
-                      await _scanner.stop();
-                      if (context.mounted) Navigator.of(context).maybePop();
-                    },
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16 * s),
-                      child: Text(
-                        '←',
-                        style: AskanceText.button(
-                          16,
-                          color: AskanceColors.ground,
-                        ).by(s),
+                  Semantics(
+                    button: true,
+                    label: 'Back',
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () async {
+                        await _scanner.stop();
+                        if (context.mounted) Navigator.of(context).maybePop();
+                      },
+                      child: SizedBox(
+                        width: 52 * s,
+                        height: 48 * s,
+                        child: Center(
+                          child: GlyphIcon(
+                            Glyph.back,
+                            size: 22 * s,
+                            color: AskanceColors.gesso,
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                  Text(
-                    'SCAN THE CODE ON THE OTHER SCREEN',
-                    style: AskanceText.controlLabel(
-                      10,
-                      tracking: 0.06,
-                      color: AskanceColors.ground,
-                    ).by(s),
+                  Flexible(
+                    child: Text(
+                      'Scan the code on the other screen',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AskanceText.title(
+                        16,
+                        color: AskanceColors.gesso,
+                      ).by(s),
+                    ),
                   ),
                   const Spacer(),
                   Padding(
@@ -171,7 +180,7 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
                       kBuildStamp,
                       style: AskanceText.caption(
                         9,
-                        color: const Color(0x40F3F2F2),
+                        color: const Color(0x66F3F1EC),
                       ),
                     ),
                   ),
@@ -192,8 +201,8 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
                               'it will be read from the picture.',
                               textAlign: TextAlign.center,
                               style: AskanceText.body(
-                                13,
-                                color: AskanceColors.mutedDark,
+                                15,
+                                color: AskanceColors.mutedOnDark,
                               ).by(s),
                             ),
                             SizedBox(height: 16 * s),
@@ -220,9 +229,8 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
                             '${error.errorCode.name}'
                             '${error.errorDetails?.message == null ? '' : ' — ${error.errorDetails!.message}'}',
                             textAlign: TextAlign.center,
-                            style: AskanceText.controlLabel(
-                              11,
-                              tracking: 0.06,
+                            style: AskanceText.body(
+                              14,
                               color: AskanceColors.accent,
                             ).by(s),
                           ),
@@ -235,12 +243,11 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
                             ? '$stage ${(_fraction! * 100).round()}%'
                             : stage,
                         textAlign: TextAlign.center,
-                        style: AskanceText.controlLabel(
-                          11,
-                          tracking: 0.06,
+                        style: AskanceText.title(
+                          16,
                           color: _failed
                               ? AskanceColors.accent
-                              : AskanceColors.ground,
+                              : AskanceColors.gesso,
                         ).by(s),
                       ),
                     ),

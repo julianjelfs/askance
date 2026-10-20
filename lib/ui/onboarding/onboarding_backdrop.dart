@@ -62,14 +62,16 @@ class _OnboardingBackdropState extends ConsumerState<OnboardingBackdrop> {
     final image = ref.watch(onboardingImageProvider).valueOrNull;
     final shader = ref.watch(shaderProvider).valueOrNull;
     if (image == null || shader == null) {
-      return const ColoredBox(color: AskanceColors.ink);
+      return const ColoredBox(color: AskanceColors.graphite);
     }
 
     final dpr = MediaQuery.devicePixelRatioOf(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         final size = constraints.biggest;
-        if (size.isEmpty) return const ColoredBox(color: AskanceColors.ink);
+        if (size.isEmpty) {
+          return const ColoredBox(color: AskanceColors.graphite);
+        }
 
         // A study is shown whole; a backdrop is not a study. Fill the screen,
         // or it hangs in the middle as a panel.
@@ -134,10 +136,10 @@ class OnboardingScrim extends StatelessWidget {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          Color(0x59201E1D),
-          Color(0xCC201E1D),
-          AskanceColors.ink,
-          AskanceColors.ink,
+          Color(0x591C1B1A),
+          Color(0xCC1C1B1A),
+          AskanceColors.graphite,
+          AskanceColors.graphite,
         ],
         stops: [0, 0.42, 0.68, 1],
       ),

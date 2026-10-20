@@ -28,8 +28,9 @@ final studyImageProvider = FutureProvider.family<ui.Image?, String>((
   return image;
 });
 
-/// A shelf card: a 4:5 thumbnail rendered **by the engine** using that study's
-/// own settings, a 2px rule, then the caption block.
+/// A shelf card: the study's thumbnail at its own crop's proportion,
+/// rendered **by the engine** using that study's own settings, beside its
+/// name, its board, and the palette it paints in.
 ///
 /// The thumbnails show the value map rather than the source photograph on
 /// purpose — the shelf shows what you made, not what you started from.
@@ -56,148 +57,250 @@ class _StudyCardState extends ConsumerState<StudyCard> {
   Widget build(BuildContext context) {
     final s = DesignScale.of(context);
     final study = widget.study;
+    final settings = study.settings;
+    final image = ref.watch(studyImageProvider(study.imageKey)).valueOrNull;
+
+    // The thumbnail takes the crop's shape, within limits that keep a very
+    // wide or very tall picture from stretching the row.
+    final picture = image == null
+        ? null
+        : croppedSize(
+            Size(image.width.toDouble(), image.height.toDouble()),
+            settings.crop,
+          );
+    final aspect = picture == null || picture.isEmpty
+        ? 0.75
+        : (picture.width / picture.height).clamp(0.6, 1.4);
+    final thumbWidth = (aspect >= 1 ? 120 : 92) * s;
+    final radius = BorderRadius.circular(AskanceRadius.card * s);
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: _confirmingDelete ? null : widget.onOpen,
       onLongPress: () => setState(() => _confirmingDelete = true),
       child: Container(
-        decoration: const BoxDecoration(
-          color: AskanceColors.surface,
-          // Borderless, so a whisper of a shadow does the lifting instead.
-          // Flat design, but not airless.
-          boxShadow: [
-            BoxShadow(
-              color: Color(0x33201E1D),
-              blurRadius: 14,
-              offset: Offset(0, 5),
-            ),
+        decoration: BoxDecoration(
+          color: AskanceColors.paper,
+          borderRadius: radius,
+          boxShadow: const [
+            BoxShadow(color: AskanceColors.rule, offset: Offset(0, 1)),
           ],
         ),
         // While the card is asking about deletion the accent frames it,
         // painted in the foreground so the content does not shift.
         foregroundDecoration: _confirmingDelete
-            ? const BoxDecoration(
-                border: Border.fromBorderSide(
-                  BorderSide(color: AskanceColors.accent, width: kRule),
-                ),
+            ? BoxDecoration(
+                borderRadius: radius,
+                border: Border.all(color: AskanceColors.accent, width: 2),
               )
             : null,
-        child: Stack(
-          children: [
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Stack(
+        child: ClipRRect(
+          borderRadius: radius,
+          child: Stack(
+            children: [
+              Padding(
+                padding: EdgeInsets.all(12 * s),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    AspectRatio(
-                      aspectRatio: 4 / 5,
-                      // Grows into the canvas when the card is opened. The
-                      // default shuttle flies the destination's own child, so the
-                      // flight lands on exactly what the canvas will show.
-                      child: Hero(
-                        tag: studyHeroTag(study.id),
-                        child: StudyThumbnail(study: study),
-                      ),
-                    ),
-                    // Long press works too, but nothing advertises it.
-                    Positioned(
-                      top: 0,
-                      right: 0,
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => setState(() => _confirmingDelete = true),
-                        child: Padding(
-                          padding: EdgeInsets.all(7 * s),
-                          child: GlyphIcon(
-                            Glyph.trash,
-                            size: 15 * s,
-                            color: AskanceColors.accent,
+                    SizedBox(
+                      width: thumbWidth,
+                      child: AspectRatio(
+                        aspectRatio: aspect,
+                        // Grows into the canvas when the card is opened. The
+                        // default shuttle flies the destination's own child,
+                        // so the flight lands on exactly what the canvas will
+                        // show.
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(3 * s),
+                          child: Hero(
+                            tag: studyHeroTag(study.id),
+                            child: StudyThumbnail(study: study),
                           ),
                         ),
                       ),
                     ),
+                    SizedBox(width: 14 * s),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            // Clear of the trash in the corner.
+                            padding: EdgeInsets.only(right: 24 * s, top: 2 * s),
+                            child: Text(
+                              study.name,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: AskanceText.title(17.5).by(s),
+                            ),
+                          ),
+                          SizedBox(height: 4 * s),
+                          Text(
+                            _board(image, settings),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AskanceText.caption(13).by(s),
+                          ),
+                          SizedBox(height: 14 * s),
+                          // The palette it paints in, darkest first, outlined
+                          // so the palest value still has an end.
+                          Container(
+                            foregroundDecoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(4 * s),
+                              border: Border.all(
+                                color: AskanceColors.rule,
+                                width: kRule,
+                              ),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(4 * s),
+                              child: SizedBox(
+                                height: 16 * s,
+                                child: Row(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    for (final colour in settings.palette)
+                                      Expanded(
+                                        child: ColoredBox(color: colour),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 8 * s),
+                          Text.rich(
+                            TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: '${settings.steps} values',
+                                  style: AskanceText.label(13).by(s),
+                                ),
+                                TextSpan(
+                                  text:
+                                      ' · ${settings.scale.shortName}'
+                                      ' · ${study.formattedDate}',
+                                  style: AskanceText.caption(13).by(s),
+                                ),
+                              ],
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
-                Padding(
-                  padding: EdgeInsets.fromLTRB(10 * s, 8 * s, 10 * s, 10 * s),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        study.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AskanceText.cardName().by(s),
+              ),
+              // Long press works too, but nothing advertises it.
+              Positioned(
+                top: 0,
+                right: 0,
+                child: Semantics(
+                  button: true,
+                  label: 'Delete this study',
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => setState(() => _confirmingDelete = true),
+                    child: Padding(
+                      padding: EdgeInsets.all(12 * s),
+                      child: GlyphIcon(
+                        Glyph.trash,
+                        size: 16 * s,
+                        color: AskanceColors.accent,
                       ),
-                      SizedBox(height: 4 * s),
-                      Text(
-                        study.caption,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AskanceText.caption(10).by(s),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              ],
-            ),
-            if (_confirmingDelete)
-              Positioned.fill(
-                child: _DeleteConfirm(
-                  onCancel: () => setState(() => _confirmingDelete = false),
-                  onDelete: () {
-                    setState(() => _confirmingDelete = false);
-                    widget.onDelete();
-                  },
-                ),
               ),
-          ],
+              if (_confirmingDelete)
+                Positioned.fill(
+                  child: _DeleteConfirm(
+                    onCancel: () => setState(() => _confirmingDelete = false),
+                    onDelete: () {
+                      setState(() => _confirmingDelete = false);
+                      widget.onDelete();
+                    },
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
   }
+
+  /// "A4 portrait · grid 4 × 4", or as much of it as is known before the
+  /// photograph has loaded.
+  static String _board(ui.Image? image, StudySettings settings) {
+    final grid = settings.grid == GridMode.off
+        ? 'no grid'
+        : 'grid ${settings.gridDivisions} × ${settings.gridDivisions}';
+    if (image == null) return grid;
+    final found = cropShapeOf(
+      Size(image.width.toDouble(), image.height.toDouble()),
+      settings.crop,
+    );
+    final crop = switch (found) {
+      null => 'Custom crop',
+      (shape: CropShape.whole, landscape: _) => 'Whole photo',
+      (shape: CropShape.square, landscape: _) => 'Square',
+      (:final shape, :final landscape) =>
+        '${shape.label} ${landscape ? 'landscape' : 'portrait'}',
+    };
+    return '$crop · $grid';
+  }
 }
 
-/// Long-press reveals this over the card rather than opening a dialog: the
-/// design has exactly one sheet and this is not it.
+/// Long-press reveals this over the card rather than opening a dialog.
 class _DeleteConfirm extends StatelessWidget {
   const _DeleteConfirm({required this.onCancel, required this.onDelete});
 
   final VoidCallback onCancel;
   final VoidCallback onDelete;
 
+  /// The veil over the card while it asks.
+  static const veil = Color(0xF2FFFFFF);
+
   @override
   Widget build(BuildContext context) {
     final s = DesignScale.of(context);
     return Container(
-      // No border of its own: the card's own rule turns red underneath.
-      color: const Color(0xF2F3F2F2),
-      padding: EdgeInsets.all(12 * s),
+      // No border of its own: the card's own outline turns red underneath.
+      color: veil,
+      padding: EdgeInsets.all(14 * s),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'DELETE THIS STUDY?',
-            style: AskanceText.sectionLabel(color: AskanceColors.accent).by(s),
-          ),
-          SizedBox(height: 14 * s),
-          ActionButton(
-            label: 'Delete',
-            trailing: '×',
-            height: 36,
-            fontSize: 12,
-            onPressed: onDelete,
-          ),
-          SizedBox(height: 8 * s),
-          ActionButton(
-            label: 'Cancel',
-            height: 36,
-            fontSize: 12,
-            solid: false,
-            onPressed: onCancel,
+          Text('Delete this study?', style: AskanceText.title(16).by(s)),
+          SizedBox(height: 12 * s),
+          Row(
+            children: [
+              Expanded(
+                child: ActionButton(
+                  label: 'Cancel',
+                  height: 40,
+                  fontSize: 14,
+                  solid: false,
+                  centred: true,
+                  onPressed: onCancel,
+                ),
+              ),
+              SizedBox(width: 8 * s),
+              Expanded(
+                child: ActionButton(
+                  label: 'Delete',
+                  height: 40,
+                  fontSize: 14,
+                  centred: true,
+                  onPressed: onDelete,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -233,7 +336,7 @@ class _StudyThumbnailState extends ConsumerState<StudyThumbnail> {
         .valueOrNull;
     final shader = ref.watch(shaderProvider).valueOrNull;
     if (image == null || shader == null) {
-      return const ColoredBox(color: AskanceColors.surface);
+      return const ColoredBox(color: AskanceColors.well);
     }
     final dpr = MediaQuery.devicePixelRatioOf(context);
     return LayoutBuilder(
@@ -282,19 +385,18 @@ class _StudyThumbnailState extends ConsumerState<StudyThumbnail> {
   }
 }
 
-/// The dashed empty slot that closes the grid. Also stands in as the whole
-/// empty state when the shelf has nothing on it.
-/// The empty slot at the card's exact size: the dashed box spans the same
-/// 4:5 thumbnail *and* the same caption block — its text invisible but still
-/// setting the height — so the slot lines up with its populated neighbours
-/// to the pixel, footer included.
+/// The empty shelf: a dashed card that starts a study when tapped.
 class EmptySlotCard extends StatelessWidget {
-  const EmptySlotCard({super.key, this.label = 'empty slot', this.onNew});
+  const EmptySlotCard({
+    super.key,
+    this.label = 'No studies yet. Start one from a photograph.',
+    this.onNew,
+  });
 
   final String label;
 
-  /// Tapping the slot starts a study, same as the + in the header: an empty
-  /// space that invites filling should accept the invitation itself.
+  /// Tapping the slot starts a study: an empty space that invites filling
+  /// should accept the invitation itself.
   final VoidCallback? onNew;
 
   @override
@@ -304,64 +406,27 @@ class EmptySlotCard extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: onNew,
       child: CustomPaint(
-        painter: _EmptySlotPainter(),
-        child: Stack(
-          children: [
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const AspectRatio(aspectRatio: 4 / 5, child: SizedBox.shrink()),
-                Padding(
-                  padding: EdgeInsets.fromLTRB(10 * s, 8 * s, 10 * s, 10 * s),
-                  child: Opacity(
-                    opacity: 0,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          ' ',
-                          maxLines: 1,
-                          style: AskanceText.cardName().by(s),
-                        ),
-                        SizedBox(height: 4 * s),
-                        Text(
-                          ' ',
-                          maxLines: 1,
-                          style: AskanceText.caption(10).by(s),
-                        ),
-                      ],
-                    ),
-                  ),
+        painter: _EmptySlotPainter(radius: AskanceRadius.card * s),
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 20 * s, vertical: 28 * s),
+          child: Column(
+            children: [
+              if (onNew != null)
+                Text(
+                  '+',
+                  style: AskanceText.display(
+                    30,
+                    color: AskanceColors.accentInk,
+                  ).by(s),
                 ),
-              ],
-            ),
-            Positioned(
-              left: 12 * s,
-              bottom: 12 * s,
-              child: Text(
+              SizedBox(height: 8 * s),
+              Text(
                 label,
-                style: TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 9 * s,
-                  height: 1.3,
-                  color: AskanceColors.mutedLight,
-                ),
+                textAlign: TextAlign.center,
+                style: AskanceText.body(14, color: AskanceColors.muted).by(s),
               ),
-            ),
-            if (onNew != null)
-              Positioned.fill(
-                child: Center(
-                  child: Text(
-                    '+',
-                    style: AskanceText.button(
-                      30,
-                      color: AskanceColors.accent,
-                    ).by(s),
-                  ),
-                ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -369,32 +434,23 @@ class EmptySlotCard extends StatelessWidget {
 }
 
 class _EmptySlotPainter extends CustomPainter {
-  static const _stripe = Color(0x0D201E1D);
+  _EmptySlotPainter({required this.radius});
+  final double radius;
 
   @override
   void paint(Canvas canvas, Size size) {
-    // 45 degree, 6px stripes at 5% ink.
-    canvas.save();
-    canvas.clipRect(Offset.zero & size);
-    final paint = Paint()
-      ..color = _stripe
-      ..strokeWidth = 3;
-    for (var x = -size.height; x < size.width + size.height; x += 6) {
-      canvas.drawLine(
-        Offset(x, 0),
-        Offset(x + size.height, size.height),
-        paint,
-      );
-    }
-    canvas.restore();
-
     final dash = Paint()
-      ..color = AskanceColors.emptySlot
+      ..color = AskanceColors.ruleStrong
       ..style = PaintingStyle.stroke
-      ..strokeWidth = kRule;
+      ..strokeWidth = kRuleStrong;
     const on = 6.0, off = 5.0;
-    final rect = Rect.fromLTWH(1, 1, size.width - 2, size.height - 2);
-    final path = Path()..addRect(rect);
+    final path = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(1, 1, size.width - 2, size.height - 2),
+          Radius.circular(radius),
+        ),
+      );
     for (final metric in path.computeMetrics()) {
       var distance = 0.0;
       while (distance < metric.length) {
@@ -406,5 +462,5 @@ class _EmptySlotPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _EmptySlotPainter old) => false;
+  bool shouldRepaint(covariant _EmptySlotPainter old) => old.radius != radius;
 }

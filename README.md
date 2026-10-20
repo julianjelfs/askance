@@ -19,19 +19,27 @@ engine leans on GPU round trips that WebGL makes expensive.
 - **Value map.** The photograph quantised to 2–7 values, spaced the way the
   eye reads them rather than the way a camera measures them, so they line up
   with the printed value scale on an artist's desk.
-- **Five ways of looking.** VAL (the value map), PHOTO (the untouched source),
-  SPLIT (photograph on one side of a draggable rule, the processed image on
-  the other — laid over whichever colouring was showing when you entered it),
-  RND (see below), and EDGE (the skeleton: just the boundaries between values,
-  with the larger regions numbered by value on request).
+- **Five ways of looking.** Values (the value map), Photo (the source, in
+  colour or black and white with brightness and contrast), Split (photograph
+  on one side of a draggable rule, the processed image on the other — laid
+  over whichever colouring was showing when you entered it), Random (see
+  below), and Edges (the skeleton: just the boundaries between values, with
+  the darkest values blocked in on request).
 - **Random mode.** Each value band is painted an arbitrary hue *of exactly the
   correct value* — convert the result to greyscale and you get the value map
-  back. Tapping RND again deals another palette. It exists to make one point
+  back. Tapping Random again deals another palette. It exists to make one point
   viscerally: if the values are right, the colours can be almost anything.
 - **Detail control with two characters.** A screen-space blur decides how much
   merges (so zooming in resolves finer shapes without moving any value);
-  SMOOTH leaves it at that, ROUGH follows with a Kuwahara pass that turns soft
-  gradients back into flat patches with definite edges.
+  Smooth leaves it at that, Rough follows with a Kuwahara pass that turns soft
+  gradients back into flat patches with definite edges, and Block traces every
+  boundary and pulls it straight, for blocking in a drawing.
+- **Stages.** Six quick picks that set values and detail together, from a
+  two-value block-in to a finished study. Set either by hand and no stage is
+  picked; nothing else depends on them.
+- **Palette numbered in Munsell values.** Every colour the picture is painted
+  in, labelled V1–V9 the way a printed value scale is; tap one to see where
+  it falls on its own.
 - **Bias.** Slides every threshold together, so a borderline passage can be
   pushed to one side of a boundary or the other — what an under- or
   over-exposed photograph needs.
@@ -108,10 +116,10 @@ which installs on a device but cannot go to Play.
 ## Design reference
 
 `design/` holds the original HTML design handoff: a working prototype
-(`Askance.dc.html`), reference captures of every screen, and the design
-tokens (Modernist: flat, zero corner radius, 2px rules, flush-left labels,
-Archivo throughout, one accent red used sparingly). The tokens and layouts are
-still authoritative; the feature set has moved on — the prototype has four
-fixed scales where the app has a continuous tint, and it predates the random
-mode, the smoothing choice and the bias control. Where they disagree, the code
-is the product.
+(`Askance.dc.html`) and reference captures of every screen, in the first
+visual language (Modernist: flat, zero radius, 2px rules, Archivo). The app
+has since moved to *Gesso*, defined in `lib/theme.dart`: gesso-white panels,
+graphite chrome and type, one cadmium accent, Bricolage Grotesque, rounded
+controls, and the picture shown on a Munsell value 5 surround — the neutral
+grey a value is judged against. The handoff is history now; where they
+disagree, the code is the product.

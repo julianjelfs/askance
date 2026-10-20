@@ -27,7 +27,7 @@ Future<void> showShareSheet(BuildContext context, WidgetRef ref) {
     context: context,
     barrierDismissible: true,
     barrierLabel: 'Share this study',
-    barrierColor: const Color(0x99201E1D),
+    barrierColor: const Color(0x991C1B1A),
     transitionDuration: AskanceMotion.sheetSlide,
     pageBuilder: (context, _, _) => const SizedBox.shrink(),
     transitionBuilder: (context, animation, _, _) {
@@ -159,17 +159,17 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
     final s = DesignScale.of(context);
 
     return Container(
-      color: AskanceColors.ink,
-      foregroundDecoration: BoxDecoration(
-        border: widget.wide
-            ? Border.all(color: AskanceColors.accent, width: kRule)
-            : const Border(
-                top: BorderSide(color: AskanceColors.accent, width: kRule),
+      decoration: BoxDecoration(
+        color: AskanceColors.gesso,
+        borderRadius: widget.wide
+            ? BorderRadius.circular(AskanceRadius.sheet)
+            : BorderRadius.vertical(
+                top: Radius.circular(AskanceRadius.sheet * s),
               ),
       ),
       padding: EdgeInsets.fromLTRB(
         18 * s,
-        18 * s,
+        20 * s,
         18 * s,
         18 * s + (widget.wide ? 0 : MediaQuery.paddingOf(context).bottom),
       ),
@@ -188,22 +188,24 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
                       Expanded(
                         child: Text(
                           'Share this study',
-                          style: AskanceText.sheetTitle().by(s),
+                          style: AskanceText.heading(22).by(s),
                         ),
                       ),
-                      GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => Navigator.of(context).pop(),
-                        child: SizedBox(
-                          width: 32 * s,
-                          height: 32 * s,
-                          child: Center(
-                            child: Text(
-                              '×',
-                              style: AskanceText.button(
-                                18,
-                                color: AskanceColors.ground,
-                              ).by(s),
+                      Semantics(
+                        button: true,
+                        label: 'Close',
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => Navigator.of(context).pop(),
+                          child: SizedBox(
+                            width: 40 * s,
+                            height: 40 * s,
+                            child: Center(
+                              child: GlyphIcon(
+                                Glyph.close,
+                                size: 22 * s,
+                                color: AskanceColors.graphite,
+                              ),
                             ),
                           ),
                         ),
@@ -212,22 +214,18 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
                   ),
                   SizedBox(height: 16 * s),
 
-                  Text('SIZE', style: AskanceText.sectionLabel().by(s)),
-                  SizedBox(height: 10 * s),
+                  Text('Size', style: AskanceText.label(14.5).by(s)),
+                  SizedBox(height: 8 * s),
                   SegmentedControl<ExportSize>(
                     values: ExportSize.values,
                     selected: _size,
                     labelOf: (v) => v.label,
                     onChanged: (v) => setState(() => _size = v),
-                    fontSize: 10,
                   ),
-                  SizedBox(height: 10 * s),
+                  SizedBox(height: 8 * s),
                   Text(
-                    'Image size · ${_size.noteFor(_pictureSize)} · exactly what you see',
-                    style: AskanceText.caption(
-                      11,
-                      color: AskanceColors.mutedDark,
-                    ).by(s),
+                    '${_size.noteFor(_pictureSize)} · exactly what you see',
+                    style: AskanceText.caption(12.5).by(s),
                   ),
                   SizedBox(height: 14 * s),
 
@@ -235,7 +233,6 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
                     label: 'Save image',
                     trailing: '↓',
                     solid: false,
-                    onDark: true,
                     onPressed: _busy ? null : _save,
                   ),
                   SizedBox(height: 8 * s),
@@ -247,20 +244,19 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
                         GlyphIcon(
                           Glyph.command,
                           size: 13 * s,
-                          color: AskanceColors.ground,
+                          color: AskanceColors.graphite,
                         ),
                         SizedBox(width: 3 * s),
                         Text(
                           'P',
                           style: AskanceText.button(
                             14,
-                            color: AskanceColors.ground,
+                            color: AskanceColors.graphite,
                           ).by(s),
                         ),
                       ],
                     ),
                     solid: false,
-                    onDark: true,
                     onPressed: _busy ? null : _print,
                   ),
                   SizedBox(height: 8 * s),
@@ -269,17 +265,15 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
                     trailingIcon: GlyphIcon(
                       Glyph.copy,
                       size: 14 * s,
-                      color: AskanceColors.ground,
+                      color: AskanceColors.graphite,
                     ),
                     solid: false,
-                    onDark: true,
                     onPressed: _busy ? null : _copy,
                   ),
                   SizedBox(height: 8 * s),
                   ActionButton(
                     label: 'Share with QR code',
                     solid: false,
-                    onDark: true,
                     onPressed: _busy
                         ? null
                         : () => setState(() => _showingQr = true),
@@ -288,10 +282,10 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
                   if (_status.isNotEmpty) ...[
                     SizedBox(height: 14 * s),
                     Text(
-                      _status.toUpperCase(),
-                      style: AskanceText.controlLabel(
-                        10,
-                        color: AskanceColors.accent,
+                      _status,
+                      style: AskanceText.label(
+                        14,
+                        color: AskanceColors.accentInk,
                       ).by(s),
                     ),
                   ],

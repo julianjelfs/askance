@@ -145,7 +145,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       builder: (context, opacity, child) =>
           Opacity(opacity: opacity, child: child!),
       child: ColoredBox(
-        color: AskanceColors.ink,
+        color: AskanceColors.graphite,
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -224,10 +224,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                                         vertical: 12 * s,
                                       ),
                                       child: Text(
-                                        'SKIP',
-                                        style: AskanceText.controlLabel(
-                                          10,
-                                          color: const Color(0x99F3F2F2),
+                                        'Skip',
+                                        style: AskanceText.label(
+                                          15,
+                                          color: const Color(0xB3F3F1EC),
                                         ).by(s),
                                       ),
                                     ),
@@ -263,9 +263,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                                       SizedBox(height: 18 * s),
                                       Text(
                                         panel.title,
-                                        style: AskanceText.onboardingTitle().by(
-                                          s,
-                                        ),
+                                        style: AskanceText.display(
+                                          36,
+                                          color: AskanceColors.gesso,
+                                        ).by(s),
                                       ),
                                       SizedBox(height: 16 * s),
                                       ConstrainedBox(

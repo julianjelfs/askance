@@ -10,18 +10,15 @@ import 'lstar.dart';
 
 /// How the quantised image is presented.
 enum ViewMode {
-  value('VAL', 'VALUE MAP'),
-  photo('PHOTO', 'PHOTOGRAPH'),
-  split('SPLIT', 'SPLIT'),
+  value('Values', 'Value map'),
+  photo('Photo', 'Photograph'),
+  split('Split', 'Split'),
 
   /// The value map painted in arbitrary hues of the correct values. Tapping
   /// it again deals another palette: the colours keep changing, the values
   /// never do, which is the point.
-  ///
-  /// Sits above skeleton so the fill button stays attached to the EDGE
-  /// button it belongs to.
-  random('RND', 'RANDOM'),
-  skeleton('EDGE', 'SKELETON');
+  random('Random', 'Random hues'),
+  skeleton('Edges', 'Edges');
 
   const ViewMode(this.railLabel, this.longLabel);
 
@@ -29,10 +26,10 @@ enum ViewMode {
   /// swatch has something to say and a band can be isolated.
   bool get paintsOnlyPalette => this == value || this == random;
 
-  /// Label used on the phone's right-edge rail, which is 44px wide.
+  /// The word in the view selector, which has a fifth of a phone to fit in.
   final String railLabel;
 
-  /// Label used in the desktop rail, which has room for the full word.
+  /// The fuller name, where there is room for it.
   final String longLabel;
 }
 
@@ -43,17 +40,17 @@ enum Smoothing {
   /// A Gaussian in screen space: everything softens equally and small shapes
   /// dissolve, the way squinting loses detail. Boundaries drift as it deepens,
   /// and what it leaves behind is smooth.
-  gaussian('SMOOTH'),
+  gaussian('Smooth'),
 
   /// The same blur, followed by a Kuwahara pass that turns the gradients it
   /// left back into flat patches with definite edges. The blur decides what
   /// merges; this only decides how the result reads.
-  kuwahara('ROUGH'),
+  kuwahara('Rough'),
 
   /// The same blur, then every boundary between values traced and pulled
   /// straight: flat blocks with straight edges, the way a drawing is begun.
   /// Worked on the CPU, so it lands a beat after the others.
-  block('BLOCK');
+  block('Block');
 
   const Smoothing(this.label);
 

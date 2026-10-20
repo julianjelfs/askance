@@ -12,8 +12,8 @@ import 'value_painter.dart';
 /// The two export sizes, as the box the picture is fitted into: the long side
 /// and the short side, turned to match the picture.
 enum ExportSize {
-  screen('SCREEN', 1200, 1800),
-  print('PRINT', 2480, 3720);
+  screen('Screen', 1200, 1800),
+  print('Print', 2480, 3720);
 
   const ExportSize(this.label, this.short, this.long);
 

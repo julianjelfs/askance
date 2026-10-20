@@ -19,13 +19,13 @@ class AskanceApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         fontFamily: AskanceText.family,
-        scaffoldBackgroundColor: AskanceColors.ground,
-        // The design has no ripples, no rounded corners and no elevation.
+        scaffoldBackgroundColor: AskanceColors.gesso,
+        // No ripples and no elevation: pressed states are drawn by the controls.
         splashFactory: NoSplash.splashFactory,
         highlightColor: const Color(0x00000000),
         textSelectionTheme: const TextSelectionThemeData(
           cursorColor: AskanceColors.accent,
-          selectionColor: Color(0x40EC3013),
+          selectionColor: Color(0x40E2471F),
           selectionHandleColor: AskanceColors.accent,
         ),
       ),
@@ -67,7 +67,7 @@ class _Root extends ConsumerWidget {
         AsyncData(value: false) when !isWideLayout(context) =>
           const OnboardingScreen(),
         AsyncData() => const ShelfScreen(),
-        _ => const ColoredBox(color: AskanceColors.ground),
+        _ => const ColoredBox(color: AskanceColors.gesso),
       },
     );
   }

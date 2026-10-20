@@ -13,22 +13,35 @@ import '../engine/value_scale.dart';
 import '../model/study.dart';
 
 enum CanvasTool {
+  /// How many values, where the steps fall, and the stages that set values
+  /// and detail together.
   steps,
+
+  /// How the shapes form: smoothing and detail.
   detail,
+
+  /// The root of the scale: grey or a tint.
   scale,
+
+  /// The board: crop and grid.
   grid,
 
   /// How PHOTO shows the photograph.
-  tone;
+  tone,
 
-  /// The tools on the tool bar while [mode] is showing. The rail picks how
-  /// to look and the bar holds what adjusts that view, so it never offers a
-  /// control that would change nothing on screen: values, detail and scale
-  /// are all lost on the untouched photograph, and tone is lost on
-  /// everything else.
-  static List<CanvasTool> barFor(ViewMode mode) => mode == ViewMode.photo
-      ? const [tone, grid]
-      : const [steps, detail, scale, grid];
+  /// How many values EDGES blocks in under its lines.
+  fill;
+
+  /// The tools on the tool bar while [mode] is showing. The view selector
+  /// picks how to look and the bar holds what adjusts that view, so it never
+  /// offers a control that would change nothing on screen: values, detail
+  /// and scale are all lost on the untouched photograph, tone is lost on
+  /// everything else, and fill only means something under the edges.
+  static List<CanvasTool> barFor(ViewMode mode) => switch (mode) {
+    ViewMode.photo => const [tone, grid],
+    ViewMode.skeleton => const [steps, detail, scale, fill, grid],
+    _ => const [steps, detail, scale, grid],
+  };
 }
 
 /// The open study, plus the view state that is deliberately *not* part of a

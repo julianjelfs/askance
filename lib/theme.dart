@@ -1,57 +1,67 @@
 import 'package:flutter/widgets.dart';
 
-/// The Modernist design system: flat, zero corner radius anywhere, 2px rules,
-/// flush-left labels, one accent red used sparingly.
+/// Gesso: the studio's own materials. A primed white board for every panel,
+/// graphite for type and the dark chrome, one cadmium accent, and a neutral
+/// middle grey around the picture — the surround a value is judged against,
+/// since black or white beside a passage shifts how light it reads.
 abstract final class AskanceColors {
-  /// Chrome ground, dark screens, text on light.
-  static const ink = Color(0xFF201E1D);
+  /// Dark chrome, and type on light.
+  static const graphite = Color(0xFF1C1B1A);
 
-  /// Light screens, text on dark.
-  static const ground = Color(0xFFF3F2F2);
+  /// A raised control on the dark chrome.
+  static const graphiteRaised = Color(0xFF2C2A28);
 
-  /// Card fills, desktop stage.
-  static const surface = Color(0xFFEAE9E9);
+  /// Every panel, and type on dark.
+  static const gesso = Color(0xFFF3F1EC);
 
-  /// Active state, primary action, grid rules, split rule.
-  static const accent = Color(0xFFEC3013);
+  /// Cards and the selected cell of a control, lifted off the gesso.
+  static const paper = Color(0xFFFFFFFF);
 
-  /// Hover / pressed on primary.
-  static const accentPressed = Color(0xFFDD2B0F);
+  /// The sunken track behind a control on gesso.
+  static const well = Color(0xFFE7E3DB);
 
-  /// Was 0x66; lightened so the shelf's furniture recedes behind the work.
-  static const dividerLight = Color(0x40201E1D);
-  static const dividerDark = Color(0x38F3F2F2);
-  static const mutedLight = Color(0x8C201E1D);
-  static const mutedDark = Color(0x80F3F2F2);
+  /// Around the picture: Munsell value 5, L* 50.
+  static const surround = Color(0xFF777777);
+
+  /// Fills: the primary action, the selected marker, a thumb's ring.
+  static const accent = Color(0xFFE2471F);
+  static const accentPressed = Color(0xFFC73B16);
+
+  /// The accent as text or a thin line on gesso, dark enough to read.
+  static const accentInk = Color(0xFFB8340F);
+
+  static const muted = Color(0xFF6A655E);
+  static const mutedOnDark = Color(0xFFA39E96);
+
+  /// Hairlines on gesso, a heavier one for outlines, and hairlines on dark.
+  static const rule = Color(0xFFDDD8CF);
+  static const ruleStrong = Color(0xFFCFC9BF);
+  static const ruleDark = Color(0xFF3A3734);
 
   /// Grid rules, drawn in screen space over everything.
-  static const grid = Color(0xA6EC3013);
-
-  /// Track behind a segmented control on a dark ground.
-  static const trackDark = Color(0x1AF3F2F2);
-
-  /// Border around an inactive scale swatch.
-  static const swatchBorder = Color(0x40F3F2F2);
-
-  /// Dashed border of an empty shelf slot.
-  static const emptySlot = Color(0x4D201E1D);
+  static const grid = Color(0xA6E2471F);
 }
 
-/// Radius is 0 everywhere. No exceptions. Rules are 2px, never hairlines.
-const double kRule = 2;
+/// Hairline weight for every rule and outline.
+const double kRule = 1;
 
-/// The one amendment to "2px, never hairlines": grey furniture on the light
-/// shelf — card borders, separators, outlined buttons — read heavy at 2px,
-/// so those thin down. Structural rules and everything on ink stay [kRule].
-const double kRuleThin = 1;
+/// The heavier outline of a control that can be pressed.
+const double kRuleStrong = 1.5;
+
+abstract final class AskanceRadius {
+  static const double small = 8;
+  static const double control = 11;
+  static const double button = 14;
+  static const double card = 14;
+  static const double sheet = 26;
+}
 
 /// Every phone screen was drawn at this width and scales proportionally.
-const double kDesignWidth = 320;
+const double kDesignWidth = 390;
 
 /// The width at which the phone layout gives way to the rail-and-stage layout.
 const double kDesktopBreakpoint = 900;
 
-/// Motion, all from the design tokens table.
 abstract final class AskanceMotion {
   static const Curve slide = Cubic(0.2, 0.8, 0.2, 1);
   static const segmentedMarker = Duration(milliseconds: 220);
@@ -61,9 +71,9 @@ abstract final class AskanceMotion {
   static const doubleTapWindow = Duration(milliseconds: 300);
 }
 
-/// Proportional scale for the phone layout, so a design drawn at 320pt reads
-/// the same on a 430pt phone. Capped so it does not become cartoonish on the
-/// widest devices.
+/// Proportional scale for the phone layout, so a design drawn at 390pt reads
+/// the same on a narrower or wider phone. Held close to 1 either way: type
+/// that grows with the glass soon looks cartoonish.
 class DesignScale extends InheritedWidget {
   const DesignScale({super.key, required this.factor, required super.child});
 
@@ -73,7 +83,7 @@ class DesignScale extends InheritedWidget {
       context.dependOnInheritedWidgetOfExactType<DesignScale>()?.factor ?? 1;
 
   static double forWidth(double width) =>
-      (width / kDesignWidth).clamp(1.0, 1.35).toDouble();
+      (width / kDesignWidth).clamp(0.9, 1.15).toDouble();
 
   @override
   bool updateShouldNotify(DesignScale old) => old.factor != factor;
@@ -84,17 +94,21 @@ extension DesignScaleContext on BuildContext {
   double px(double designPx) => designPx * DesignScale.of(this);
 }
 
-/// Type roles from the design tokens table. Sizes are in design space; call
-/// [AskanceText.scaled] to apply the phone scale factor.
+/// Type roles. Bricolage Grotesque throughout: its text cut for everything a
+/// hand reaches for, the display cut for the few large titles. Sizes are in
+/// design space; [ScaledText.by] applies the phone's scale factor.
 abstract final class AskanceText {
-  static const family = 'Archivo';
+  static const family = 'Bricolage';
+  static const displayFamily = 'BricolageDisplay';
 
   static TextStyle _s(
     double size,
     FontWeight weight, {
+    String family = family,
     double? letterSpacing,
     double? height,
-    Color color = AskanceColors.ink,
+    Color color = AskanceColors.graphite,
+    List<FontFeature>? features,
   }) => TextStyle(
     fontFamily: family,
     fontSize: size,
@@ -102,61 +116,76 @@ abstract final class AskanceText {
     letterSpacing: letterSpacing,
     height: height,
     color: color,
+    fontFeatures: features,
   );
 
-  static TextStyle screenTitle({Color color = AskanceColors.ink}) => _s(
-    26,
+  /// The wordmark and the shelf's title.
+  static TextStyle display(
+    double size, {
+    Color color = AskanceColors.graphite,
+  }) => _s(
+    size,
     FontWeight.w800,
-    letterSpacing: 26 * -0.02,
+    family: displayFamily,
+    letterSpacing: size * -0.035,
     height: 1,
     color: color,
   );
 
-  static TextStyle onboardingTitle({Color color = AskanceColors.ground}) => _s(
-    34,
-    FontWeight.w800,
-    letterSpacing: 34 * -0.03,
+  /// A screen or sheet heading.
+  static TextStyle heading(
+    double size, {
+    Color color = AskanceColors.graphite,
+  }) => _s(
+    size,
+    FontWeight.w700,
+    family: displayFamily,
+    letterSpacing: size * -0.025,
     height: 1.05,
     color: color,
   );
 
-  static TextStyle sheetTitle({Color color = AskanceColors.ground}) => _s(
-    18,
-    FontWeight.w800,
-    letterSpacing: 18 * -0.02,
-    height: 1,
-    color: color,
-  );
+  /// A study's name, a card's title.
+  static TextStyle title(double size, {Color color = AskanceColors.graphite}) =>
+      _s(
+        size,
+        FontWeight.w600,
+        letterSpacing: size * -0.01,
+        height: 1.2,
+        color: color,
+      );
 
-  static TextStyle button(double size, {Color color = AskanceColors.ground}) =>
-      _s(size, FontWeight.w800, height: 1, color: color);
+  /// The name above a control.
+  static TextStyle label(double size, {Color color = AskanceColors.graphite}) =>
+      _s(size, FontWeight.w600, height: 1.2, color: color);
 
-  /// 700 9px, 0.16em, uppercase.
-  static TextStyle sectionLabel({Color color = AskanceColors.mutedDark}) =>
-      _s(9, FontWeight.w700, letterSpacing: 9 * 0.16, height: 1, color: color);
-
-  static TextStyle controlLabel(
+  /// Inside a control: a segment, a tab.
+  static TextStyle control(
     double size, {
-    double tracking = 0.08,
-    Color color = AskanceColors.ground,
+    Color color = AskanceColors.graphite,
+    FontWeight weight = FontWeight.w500,
+  }) => _s(size, weight, height: 1.1, color: color);
+
+  static TextStyle button(double size, {Color color = AskanceColors.paper}) =>
+      _s(size, FontWeight.w600, height: 1.1, color: color);
+
+  static TextStyle body(double size, {Color color = AskanceColors.graphite}) =>
+      _s(size, FontWeight.w400, height: 1.45, color: color);
+
+  static TextStyle caption(double size, {Color color = AskanceColors.muted}) =>
+      _s(size, FontWeight.w400, height: 1.3, color: color);
+
+  /// A readout: tabular, so a changing number does not jitter its neighbours.
+  static TextStyle number(
+    double size, {
+    Color color = AskanceColors.graphite,
   }) => _s(
     size,
-    FontWeight.w700,
-    letterSpacing: size * tracking,
-    height: 1,
+    FontWeight.w600,
+    height: 1.1,
     color: color,
+    features: const [FontFeature.tabularFigures()],
   );
-
-  static TextStyle body(double size, {Color color = AskanceColors.ground}) =>
-      _s(size, FontWeight.w400, height: 1.55, color: color);
-
-  static TextStyle caption(
-    double size, {
-    Color color = AskanceColors.mutedLight,
-  }) => _s(size, FontWeight.w400, height: 1.3, color: color);
-
-  static TextStyle cardName({Color color = AskanceColors.ink}) =>
-      _s(11, FontWeight.w700, height: 1.2, color: color);
 
   /// Scales every dimension in [style] by [factor].
   static TextStyle scaled(TextStyle style, double factor) => style.copyWith(

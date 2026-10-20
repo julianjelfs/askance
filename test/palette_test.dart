@@ -55,8 +55,9 @@ void main() {
     );
 
     final shown = tester
-        .widgetList<ColoredBox>(find.byType(ColoredBox))
-        .map((b) => b.color)
+        .widgetList<Container>(find.byType(Container))
+        .map((c) => (c.decoration as BoxDecoration?)?.color)
+        .nonNulls
         .toList();
     // Lightest at the top, as a value scale stands.
     expect(shown, random(4).reversed.toList());

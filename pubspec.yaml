@@ -57,11 +57,19 @@ flutter:
     - assets/onboarding-portrait.jpg
 
   fonts:
-    - family: Archivo
+    - family: Bricolage
       fonts:
-        - asset: assets/fonts/Archivo-Regular.ttf
+        - asset: assets/fonts/BricolageGrotesque-Regular.ttf
           weight: 400
-        - asset: assets/fonts/Archivo-Bold.ttf
+        - asset: assets/fonts/BricolageGrotesque-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/BricolageGrotesque-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/BricolageGrotesque-Bold.ttf
           weight: 700
-        - asset: assets/fonts/Archivo-ExtraBold.ttf
+    - family: BricolageDisplay
+      fonts:
+        - asset: assets/fonts/BricolageGrotesqueDisplay-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/BricolageGrotesqueDisplay-ExtraBold.ttf
           weight: 800

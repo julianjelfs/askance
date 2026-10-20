@@ -4,6 +4,7 @@ import 'package:qr/qr.dart';
 import '../../data/qr_transfer/transfer.dart';
 import '../../state/canvas_session.dart';
 import '../../theme.dart';
+import '../widgets/glyphs.dart';
 
 /// The share sheet's QR face: swaps in for the sheet's usual content and runs
 /// the whole exchange while it is showing — broker, scan, WebRTC handshake,
@@ -85,12 +86,10 @@ class _QrSharePanelState extends State<QrSharePanel> {
                 width: 32 * s,
                 height: 32 * s,
                 child: Center(
-                  child: Text(
-                    '←',
-                    style: AskanceText.button(
-                      16,
-                      color: AskanceColors.ground,
-                    ).by(s),
+                  child: GlyphIcon(
+                    Glyph.back,
+                    size: 22 * s,
+                    color: AskanceColors.graphite,
                   ),
                 ),
               ),
@@ -99,7 +98,7 @@ class _QrSharePanelState extends State<QrSharePanel> {
             Expanded(
               child: Text(
                 'Share with QR code',
-                style: AskanceText.sheetTitle().by(s),
+                style: AskanceText.heading(22).by(s),
               ),
             ),
           ],
@@ -108,18 +107,16 @@ class _QrSharePanelState extends State<QrSharePanel> {
         if (payload == null)
           SizedBox(
             height: 276 * s,
-            child: Center(
-              child: Text(
-                '…',
-                style: AskanceText.button(22, color: AskanceColors.ground),
-              ),
-            ),
+            child: Center(child: Text('…', style: AskanceText.title(22))),
           )
         else
           Center(
             // White quiet zone around the code, as the spec asks for.
             child: Container(
-              color: const Color(0xFFFFFFFF),
+              decoration: BoxDecoration(
+                color: AskanceColors.paper,
+                borderRadius: BorderRadius.circular(AskanceRadius.card * s),
+              ),
               padding: EdgeInsets.all(12 * s),
               child: CustomPaint(
                 size: Size.square(252 * s),
@@ -132,16 +129,16 @@ class _QrSharePanelState extends State<QrSharePanel> {
           _fraction != null && _fraction! > 0 && _fraction! < 1
               ? '$_stage ${(_fraction! * 100).round()}%'
               : _stage,
-          style: AskanceText.controlLabel(
-            10,
-            tracking: 0.06,
-            color: _failed ? AskanceColors.accent : AskanceColors.mutedDark,
+          style: AskanceText.label(
+            14,
+            color: _failed ? AskanceColors.accentInk : AskanceColors.graphite,
           ).by(s),
         ),
         SizedBox(height: 4 * s),
         Text(
-          'On the other device, choose "Scan from QR code" on the shelf.',
-          style: AskanceText.body(12, color: AskanceColors.mutedDark).by(s),
+          'On the other device, choose "Receive from another device" on the '
+          'shelf.',
+          style: AskanceText.body(13.5, color: AskanceColors.muted).by(s),
         ),
       ],
     );

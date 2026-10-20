@@ -26,6 +26,7 @@ class ValuePainter extends CustomPainter {
     required this.disposer,
     required this.drawGrid,
     this.isolatedBand,
+    this.outline = false,
     super.repaint,
   });
 
@@ -50,6 +51,11 @@ class ValuePainter extends CustomPainter {
   /// When set, only this band (darkest first) keeps its colour. A way of
   /// looking, like [peeking]: never part of a study, never exported.
   final int? isolatedBand;
+
+  /// A faint hairline round the picture. On the middle-grey surround the
+  /// middle value is the surround's own grey, and without it a three-value
+  /// study has no edge where that band meets the frame.
+  final bool outline;
 
   ui.FragmentShader? _fragment;
   ui.FragmentShader? _photoFragment;
@@ -98,9 +104,9 @@ class ValuePainter extends CustomPainter {
         canvas.clipRect(Rect.fromLTWH(0, 0, x, size.height));
         _paintPhoto(canvas, size, dest);
         canvas.restore();
-        // The 2px rule sits on the boundary itself.
+        // The rule sits on the boundary itself.
         canvas.drawRect(
-          Rect.fromLTWH(x - kRule / 2, 0, kRule, size.height),
+          Rect.fromLTWH(x - 1, 0, 2, size.height),
           Paint()..color = AskanceColors.accent,
         );
       }
@@ -117,6 +123,16 @@ class ValuePainter extends CustomPainter {
         area,
         settings.grid,
         gridLevelAt(settings.gridLevel, view.zoom),
+      );
+    }
+
+    if (outline && !area.isEmpty) {
+      canvas.drawRect(
+        area.deflate(0.5),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1
+          ..color = const Color(0x40000000),
       );
     }
   }
@@ -206,6 +222,7 @@ class ValuePainter extends CustomPainter {
         old.source != source ||
         old.drawGrid != drawGrid ||
         old.isolatedBand != isolatedBand ||
+        old.outline != outline ||
         old.devicePixelRatio != devicePixelRatio;
   }
 }
@@ -249,7 +266,7 @@ void paintGrid(
       ..color = AskanceColors.grid.withValues(
         alpha: AskanceColors.grid.a * alpha,
       )
-      ..strokeWidth = kRule;
+      ..strokeWidth = 1.5;
 
     // The midlines of every cell of the depth above: the rules at the odd
     // multiples of this depth's cell size, the even ones being already drawn.

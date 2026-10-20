@@ -11,9 +11,9 @@ import '../engine/value_scale.dart';
 /// every cell as it is halved, which chain corner to corner into rules across
 /// the whole picture.
 enum GridMode {
-  off('OFF'),
-  lines('LINES'),
-  diagonals('DIAGONALS');
+  off('Off'),
+  lines('Lines'),
+  diagonals('Diagonals');
 
   const GridMode(this.label);
   final String label;
