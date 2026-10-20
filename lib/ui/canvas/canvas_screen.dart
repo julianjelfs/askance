@@ -405,18 +405,21 @@ class _ModeRail extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          for (final mode in ViewMode.values)
+          for (final mode in ViewMode.values) ...[
             cell(
               label: mode.railLabel,
               active: session.settings.mode == mode,
               onTap: () => session.setMode(mode),
             ),
-          if (session.settings.mode == ViewMode.photo)
-            cell(
-              label: 'TONE',
-              active: session.openTool == CanvasTool.tone,
-              onTap: () => session.toggleTool(CanvasTool.tone),
-            ),
+            // Directly under PHO, so it reads as part of it rather than as
+            // another mode.
+            if (mode == ViewMode.photo && session.settings.mode == mode)
+              cell(
+                label: 'TONE',
+                active: session.openTool == CanvasTool.tone,
+                onTap: () => session.toggleTool(CanvasTool.tone),
+              ),
+          ],
           if (skeleton)
             cell(
               label: session.settings.skeletonFill == 0
