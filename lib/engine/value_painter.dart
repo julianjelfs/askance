@@ -96,9 +96,9 @@ class ValuePainter extends CustomPainter {
       if (settings.mode == ViewMode.photo &&
           !peeking &&
           !settings.tone.isNeutral) {
-        _paintTonedPhoto(canvas, size, dest);
+        _paintTonedPhoto(canvas, area, dest);
       } else {
-        _paintPhoto(canvas, size, dest);
+        _paintPhoto(canvas, area, dest);
       }
     } else {
       final pass = _passRect(dest, area);
@@ -114,7 +114,7 @@ class ValuePainter extends CustomPainter {
         final x = splitPosition * size.width;
         canvas.save();
         canvas.clipRect(Rect.fromLTWH(0, 0, x, size.height));
-        _paintPhoto(canvas, size, dest);
+        _paintPhoto(canvas, area, dest);
         canvas.restore();
         // The rule sits on the boundary itself.
         canvas.drawRect(
@@ -175,9 +175,9 @@ class ValuePainter extends CustomPainter {
     );
   }
 
-  void _paintPhoto(Canvas canvas, Size size, Rect dest) {
+  void _paintPhoto(Canvas canvas, Rect area, Rect dest) {
     canvas.save();
-    canvas.clipRect(Offset.zero & size);
+    canvas.clipRect(area);
     canvas.drawImageRect(
       source,
       _cropPx,
@@ -187,7 +187,7 @@ class ValuePainter extends CustomPainter {
     canvas.restore();
   }
 
-  void _paintTonedPhoto(Canvas canvas, Size size, Rect dest) {
+  void _paintTonedPhoto(Canvas canvas, Rect area, Rect dest) {
     // A fresh shader every paint, for the reason given in _paintProcessed.
     final old = _photoFragment;
     if (old != null) disposer.retire(old.dispose);
@@ -200,10 +200,7 @@ class ValuePainter extends CustomPainter {
       brightness: tone.brightness,
       contrast: tone.contrast,
     );
-    canvas.drawRect(
-      dest.intersect(Offset.zero & size),
-      Paint()..shader = _photoFragment!,
-    );
+    canvas.drawRect(area, Paint()..shader = _photoFragment!);
   }
 
   void _paintProcessed(Canvas canvas, Rect area, Size devicePx) {

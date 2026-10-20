@@ -217,4 +217,76 @@ void main() {
       expect(bytes[(y * 300 + x) * 4], greaterThan(200), reason: '($x, $y)');
     }
   });
+
+  test('zooming keeps the picture in its frame, the board shape and size it '
+      'is shown at whole', () async {
+    // An A4 crop on a phone: gutters top and bottom at 1x, and the same
+    // gutters, the same A4 frame, however far in the pinch goes.
+    const output = Size(400, 800);
+    final a4 = Size(2100, 2100 / math.sqrt1_2);
+    final frame = containRect(a4, output);
+    for (final view in [
+      const ViewTransform(),
+      const ViewTransform().zoomedAt(const Offset(200, 300), 3, a4, output),
+      const ViewTransform(zoom: 6, offset: Offset(9, -9)),
+    ]) {
+      final area = view.visible(a4, output);
+      expect(area.left, closeTo(frame.left, 1e-6));
+      expect(area.top, closeTo(frame.top, 1e-6));
+      expect(area.right, closeTo(frame.right, 1e-6));
+      expect(area.bottom, closeTo(frame.bottom, 1e-6));
+    }
+
+    // And nothing is painted in the gutters, photograph or study.
+    final w = a4.width.round(), h = a4.height.round();
+    final recorder = ui.PictureRecorder();
+    Canvas(recorder).drawRect(
+      Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble()),
+      Paint()..color = const Color(0xFFFFFFFF),
+    );
+    final picture = recorder.endRecording();
+    final source = await picture.toImage(w, h);
+    picture.dispose();
+    addTearDown(source.dispose);
+    final shader = await ValueShader.load();
+    const zoomed = ViewTransform(zoom: 3);
+    final blurred = await renderBlurredSource(
+      source: source,
+      outputPx: output,
+      detail: 1,
+      view: zoomed,
+    );
+    addTearDown(blurred.dispose);
+    for (final mode in [ViewMode.photo, ViewMode.value]) {
+      final disposer = DeferredDisposer();
+      final out = ui.PictureRecorder();
+      final painter = ValuePainter(
+        shader: shader,
+        source: source,
+        blurred: blurred,
+        settings: StudySettings(steps: 2, mode: mode),
+        view: zoomed,
+        devicePixelRatio: 1,
+        peeking: false,
+        splitPosition: 0.5,
+        disposer: disposer,
+        drawGrid: false,
+      )..paint(Canvas(out, Offset.zero & output), output);
+      final rendered = await out.endRecording().toImage(400, 800);
+      painter.disposeResources();
+      disposer.disposeAll();
+      final bytes = (await rendered.toByteData(
+        format: ui.ImageByteFormat.rawRgba,
+      ))!.buffer.asUint8List();
+      rendered.dispose();
+      int alphaAt(int x, int y) => bytes[(y * 400 + x) * 4 + 3];
+      expect(alphaAt(200, (frame.top / 2).round()), 0, reason: '$mode top');
+      expect(
+        alphaAt(200, (frame.bottom + 40).round()),
+        0,
+        reason: '$mode bottom',
+      );
+      expect(alphaAt(200, 400), 255, reason: '$mode middle');
+    }
+  });
 }

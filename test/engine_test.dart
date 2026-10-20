@@ -89,24 +89,14 @@ void main() {
       expect(rect.bottom, lessThanOrEqualTo(output.height + 0.001));
     });
 
-    test('the visible area is the picture at 1x and the frame once zoomed', () {
-      const view = ViewTransform();
-      final whole = view.visible(source, output);
-      expect(whole, view.destination(source, output));
-
-      // Zoomed far enough to cover, the picture and the frame are the same.
-      final zoomed = const ViewTransform(zoom: 6).visible(source, output);
-      expect(zoomed.width, closeTo(output.width, 0.001));
-      expect(zoomed.height, closeTo(output.height, 0.001));
-    });
-
     test('panning can never expose the ground behind the image', () {
       const zoomed = ViewTransform(zoom: 3, offset: Offset(9999, -9999));
       final rect = zoomed.destination(source, output);
-      expect(rect.left, lessThanOrEqualTo(0.001));
-      expect(rect.top, lessThanOrEqualTo(0.001));
-      expect(rect.right, greaterThanOrEqualTo(output.width - 0.001));
-      expect(rect.bottom, greaterThanOrEqualTo(output.height - 0.001));
+      final frame = zoomed.frame(source, output);
+      expect(rect.left, lessThanOrEqualTo(frame.left + 0.001));
+      expect(rect.top, lessThanOrEqualTo(frame.top + 0.001));
+      expect(rect.right, greaterThanOrEqualTo(frame.right - 0.001));
+      expect(rect.bottom, greaterThanOrEqualTo(frame.bottom - 0.001));
     });
 
     test('zoom is clamped to the 1x-6x range', () {

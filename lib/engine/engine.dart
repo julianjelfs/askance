@@ -155,19 +155,35 @@ Rect containRect(Size source, Size output) {
 /// disagree the moment you panned or zoomed — visible as the two halves of a
 /// split sliding apart.
 class ViewTransform {
-  const ViewTransform({this.zoom = 1, this.offset = Offset.zero});
+  const ViewTransform({
+    this.zoom = 1,
+    this.offset = Offset.zero,
+    this.bleed = false,
+  });
 
   final double zoom;
 
   /// Pan, as a fraction of the output width and height.
   final Offset offset;
 
+  /// Whether zooming may grow the picture past its own frame to fill the
+  /// whole output. A study never does: its frame is the photograph, or the
+  /// board it is cropped to, and zooming magnifies the passage inside that
+  /// frame without changing its shape. A thumbnail or a backdrop does, since
+  /// it reads better filling its space.
+  final bool bleed;
+
   static const double minZoom = 1;
   static const double maxZoom = 6;
 
+  /// The rect the picture is held inside: where it sits whole, or the whole
+  /// output for a view that [bleed]s.
+  Rect frame(Size source, Size output) =>
+      bleed ? Offset.zero & output : containRect(source, output);
+
   /// Destination rect for the source image. Once zoomed past the point where
-  /// the image covers the frame it is clamped so the ground cannot show; below
-  /// that it stays centred in whatever room is left.
+  /// the image covers its [frame] it is clamped so the ground cannot show;
+  /// below that it stays centred in the frame.
   Rect destination(Size source, Size output) {
     final base = containRect(source, output);
     final scaled = Rect.fromLTWH(
@@ -176,7 +192,7 @@ class ViewTransform {
       base.width * zoom,
       base.height * zoom,
     );
-    return _clampToCover(scaled, output);
+    return _clampToCover(scaled, frame(source, output));
   }
 
   /// The offset that [destination] actually used, after clamping.
@@ -190,30 +206,34 @@ class ViewTransform {
     );
   }
 
-  /// The part of the frame the photograph actually occupies: the whole frame
-  /// once zoomed in, and less than it while the image is shown whole.
+  /// The part of the output the photograph actually occupies: its [frame],
+  /// or less than that while a view that bleeds is not zoomed far enough to
+  /// cover the output.
   Rect visible(Size source, Size output) =>
-      destination(source, output).intersect(Offset.zero & output);
+      destination(source, output).intersect(frame(source, output));
 
-  static Rect _clampToCover(Rect r, Size output) {
+  static Rect _clampToCover(Rect r, Rect frame) {
     var dx = 0.0, dy = 0.0;
-    if (r.width >= output.width) {
-      if (r.left > 0) dx = -r.left;
-      if (r.right + dx < output.width) dx = output.width - r.right;
+    if (r.width >= frame.width) {
+      if (r.left > frame.left) dx = frame.left - r.left;
+      if (r.right + dx < frame.right) dx = frame.right - r.right;
     } else {
-      dx = (output.width - r.width) / 2 - r.left;
+      dx = frame.center.dx - r.center.dx;
     }
-    if (r.height >= output.height) {
-      if (r.top > 0) dy = -r.top;
-      if (r.bottom + dy < output.height) dy = output.height - r.bottom;
+    if (r.height >= frame.height) {
+      if (r.top > frame.top) dy = frame.top - r.top;
+      if (r.bottom + dy < frame.bottom) dy = frame.bottom - r.bottom;
     } else {
-      dy = (output.height - r.height) / 2 - r.top;
+      dy = frame.center.dy - r.center.dy;
     }
     return r.shift(Offset(dx, dy));
   }
 
-  ViewTransform copyWith({double? zoom, Offset? offset}) =>
-      ViewTransform(zoom: zoom ?? this.zoom, offset: offset ?? this.offset);
+  ViewTransform copyWith({double? zoom, Offset? offset}) => ViewTransform(
+    zoom: zoom ?? this.zoom,
+    offset: offset ?? this.offset,
+    bleed: bleed,
+  );
 
   /// Zoom to [target] keeping the point under the finger fixed. [focus] is in
   /// output-space pixels, matching the size the gesture was measured in.
@@ -229,7 +249,7 @@ class ViewTransform {
     // The focal point has to be a fraction too, or it is compared against an
     // offset in different units.
     final f = Offset(focus.dx / output.width, focus.dy / output.height);
-    final candidate = ViewTransform(
+    final candidate = copyWith(
       zoom: next,
       offset: Offset(
         f.dx - (f.dx - offset.dx) * k,
@@ -241,10 +261,13 @@ class ViewTransform {
 
   @override
   bool operator ==(Object other) =>
-      other is ViewTransform && other.zoom == zoom && other.offset == offset;
+      other is ViewTransform &&
+      other.zoom == zoom &&
+      other.offset == offset &&
+      other.bleed == bleed;
 
   @override
-  int get hashCode => Object.hash(zoom, offset);
+  int get hashCode => Object.hash(zoom, offset, bleed);
 }
 
 /// How far one scroll event zooms: a factor to multiply the zoom by, in
@@ -267,12 +290,17 @@ ViewTransform coveringView(ViewTransform base, Size source, Size output) {
   if (output.isEmpty || source.isEmpty) return base;
   final whole = containRect(source, output);
   if (whole.isEmpty) return base;
+  final bleeding = ViewTransform(
+    zoom: base.zoom,
+    offset: base.offset,
+    bleed: true,
+  );
   final needed = math.max(
     output.width / whole.width,
     output.height / whole.height,
   );
   if (needed <= base.zoom) {
-    return base.copyWith(offset: base.clampedOffset(source, output));
+    return bleeding.copyWith(offset: bleeding.clampedOffset(source, output));
   }
 
   // Grown about the middle of the frame, not about its origin. A landscape
@@ -284,7 +312,7 @@ ViewTransform coveringView(ViewTransform base, Size source, Size output) {
   // wide photograph in a tall card can need more than a hand could pinch.
   const centre = Offset(0.5, 0.5);
   final k = needed / base.zoom;
-  final candidate = ViewTransform(
+  final candidate = bleeding.copyWith(
     zoom: needed,
     offset: Offset(
       centre.dx - (centre.dx - base.offset.dx) * k,
