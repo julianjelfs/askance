@@ -36,14 +36,16 @@ class _BlurRequest {
   final Object key;
 }
 
-/// How long BLOCK waits for a size to stop changing before tracing it.
+/// How long BLOCK waits, on the web, for its inputs to stop changing before
+/// tracing them.
 ///
-/// A BLOCK pass is CPU work that can hold the thread for a large fraction of
-/// a second on a phone — on the web, the only thread there is. Opening a tool
-/// panel resizes the picture every frame for a third of a second, and a pass
-/// per frame froze the screen for each one in turn. Longer than a frame, so a
-/// running animation keeps putting it off; short enough not to be noticed
-/// once it stops.
+/// A BLOCK pass is CPU work that on the web runs on the only thread there is,
+/// and can hold it for a large fraction of a second on a phone. A resize or a
+/// pinch asks for a pass every frame, and a pass per frame froze the screen
+/// for each one in turn. Longer than a frame, so a running gesture keeps
+/// putting it off; short enough not to be noticed once it stops. Meanwhile
+/// the last pass is drawn where it belongs under the current view.
+/// Elsewhere the tracing runs off the UI thread and nothing is held.
 const Duration kBlockSettle = Duration(milliseconds: 150);
 
 /// Renders one pass; [renderBlurredSource] in the app, a stand-in in tests.
@@ -67,11 +69,14 @@ typedef BlurRenderer =
 /// pass they want and paint with whatever is currently ready, so a detail or
 /// zoom change lands on the next frame rather than blocking this one.
 class BlurPass extends ChangeNotifier {
-  BlurPass({this._render = renderBlurredSource});
+  BlurPass({this._render = renderBlurredSource, this._holdBlock = kIsWeb});
 
   final BlurRenderer _render;
+  final bool _holdBlock;
   ui.Image? _image;
   Object? _key;
+  ViewTransform? _imageView;
+  Size? _imageOutputPx;
 
   /// At most one render runs at a time, and only the most recent request
   /// survives the wait.
@@ -90,6 +95,12 @@ class BlurPass extends ChangeNotifier {
 
   /// The most recent completed blur, or null until the first one lands.
   ui.Image? get image => _image;
+
+  /// The view and output size [image] was rendered for, which during a
+  /// gesture are not the ones on screen; the painter needs them to draw it
+  /// in the right place.
+  ViewTransform? get imageView => _imageView;
+  Size? get imageOutputPx => _imageOutputPx;
 
   /// Whether [image] reflects the settings last asked for.
   bool get isCurrent => _queued == null && !_rendering && _settle == null;
@@ -142,7 +153,7 @@ class BlurPass extends ChangeNotifier {
     if (_rendering) return;
     // The first pass is never held: there is nothing on screen to keep.
     // After that, BLOCK waits until the requests stop coming.
-    if (smoothing == Smoothing.block && _image != null) {
+    if (_holdBlock && smoothing == Smoothing.block && _image != null) {
       _settle?.cancel();
       _settle = Timer(kBlockSettle, () {
         _settle = null;
@@ -189,6 +200,8 @@ class BlurPass extends ChangeNotifier {
         final previous = _image;
         _image = next;
         _key = request.key;
+        _imageView = request.view;
+        _imageOutputPx = request.outputPx;
         // The outgoing image is still referenced by the shader in the last
         // recorded frame, so let that frame finish before letting it go.
         if (previous != null) _disposeAfterFrame(previous);

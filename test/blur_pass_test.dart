@@ -60,10 +60,10 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
   }
 
-  testWidgets('a burst of resizes costs BLOCK one pass, once the size has '
-      'settled', (tester) async {
+  testWidgets('on the web, a burst of resizes costs BLOCK one pass, once the '
+      'size has settled', (tester) async {
     await images(tester);
-    final pass = BlurPass(render: render);
+    final pass = BlurPass(render: render, holdBlock: true);
     addTearDown(pass.dispose);
 
     pass.request(

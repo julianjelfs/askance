@@ -209,6 +209,8 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
                     shader: widget.shader,
                     source: session.image!,
                     blurred: session.blur.image,
+                    blurredView: session.blur.imageView,
+                    blurredSize: session.blur.imageOutputPx,
                     settings: session.settings,
                     view: session.view,
                     devicePixelRatio: dpr,

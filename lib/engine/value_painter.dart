@@ -18,6 +18,8 @@ class ValuePainter extends CustomPainter {
     required this.shader,
     required this.source,
     required this.blurred,
+    this.blurredView,
+    this.blurredSize,
     required this.settings,
     required this.view,
     required this.devicePixelRatio,
@@ -35,6 +37,12 @@ class ValuePainter extends CustomPainter {
 
   /// The pre-rendered blurred offscreen, or null until the first one lands.
   final ui.Image? blurred;
+
+  /// The view and the frame size [blurred] was rendered for, when they may
+  /// differ from [view] and the size being painted: a pass still in flight.
+  /// Null means it was rendered for exactly these.
+  final ViewTransform? blurredView;
+  final Size? blurredSize;
   final StudySettings settings;
   final ViewTransform view;
   final double devicePixelRatio;
@@ -77,10 +85,6 @@ class ValuePainter extends CustomPainter {
     // What the photograph actually occupies. Shown whole it is less than the
     // frame, and the ground shows on the short pair of edges.
     final area = view.visible(_sourceSize, size);
-    final devicePx = Size(
-      area.width * devicePixelRatio,
-      area.height * devicePixelRatio,
-    );
     final showPhoto = peeking || settings.mode == ViewMode.photo;
 
     // Nothing is painted outside the picture: each surface supplies its own
@@ -97,7 +101,15 @@ class ValuePainter extends CustomPainter {
         _paintPhoto(canvas, size, dest);
       }
     } else {
-      _paintProcessed(canvas, area, devicePx);
+      final pass = _passRect(dest, area);
+      canvas.save();
+      canvas.clipRect(area);
+      _paintProcessed(
+        canvas,
+        pass,
+        Size(pass.width * devicePixelRatio, pass.height * devicePixelRatio),
+      );
+      canvas.restore();
       if (settings.mode == ViewMode.split) {
         final x = splitPosition * size.width;
         canvas.save();
@@ -135,6 +147,32 @@ class ValuePainter extends CustomPainter {
           ..color = const Color(0x40000000),
       );
     }
+  }
+
+  /// Where [blurred] belongs on screen under the current view.
+  ///
+  /// A pass covers the part of the picture that was visible when it was
+  /// asked for. Until the next one lands that part is drawn where the current
+  /// view puts it — larger under a pinch, moved under a pan, the same shape
+  /// when the frame changes — rather than stretched over whatever is visible
+  /// now, which showed the wrong passage and then snapped.
+  Rect _passRect(Rect dest, Rect area) {
+    final passView = blurredView, passSize = blurredSize;
+    if (passView == null || passSize == null) return area;
+    // Both are proportional to the frame, so the pass's own units will do.
+    final passDest = passView.destination(_sourceSize, passSize);
+    final passArea = passView.visible(_sourceSize, passSize);
+    if (passDest.isEmpty) return area;
+    double x(double px) =>
+        dest.left + (px - passDest.left) / passDest.width * dest.width;
+    double y(double py) =>
+        dest.top + (py - passDest.top) / passDest.height * dest.height;
+    return Rect.fromLTRB(
+      x(passArea.left),
+      y(passArea.top),
+      x(passArea.right),
+      y(passArea.bottom),
+    );
   }
 
   void _paintPhoto(Canvas canvas, Size size, Rect dest) {
@@ -216,6 +254,8 @@ class ValuePainter extends CustomPainter {
     _photoFragment = old._photoFragment;
     return old.settings != settings ||
         old.blurred != blurred ||
+        old.blurredView != blurredView ||
+        old.blurredSize != blurredSize ||
         old.view != view ||
         old.peeking != peeking ||
         old.splitPosition != splitPosition ||

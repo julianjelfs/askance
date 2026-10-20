@@ -151,4 +151,70 @@ void main() {
     expect(redAt(10, 100), greaterThan(200));
     expect(redAt(390, 100), greaterThan(200));
   });
+
+  test('zooming stays inside the crop, panned as far as it will go', () async {
+    // Light on the left half, dark on the right; the study is cropped to the
+    // light half, so nothing dark may ever show, however far in or across.
+    const width = 800, height = 400;
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    canvas.drawRect(
+      const Rect.fromLTWH(0, 0, width / 2, height + 0.0),
+      Paint()..color = const Color(0xFFFFFFFF),
+    );
+    canvas.drawRect(
+      const Rect.fromLTWH(width / 2, 0, width / 2, height + 0.0),
+      Paint()..color = const Color(0xFF000000),
+    );
+    final picture = recorder.endRecording();
+    final source = await picture.toImage(width, height);
+    picture.dispose();
+    addTearDown(source.dispose);
+
+    const crop = Rect.fromLTRB(0, 0, 0.5, 1);
+    const output = Size(300, 300);
+    const cropped = Size(400, 400);
+    // 3x, pushed hard right and down; the clamp decides where it stops.
+    final view = const ViewTransform(zoom: 3, offset: Offset(-5, -5)).copyWith(
+      offset: const ViewTransform(
+        zoom: 3,
+        offset: Offset(-5, -5),
+      ).clampedOffset(cropped, output),
+    );
+
+    final shader = await ValueShader.load();
+    final blurred = await renderBlurredSource(
+      source: source,
+      outputPx: output,
+      detail: 1,
+      view: view,
+      crop: crop,
+    );
+    addTearDown(blurred.dispose);
+    final disposer = DeferredDisposer();
+    final out = ui.PictureRecorder();
+    final painter = ValuePainter(
+      shader: shader,
+      source: source,
+      blurred: blurred,
+      settings: const StudySettings(steps: 2, crop: crop),
+      view: view,
+      devicePixelRatio: 1,
+      peeking: false,
+      splitPosition: 0.5,
+      disposer: disposer,
+      drawGrid: false,
+    )..paint(Canvas(out, Offset.zero & output), output);
+    final rendered = await out.endRecording().toImage(300, 300);
+    painter.disposeResources();
+    disposer.disposeAll();
+    final bytes = (await rendered.toByteData(
+      format: ui.ImageByteFormat.rawRgba,
+    ))!.buffer.asUint8List();
+    rendered.dispose();
+
+    for (final (x, y) in [(295, 150), (295, 295), (150, 295), (5, 5)]) {
+      expect(bytes[(y * 300 + x) * 4], greaterThan(200), reason: '($x, $y)');
+    }
+  });
 }
