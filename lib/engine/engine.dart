@@ -163,7 +163,12 @@ class ViewTransform {
 
   final double zoom;
 
-  /// Pan, as a fraction of the output width and height.
+  /// Pan, as a fraction of the picture's width and height shown whole: how
+  /// far the zoomed picture's top left sits from where it sits at 1x.
+  ///
+  /// Measured against the picture rather than the room it is shown in, so
+  /// the same passage stays in the same place when that room changes shape:
+  /// the controls sliding away, a window resized.
   final Offset offset;
 
   /// Whether zooming may grow the picture past its own frame to fill the
@@ -187,8 +192,8 @@ class ViewTransform {
   Rect destination(Size source, Size output) {
     final base = containRect(source, output);
     final scaled = Rect.fromLTWH(
-      base.left * zoom + offset.dx * output.width,
-      base.top * zoom + offset.dy * output.height,
+      base.left + offset.dx * base.width,
+      base.top + offset.dy * base.height,
       base.width * zoom,
       base.height * zoom,
     );
@@ -197,12 +202,12 @@ class ViewTransform {
 
   /// The offset that [destination] actually used, after clamping.
   Offset clampedOffset(Size source, Size output) {
-    if (output.isEmpty) return offset;
+    if (output.isEmpty || source.isEmpty) return offset;
     final base = containRect(source, output);
     final dest = destination(source, output);
     return Offset(
-      (dest.left - base.left * zoom) / output.width,
-      (dest.top - base.top * zoom) / output.height,
+      (dest.left - base.left) / base.width,
+      (dest.top - base.top) / base.height,
     );
   }
 
@@ -243,12 +248,16 @@ class ViewTransform {
     Size source,
     Size output,
   ) {
-    if (output.isEmpty) return this;
+    if (output.isEmpty || source.isEmpty) return this;
     final next = target.clamp(minZoom, maxZoom);
     final k = next / zoom;
-    // The focal point has to be a fraction too, or it is compared against an
-    // offset in different units.
-    final f = Offset(focus.dx / output.width, focus.dy / output.height);
+    // The focal point has to be a fraction of the picture too, or it is
+    // compared against an offset in different units.
+    final base = containRect(source, output);
+    final f = Offset(
+      (focus.dx - base.left) / base.width,
+      (focus.dy - base.top) / base.height,
+    );
     final candidate = copyWith(
       zoom: next,
       offset: Offset(

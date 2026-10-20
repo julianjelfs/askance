@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:askance/engine/engine.dart';
@@ -130,6 +131,39 @@ void main() {
           closeTo(atLogical.width / logical.width, 1e-9),
           reason: 'width at ${scale}x',
         );
+      }
+    });
+
+    test('the picture keeps its framing when its room changes shape', () {
+      // Zoomed in on an A4 board; then the controls slide away and the room
+      // grows taller, or a desktop window is made wider. The same passage
+      // must show, in the same place within the board.
+      final a4 = Size(2100, 2100 / math.sqrt1_2);
+      const room = Size(400, 640);
+      final view = const ViewTransform().zoomedAt(
+        const Offset(150, 250),
+        2.5,
+        a4,
+        room,
+      );
+      Rect framing(Size output) {
+        final frame = view.frame(a4, output);
+        final dest = view.destination(a4, output);
+        return Rect.fromLTRB(
+          (dest.left - frame.left) / frame.width,
+          (dest.top - frame.top) / frame.height,
+          (dest.right - frame.left) / frame.width,
+          (dest.bottom - frame.top) / frame.height,
+        );
+      }
+
+      final before = framing(room);
+      for (final bigger in [const Size(400, 800), const Size(900, 640)]) {
+        final after = framing(bigger);
+        expect(after.left, closeTo(before.left, 1e-9), reason: '$bigger');
+        expect(after.top, closeTo(before.top, 1e-9), reason: '$bigger');
+        expect(after.right, closeTo(before.right, 1e-9), reason: '$bigger');
+        expect(after.bottom, closeTo(before.bottom, 1e-9), reason: '$bigger');
       }
     });
 

@@ -92,21 +92,26 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
     if (_size.isEmpty) return;
     final k = zoom / _gestureStart.zoom;
     // Work in pixels for the gesture, then store the result as a fraction of
-    // the viewport so every resolution reads the same crop.
-    final startPx = Offset(
-      _gestureStart.offset.dx * _size.width,
-      _gestureStart.offset.dy * _size.height,
-    );
+    // the picture so every resolution, and every shape of room, reads the
+    // same crop.
+    final base = containRect(_sourceSize, _size);
+    final startPx =
+        base.topLeft +
+        Offset(
+          _gestureStart.offset.dx * base.width,
+          _gestureStart.offset.dy * base.height,
+        );
     // Keep the point under the fingers fixed, then follow the pan.
     final pannedPx =
         Offset(
           _focalStart.dx - (_focalStart.dx - startPx.dx) * k,
           _focalStart.dy - (_focalStart.dy - startPx.dy) * k,
         ) +
-        (details.localFocalPoint - _focalStart);
-    final candidate = ViewTransform(
+        (details.localFocalPoint - _focalStart) -
+        base.topLeft;
+    final candidate = _gestureStart.copyWith(
       zoom: zoom,
-      offset: Offset(pannedPx.dx / _size.width, pannedPx.dy / _size.height),
+      offset: Offset(pannedPx.dx / base.width, pannedPx.dy / base.height),
     );
     session.setView(
       candidate.copyWith(offset: candidate.clampedOffset(_sourceSize, _size)),
