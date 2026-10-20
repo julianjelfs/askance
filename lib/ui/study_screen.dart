@@ -9,10 +9,8 @@ import 'fullscreen/fullscreen_stub.dart'
     if (dart.library.js_interop) 'fullscreen/fullscreen_web.dart';
 import 'layout.dart';
 
-/// The open study, in whichever presentation fits: the phone's full-bleed
-/// canvas, or the desktop's rail and stage. Entering browser fullscreen flips
-/// a wide window to the phone presentation live — the point of fullscreen is
-/// the picture.
+/// The open study, in whichever presentation fits the width: the phone's
+/// canvas, or the desktop's rail and stage.
 ///
 /// This route is also where "open" ends: when it leaves the tree — however it
 /// was popped, from whichever presentation — the session empties. On the
@@ -47,9 +45,6 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => ValueListenableBuilder(
-    valueListenable: fullscreenActive,
-    builder: (context, _, _) =>
-        isWideLayout(context) ? const DesktopScreen() : const CanvasScreen(),
-  );
+  Widget build(BuildContext context) =>
+      isWideLayout(context) ? const DesktopScreen() : const CanvasScreen();
 }

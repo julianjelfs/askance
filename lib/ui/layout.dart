@@ -1,14 +1,13 @@
 import 'package:flutter/widgets.dart';
 
 import '../theme.dart';
-import 'fullscreen/fullscreen_stub.dart'
-    if (dart.library.js_interop) 'fullscreen/fullscreen_web.dart';
 
-/// Whether this build should wear the rail-and-stage layout.
+/// Whether this build should wear the rail-and-stage layout: width alone
+/// decides it.
 ///
-/// Width alone does not decide it: in browser fullscreen the point is the
-/// picture, so even a desktop-wide window drops to the phone layout — full
-/// bleed canvas, dismissable chrome — for as long as fullscreen lasts.
+/// Browser fullscreen once dropped a desktop window to the phone layout, on
+/// the reasoning that fullscreen is for the picture. In practice the layout
+/// changing under you read as the app breaking; fullscreen now only gives the
+/// same layout more room.
 bool isWideLayout(BuildContext context) =>
-    MediaQuery.sizeOf(context).width >= kDesktopBreakpoint &&
-    !fullscreenActive.value;
+    MediaQuery.sizeOf(context).width >= kDesktopBreakpoint;
