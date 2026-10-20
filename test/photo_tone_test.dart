@@ -1,5 +1,6 @@
 import 'dart:ui' as ui;
 
+import 'package:askance/engine/blur_pass.dart';
 import 'package:askance/engine/deferred_disposer.dart';
 import 'package:askance/engine/engine.dart';
 import 'package:askance/engine/lstar.dart';
@@ -28,7 +29,7 @@ void main() {
   group('a stored tone', () {
     test('survives saving and reopening a study', () {
       const settings = StudySettings(
-        tone: PhotoTone(mono: true, brightness: -0.3, contrast: 0.8),
+        tone: PhotoTone(mono: true, brightness: -0.3, contrast: 0.8, blur: 0.6),
       );
       expect(StudySettings.fromJson(settings.toJson()), settings);
     });
@@ -119,4 +120,70 @@ void main() {
     );
     expect(px, (r: 0x20, g: 0x40, b: 0xFF));
   });
+
+  test(
+    'blur in PHOTO softens the photograph, and none leaves it sharp',
+    () async {
+      // Black on the left, white on the right: a hard edge down the middle.
+      const size = Size(200, 100);
+      final recorder = ui.PictureRecorder();
+      Canvas(recorder)
+        ..drawColor(const Color(0xFFFFFFFF), BlendMode.src)
+        ..drawRect(
+          const Rect.fromLTWH(0, 0, 100, 100),
+          Paint()..color = const Color(0xFF000000),
+        );
+      final picture = recorder.endRecording();
+      final source = await picture.toImage(200, 100);
+      picture.dispose();
+      addTearDown(source.dispose);
+      final shader = await ValueShader.load();
+
+      /// Red just left of the edge, as the canvas shows the study.
+      Future<int> nearEdge(double blur) async {
+        final settings = StudySettings(
+          mode: ViewMode.photo,
+          tone: PhotoTone(blur: blur),
+        );
+        final pass = BlurPass();
+        addTearDown(pass.dispose);
+        pass.request(
+          source: source,
+          outputPx: size,
+          detail: settings.pass.detail,
+          view: const ViewTransform(),
+          smoothing: settings.pass.smoothing,
+          lockDetail: settings.pass.lockDetail,
+        );
+        await pass.settled;
+        final disposer = DeferredDisposer();
+        final out = ui.PictureRecorder();
+        final painter = ValuePainter(
+          shader: shader,
+          source: source,
+          blurred: pass.image,
+          blurredView: pass.imageView,
+          blurredSize: pass.imageOutputPx,
+          settings: settings,
+          view: const ViewTransform(),
+          devicePixelRatio: 1,
+          peeking: false,
+          splitPosition: 0.5,
+          disposer: disposer,
+          drawGrid: false,
+        )..paint(Canvas(out, Offset.zero & size), size);
+        final image = await out.endRecording().toImage(200, 100);
+        painter.disposeResources();
+        disposer.disposeAll();
+        final bytes = (await image.toByteData(
+          format: ui.ImageByteFormat.rawRgba,
+        ))!.buffer.asUint8List();
+        image.dispose();
+        return bytes[(50 * 200 + 97) * 4];
+      }
+
+      expect(await nearEdge(0), lessThan(10));
+      expect(await nearEdge(1), greaterThan(40));
+    },
+  );
 }

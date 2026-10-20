@@ -645,6 +645,17 @@ class ToneControl extends StatelessWidget {
           value: tone.contrast / 2 + 0.5,
           onChanged: (v) => session.setTone(tone.copyWith(contrast: v * 2 - 1)),
         ),
+        SizedBox(height: 10 * s),
+        // Squinting at the photograph, to see its big shapes without
+        // committing to values.
+        ControlLabelRow(
+          label: 'Blur',
+          value: tone.blur == 0 ? 'Off' : '${(tone.blur * 100).round()}',
+        ),
+        RuleSlider(
+          value: tone.blur,
+          onChanged: (v) => session.setTone(tone.copyWith(blur: v)),
+        ),
       ],
     );
   }

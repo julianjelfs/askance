@@ -168,10 +168,10 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
           session.blur.request(
             source: session.image!,
             outputPx: Size(_size.width * dpr, _size.height * dpr),
-            detail: session.settings.detail,
+            detail: session.settings.pass.detail,
             view: session.view,
-            smoothing: session.settings.smoothing,
-            lockDetail: session.settings.lockDetail,
+            smoothing: session.settings.pass.smoothing,
+            lockDetail: session.settings.pass.lockDetail,
             crop: session.settings.crop,
             steps: session.settings.steps,
             bias: session.settings.bias,

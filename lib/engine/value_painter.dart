@@ -93,9 +93,19 @@ class ValuePainter extends CustomPainter {
     if (showPhoto || blurred == null) {
       // Only PHOTO is toned. A peek, and the picture before the first pass
       // lands, are the photograph as it is.
-      if (settings.mode == ViewMode.photo &&
-          !peeking &&
-          !settings.tone.isNeutral) {
+      final toned = settings.mode == ViewMode.photo && !peeking;
+      final pass = blurred;
+      if (toned && settings.tone.blur > 0 && pass != null) {
+        // Softened: the pass is the photograph blurred, over the area it
+        // was rendered for, and the tone is applied on top of it.
+        _paintTonedPhoto(
+          canvas,
+          area,
+          _passRect(dest, area),
+          image: pass,
+          crop: kWholeImage,
+        );
+      } else if (toned && !settings.tone.isNeutral) {
         _paintTonedPhoto(canvas, area, dest);
       } else {
         _paintPhoto(canvas, area, dest);
@@ -187,15 +197,21 @@ class ValuePainter extends CustomPainter {
     canvas.restore();
   }
 
-  void _paintTonedPhoto(Canvas canvas, Rect area, Rect dest) {
+  void _paintTonedPhoto(
+    Canvas canvas,
+    Rect area,
+    Rect dest, {
+    ui.Image? image,
+    Rect? crop,
+  }) {
     // A fresh shader every paint, for the reason given in _paintProcessed.
     final old = _photoFragment;
     if (old != null) disposer.retire(old.dispose);
     final tone = settings.tone;
     _photoFragment = shader.buildPhoto(
-      source: source,
+      source: image ?? source,
       dest: dest,
-      crop: settings.crop,
+      crop: crop ?? settings.crop,
       mono: tone.mono,
       brightness: tone.brightness,
       contrast: tone.contrast,
