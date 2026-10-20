@@ -129,4 +129,60 @@ void main() {
     expect(at(120, 40), greys.reduce(math.min));
     expect(at(120, 120), isNot(greys.reduce(math.min)));
   });
+
+  test('a shape that reaches the side of the picture keeps reaching it: '
+      'no sliver of another value along the frame', () async {
+    // Rings of value centred off the picture, so every boundary meets the
+    // frame on a curve, at an angle — the case straightening pulls inward.
+    const side = 300;
+    final recorder = ui.PictureRecorder();
+    Canvas(recorder).drawRect(
+      const Rect.fromLTWH(0, 0, side + 0.0, side + 0.0),
+      Paint()
+        ..shader = ui.Gradient.radial(
+          const Offset(-40, -60),
+          520,
+          const [Color(0xFF000000), Color(0xFFFFFFFF)],
+          null,
+          TileMode.mirror,
+        ),
+    );
+    final picture = recorder.endRecording();
+    final source = await picture.toImage(side, side);
+    picture.dispose();
+    addTearDown(source.dispose);
+
+    final result = await renderBlurredSource(
+      source: source,
+      outputPx: const Size(side + 0.0, side + 0.0),
+      detail: 0.3,
+      view: const ViewTransform(),
+      smoothing: Smoothing.block,
+      steps: 5,
+    );
+    final bytes = (await result.toByteData(
+      format: ui.ImageByteFormat.rawRgba,
+    ))!.buffer.asUint8List();
+    result.dispose();
+
+    int at(int x, int y) => bytes[(y * side + x) * 4];
+    // Each side of the frame against the line two pixels in from it: they
+    // may differ only right where a boundary really crosses.
+    final sides = <(int Function(int), int Function(int))>[
+      ((i) => at(i, 0), (i) => at(i, 2)),
+      ((i) => at(i, side - 1), (i) => at(i, side - 3)),
+      ((i) => at(0, i), (i) => at(2, i)),
+      ((i) => at(side - 1, i), (i) => at(side - 3, i)),
+    ];
+    for (final (frame, inside) in sides) {
+      final crossings = [
+        for (var i = 1; i < side; i++)
+          if (inside(i) != inside(i - 1)) i,
+      ];
+      for (var i = 0; i < side; i++) {
+        if (crossings.any((c) => (c - i).abs() <= 3)) continue;
+        expect(frame(i), inside(i), reason: 'at $i along the frame');
+      }
+    }
+  });
 }

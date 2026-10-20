@@ -45,6 +45,11 @@ BlockShapes blockShapes(BlockInput input) {
   );
   final masks = <List<List<Offset>>>[];
   final mask = Uint8List(map.width * map.height);
+  // A shape that reaches the side of the picture has to keep reaching it, or
+  // straightening its outline pulls it in off the edge and the band beneath
+  // shows through as a sliver along the frame.
+  bool onFrame(Offset p) =>
+      p.dx <= 0 || p.dy <= 0 || p.dx >= map.width || p.dy >= map.height;
   for (var k = 1; k < input.steps; k++) {
     var any = false;
     for (var i = 0; i < mask.length; i++) {
@@ -56,8 +61,8 @@ BlockShapes blockShapes(BlockInput input) {
       any
           ? [
               for (final loop in traceMask(mask, map.width, map.height))
-                if (simplifyLoop(loop, input.tolerance) case final s
-                    when s.length >= 3)
+                if (simplifyLoop(loop, input.tolerance, pinned: onFrame)
+                    case final s when s.length >= 3)
                   s,
             ]
           : const [],
@@ -166,8 +171,32 @@ List<List<Offset>> traceMask(Uint8List mask, int width, int height) {
 
 /// [loop] with every point dropped that lies within [tolerance] of a straight
 /// run between its neighbours (Douglas–Peucker, closed).
-List<Offset> simplifyLoop(List<Offset> loop, double tolerance) {
+///
+/// A point [pinned] says must stay is always kept, and the runs between such
+/// points are straightened separately, so nothing moves off them.
+List<Offset> simplifyLoop(
+  List<Offset> loop,
+  double tolerance, {
+  bool Function(Offset)? pinned,
+}) {
   if (loop.length < 4) return loop;
+  final pins = [
+    if (pinned != null)
+      for (var i = 0; i < loop.length; i++)
+        if (pinned(loop[i])) i,
+  ];
+  if (pins.isNotEmpty) {
+    final kept = <Offset>[];
+    for (var p = 0; p < pins.length; p++) {
+      final from = pins[p];
+      final to = p + 1 < pins.length ? pins[p + 1] : pins[0] + loop.length;
+      final run = [for (var i = from; i <= to; i++) loop[i % loop.length]];
+      final straight = _simplifyLine(run, tolerance);
+      // Each run ends where the next begins.
+      kept.addAll(straight.sublist(0, straight.length - 1));
+    }
+    return kept;
+  }
   // Split the loop at its first point and the point furthest from it, and
   // simplify each half as an open line.
   var far = 0;
