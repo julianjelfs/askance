@@ -43,33 +43,84 @@ class CanvasScreen extends ConsumerWidget {
   }
 }
 
-class _CanvasBody extends ConsumerWidget {
+class _CanvasBody extends ConsumerStatefulWidget {
   const _CanvasBody({required this.session, required this.shader});
 
   final CanvasSession session;
   final ValueShader shader;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_CanvasBody> createState() => _CanvasBodyState();
+}
+
+class _CanvasBodyState extends ConsumerState<_CanvasBody>
+    with SingleTickerProviderStateMixin {
+  /// 1 with the controls showing, 0 with the picture alone. A tap on the
+  /// picture slides the title bar up and the tools down, out of the way,
+  /// while the picture grows into the room they leave.
+  late final AnimationController _chrome = AnimationController(
+    vsync: this,
+    duration: _chromeSlide,
+    value: widget.session.chromeVisible ? 1 : 0,
+  );
+
+  static const _chromeSlide = Duration(milliseconds: 300);
+
+  /// Where the slide was last sent, so a rebuild mid-slide does not restart
+  /// it.
+  late double _target = _chrome.value;
+
+  @override
+  void dispose() {
+    _chrome.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final target = widget.session.chromeVisible ? 1.0 : 0.0;
+    if (target != _target) {
+      _target = target;
+      _chrome.animateTo(target, curve: AskanceMotion.slide);
+    }
+
     // While the open transition runs, the canvas is also the widget flying
     // between the card and the screen, and it must not re-render as it grows.
     // Listening to the route's own animation is what lets it start rendering
-    // again the moment the flight lands.
+    // again the moment the flight lands. The same holds while the controls
+    // slide away: the picture is scaled through the slide and rendered once
+    // it lands, rather than at every size on the way.
     final routeAnimation =
         ModalRoute.of(context)?.animation ??
         const AlwaysStoppedAnimation<double>(1);
 
     return ListenableBuilder(
-      listenable: routeAnimation,
-      builder: (context, _) =>
-          _body(context, ref, flying: routeAnimation.isAnimating),
+      listenable: Listenable.merge([routeAnimation, _chrome]),
+      builder: (context, _) => _body(
+        context,
+        frozen: routeAnimation.isAnimating || _chrome.isAnimating,
+      ),
     );
   }
 
-  Widget _body(BuildContext context, WidgetRef ref, {required bool flying}) {
+  Widget _body(BuildContext context, {required bool frozen}) {
     final s = DesignScale.of(context);
     final padding = MediaQuery.paddingOf(context);
-    final chrome = session.chromeVisible;
+    final session = widget.session;
+    final shader = widget.shader;
+    final shown = CurvedAnimation(parent: _chrome, curve: Curves.linear);
+
+    /// Collapses [child] to nothing as the controls go, sliding it toward
+    /// the edge it belongs to.
+    Widget collapsing(Widget child, {required bool fromTop}) => ClipRect(
+      child: SizeTransition(
+        sizeFactor: shown,
+        // The title bar keeps its foot and the tools their head, so each
+        // slides off toward its own edge.
+        alignment: fromTop ? Alignment.bottomCenter : Alignment.topCenter,
+        child: FadeTransition(opacity: shown, child: child),
+      ),
+    );
 
     final surface = Stack(
       fit: StackFit.expand,
@@ -82,11 +133,11 @@ class _CanvasBody extends ConsumerWidget {
             child: CanvasSurface(
               session: session,
               shader: shader,
-              freezeBlur: flying,
+              freezeBlur: frozen,
             ),
           )
         else
-          CanvasSurface(session: session, shader: shader, freezeBlur: flying),
+          CanvasSurface(session: session, shader: shader, freezeBlur: frozen),
         if (session.settings.mode == ViewMode.split && !session.peeking)
           SplitHandle(session: session),
       ],
@@ -99,38 +150,58 @@ class _CanvasBody extends ConsumerWidget {
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) session.flushPersist();
       },
-      // A single tap on the picture hides everything else, and the picture
-      // takes the whole screen; another brings it back.
+      // Hidden controls stop taking hits at once, not when the slide ends.
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (chrome)
-            Container(
-              color: AskanceColors.graphite,
-              padding: EdgeInsets.only(top: padding.top),
+          collapsing(
+            IgnorePointer(
+              ignoring: !session.chromeVisible,
+              child: Container(
+                color: AskanceColors.graphite,
+                padding: EdgeInsets.only(top: padding.top),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _TopBar(session: session),
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        14 * s,
+                        4 * s,
+                        14 * s,
+                        12 * s,
+                      ),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: 520 * s),
+                          child: _ViewSelector(session: session),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            fromTop: true,
+          ),
+          Expanded(child: surface),
+          collapsing(
+            IgnorePointer(
+              ignoring: !session.chromeVisible,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _TopBar(session: session),
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(14 * s, 4 * s, 14 * s, 12 * s),
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: 520 * s),
-                        child: _ViewSelector(session: session),
-                      ),
+                  if (session.settings.mode.paintsOnlyPalette)
+                    Padding(
+                      padding: EdgeInsets.only(top: 2 * s, bottom: 12 * s),
+                      child: PaletteChips(session: session),
                     ),
-                  ),
+                  _ToolDeck(session: session, bottomInset: padding.bottom),
                 ],
               ),
             ),
-          Expanded(child: surface),
-          if (chrome && session.settings.mode.paintsOnlyPalette)
-            Padding(
-              padding: EdgeInsets.only(top: 2 * s, bottom: 12 * s),
-              child: PaletteChips(session: session),
-            ),
-          if (chrome) _ToolDeck(session: session, bottomInset: padding.bottom),
+            fromTop: false,
+          ),
         ],
       ),
     );
