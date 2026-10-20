@@ -165,7 +165,9 @@ class SegmentedControl<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = DesignScale.of(context);
-    final index = values.indexOf(selected).clamp(0, values.length - 1);
+    // A selection that is not among the values shows no marker at all, rather
+    // than claiming the first cell.
+    final index = values.indexOf(selected);
 
     return SizedBox(
       height: height * s,
@@ -177,16 +179,17 @@ class SegmentedControl<T> extends StatelessWidget {
               Positioned.fill(
                 child: ColoredBox(color: AskanceColors.trackDark),
               ),
-              AnimatedPositioned(
-                duration: AskanceMotion.segmentedMarker,
-                curve: AskanceMotion.slide,
-                left: cell * index,
-                top: underline ? null : 0,
-                bottom: 0,
-                height: underline ? kRule : null,
-                width: cell,
-                child: const ColoredBox(color: AskanceColors.accent),
-              ),
+              if (index >= 0)
+                AnimatedPositioned(
+                  duration: AskanceMotion.segmentedMarker,
+                  curve: AskanceMotion.slide,
+                  left: cell * index,
+                  top: underline ? null : 0,
+                  bottom: 0,
+                  height: underline ? kRule : null,
+                  width: cell,
+                  child: const ColoredBox(color: AskanceColors.accent),
+                ),
               Row(
                 children: [
                   for (final value in values)

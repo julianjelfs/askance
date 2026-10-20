@@ -176,6 +176,19 @@ class CanvasSession extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Moves the values and the detail together to one of
+  /// [StudySettings.stages].
+  void setStage(int index) {
+    final stage = StudySettings.stages[index];
+    if (stage.steps == settings.steps && stage.detail == settings.detail) {
+      return;
+    }
+    if (stage.steps != settings.steps) isolatedBand = null;
+    settings = settings.copyWith(steps: stage.steps, detail: stage.detail);
+    _persistSoon();
+    notifyListeners();
+  }
+
   void setDetail(double detail) {
     final next = detail.clamp(0.0, 1.0);
     if (next == settings.detail) return;

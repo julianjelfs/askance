@@ -119,6 +119,28 @@ class StudySettings {
       ? randomRamp(scale: scale, steps: steps, seed: randomSeed)
       : scale.ramp(steps);
 
+  /// The stages a drawing is built up through, coarsest first: at each one
+  /// the picture gains a value and its shapes get finer together, the way a
+  /// study is blocked in with two values and a few big shapes and then
+  /// refined. Edit freely; nothing is stored against a stage's position.
+  static const List<({int steps, double detail})> stages = [
+    (steps: 2, detail: 0.1),
+    (steps: 3, detail: 0.25),
+    (steps: 4, detail: 0.4),
+    (steps: 5, detail: 0.55),
+    (steps: 6, detail: 0.7),
+    (steps: 7, detail: 0.85),
+  ];
+
+  /// Which of [stages] the values and detail are at, or null once either has
+  /// been moved by hand.
+  int? get stage {
+    final index = stages.indexWhere(
+      (s) => s.steps == steps && s.detail == detail,
+    );
+    return index < 0 ? null : index;
+  }
+
   static const int minSteps = 2;
   static const int maxSteps = 7;
   static const int minGridLevel = 1;

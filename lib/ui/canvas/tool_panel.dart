@@ -22,6 +22,27 @@ class ValuesControl extends StatelessWidget {
   );
 }
 
+/// Values and detail in lockstep: a stage per step of the build-up from a
+/// two-value block-in to a finished study. Selects nothing once either has
+/// been set by hand.
+class StageControl extends StatelessWidget {
+  const StageControl({super.key, required this.session});
+  final CanvasSession session;
+
+  @override
+  Widget build(BuildContext context) => SegmentedControl<int>(
+    values: [for (var i = 0; i < StudySettings.stages.length; i++) i],
+    selected: session.settings.stage ?? -1,
+    labelOf: (i) => '${i + 1}',
+    onChanged: session.setStage,
+  );
+
+  static String readout(StudySettings settings) => switch (settings.stage) {
+    final stage? => 'STAGE ${stage + 1}',
+    null => 'SET BY HAND',
+  };
+}
+
 /// Slides every threshold together, so a borderline passage can be pushed to
 /// one side of a boundary or the other.
 class BiasControl extends StatelessWidget {
@@ -334,6 +355,12 @@ class ToolPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: switch (tool) {
           CanvasTool.steps => [
+            ControlLabelRow(
+              label: 'VALUES AND DETAIL TOGETHER',
+              value: StageControl.readout(session.settings),
+            ),
+            StageControl(session: session),
+            SizedBox(height: 16 * s),
             const ControlLabelRow(label: 'HOW MANY VALUES'),
             ValuesControl(session: session),
             SizedBox(height: 16 * s),

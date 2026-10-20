@@ -228,6 +228,12 @@ class _RailState extends ConsumerState<_Rail> {
                   _viewBlock(session),
                   const SizedBox(height: kRule),
                   _controlBlock(
+                    'VALUES AND DETAIL TOGETHER',
+                    StageControl.readout(session.settings),
+                    StageControl(session: session),
+                  ),
+                  const SizedBox(height: kRule),
+                  _controlBlock(
                     'VALUES',
                     '${session.settings.steps} STEPS',
                     ValuesControl(session: session),
