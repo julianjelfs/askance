@@ -405,21 +405,12 @@ class _ModeRail extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          for (final mode in ViewMode.values) ...[
+          for (final mode in ViewMode.values)
             cell(
               label: mode.railLabel,
               active: session.settings.mode == mode,
               onTap: () => session.setMode(mode),
             ),
-            // Directly under PHO, so it reads as part of it rather than as
-            // another mode.
-            if (mode == ViewMode.photo && session.settings.mode == mode)
-              cell(
-                label: 'TONE',
-                active: session.openTool == CanvasTool.tone,
-                onTap: () => session.toggleTool(CanvasTool.tone),
-              ),
-          ],
           if (skeleton)
             cell(
               label: session.settings.skeletonFill == 0
@@ -460,7 +451,7 @@ class _ToolBar extends StatelessWidget {
         height: 44 * s,
         child: Row(
           children: [
-            for (final tool in CanvasTool.bar)
+            for (final tool in CanvasTool.barFor(session.settings.mode))
               Expanded(
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,

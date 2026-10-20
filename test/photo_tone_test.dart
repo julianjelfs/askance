@@ -5,10 +5,26 @@ import 'package:askance/engine/engine.dart';
 import 'package:askance/engine/lstar.dart';
 import 'package:askance/engine/value_painter.dart';
 import 'package:askance/model/study.dart';
+import 'package:askance/state/canvas_session.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('switching view closes a tool that would adjust nothing there', () {
+    final session = CanvasSession()..toggleTool(CanvasTool.detail);
+    addTearDown(session.dispose);
+    session.setMode(ViewMode.photo);
+    expect(session.openTool, isNull, reason: 'detail is lost on the photo');
+
+    session.toggleTool(CanvasTool.tone);
+    session.setMode(ViewMode.value);
+    expect(session.openTool, isNull, reason: 'tone is PHOTO only');
+
+    session.toggleTool(CanvasTool.grid);
+    session.setMode(ViewMode.photo);
+    expect(session.openTool, CanvasTool.grid, reason: 'grid is in both');
+  });
+
   group('a stored tone', () {
     test('survives saving and reopening a study', () {
       const settings = StudySettings(

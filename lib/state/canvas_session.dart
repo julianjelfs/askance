@@ -18,11 +18,17 @@ enum CanvasTool {
   scale,
   grid,
 
-  /// PHOTO's own tool, opened from the mode rail rather than the tool bar.
+  /// How PHOTO shows the photograph.
   tone;
 
-  /// The tools on the tool bar, which work on the value map.
-  static const bar = [steps, detail, scale, grid];
+  /// The tools on the tool bar while [mode] is showing. The rail picks how
+  /// to look and the bar holds what adjusts that view, so it never offers a
+  /// control that would change nothing on screen: values, detail and scale
+  /// are all lost on the untouched photograph, and tone is lost on
+  /// everything else.
+  static List<CanvasTool> barFor(ViewMode mode) => mode == ViewMode.photo
+      ? const [tone, grid]
+      : const [steps, detail, scale, grid];
 }
 
 /// The open study, plus the view state that is deliberately *not* part of a
@@ -270,8 +276,9 @@ class CanvasSession extends ChangeNotifier {
             : null,
       );
     }
-    // The tone panel belongs to PHOTO and goes when it does.
-    if (openTool == CanvasTool.tone && settings.mode != ViewMode.photo) {
+    // A tool the new view's bar does not offer would be adjusting nothing.
+    if (openTool case final tool?
+        when !CanvasTool.barFor(settings.mode).contains(tool)) {
       openTool = null;
     }
     // VALUE and RANDOM share bands, so an isolated band survives moving
