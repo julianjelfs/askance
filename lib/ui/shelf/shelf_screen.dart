@@ -47,7 +47,11 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen> {
     // One card per row in the hand; across a desk, as many columns of them
     // as fit.
     final columns = wide
-        ? (MediaQuery.sizeOf(context).width ~/ 420).clamp(1, 4)
+        // Counted from the room beside the rail, not the whole window.
+        ? ((MediaQuery.sizeOf(context).width - _shelfRailWidth) ~/ 380).clamp(
+            1,
+            4,
+          )
         : 1;
 
     final grid = SingleChildScrollView(
@@ -77,7 +81,7 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   SizedBox(
-                    width: 320,
+                    width: _shelfRailWidth,
                     child: _ShelfRail(
                       onHowItWorks: () => setState(() => _replayingTour = true),
                       onAction: _dismissTour,
@@ -118,6 +122,8 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen> {
     );
   }
 }
+
+const double _shelfRailWidth = 320;
 
 /// The card grid, shared by the phone shelf and the desktop shelf, which
 /// differ only in column count.

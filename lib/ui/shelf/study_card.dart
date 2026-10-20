@@ -60,8 +60,9 @@ class _StudyCardState extends ConsumerState<StudyCard> {
     final settings = study.settings;
     final image = ref.watch(studyImageProvider(study.imageKey)).valueOrNull;
 
-    // The thumbnail takes the crop's shape, within limits that keep a very
-    // wide or very tall picture from stretching the row.
+    // Every card is the same height, so a shelf reads as rows, and the
+    // thumbnail has the same slot on every card, so the names line up. The
+    // picture takes the crop's shape inside its slot.
     final picture = image == null
         ? null
         : croppedSize(
@@ -71,7 +72,10 @@ class _StudyCardState extends ConsumerState<StudyCard> {
     final aspect = picture == null || picture.isEmpty
         ? 0.75
         : (picture.width / picture.height).clamp(0.6, 1.4);
-    final thumbWidth = (aspect >= 1 ? 120 : 92) * s;
+    final thumbHeight = 130 * s;
+    final slotWidth = 110 * s;
+    final thumbWidth = (thumbHeight * aspect).clamp(0.0, slotWidth);
+    final thumbSize = Size(thumbWidth, thumbWidth / aspect);
     final radius = BorderRadius.circular(AskanceRadius.card * s);
 
     return GestureDetector(
@@ -100,99 +104,109 @@ class _StudyCardState extends ConsumerState<StudyCard> {
             children: [
               Padding(
                 padding: EdgeInsets.all(12 * s),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                      width: thumbWidth,
-                      child: AspectRatio(
-                        aspectRatio: aspect,
-                        // Grows into the canvas when the card is opened. The
-                        // default shuttle flies the destination's own child,
-                        // so the flight lands on exactly what the canvas will
-                        // show.
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(3 * s),
-                          child: Hero(
-                            tag: studyHeroTag(study.id),
-                            child: StudyThumbnail(study: study),
+                child: SizedBox(
+                  height: thumbHeight,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(
+                        width: slotWidth,
+                        child: Center(
+                          child: SizedBox.fromSize(
+                            size: thumbSize,
+                            // Grows into the canvas when the card is opened.
+                            // The default shuttle flies the destination's own
+                            // child, so the flight lands on exactly what the
+                            // canvas will show.
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(3 * s),
+                              child: Hero(
+                                tag: studyHeroTag(study.id),
+                                child: StudyThumbnail(study: study),
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    SizedBox(width: 14 * s),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Padding(
-                            // Clear of the trash in the corner.
-                            padding: EdgeInsets.only(right: 24 * s, top: 2 * s),
-                            child: Text(
-                              study.name,
-                              maxLines: 2,
+                      SizedBox(width: 14 * s),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              // Clear of the trash in the corner.
+                              padding: EdgeInsets.only(
+                                right: 24 * s,
+                                top: 2 * s,
+                              ),
+                              child: Text(
+                                study.name,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: AskanceText.title(17.5).by(s),
+                              ),
+                            ),
+                            SizedBox(height: 4 * s),
+                            Text(
+                              _board(image, settings),
+                              maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: AskanceText.title(17.5).by(s),
+                              style: AskanceText.caption(13).by(s),
                             ),
-                          ),
-                          SizedBox(height: 4 * s),
-                          Text(
-                            _board(image, settings),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AskanceText.caption(13).by(s),
-                          ),
-                          SizedBox(height: 14 * s),
-                          // The palette it paints in, darkest first, outlined
-                          // so the palest value still has an end.
-                          Container(
-                            foregroundDecoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(4 * s),
-                              border: Border.all(
-                                color: AskanceColors.rule,
-                                width: kRule,
+                            // The palette and the count sit along the foot, level
+                            // from card to card whatever the name's length.
+                            const Spacer(),
+                            // The palette it paints in, darkest first, outlined
+                            // so the palest value still has an end.
+                            Container(
+                              foregroundDecoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(4 * s),
+                                border: Border.all(
+                                  color: AskanceColors.rule,
+                                  width: kRule,
+                                ),
                               ),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(4 * s),
-                              child: SizedBox(
-                                height: 16 * s,
-                                child: Row(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: [
-                                    for (final colour in settings.palette)
-                                      Expanded(
-                                        child: ColoredBox(color: colour),
-                                      ),
-                                  ],
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(4 * s),
+                                child: SizedBox(
+                                  height: 16 * s,
+                                  child: Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
+                                    children: [
+                                      for (final colour in settings.palette)
+                                        Expanded(
+                                          child: ColoredBox(color: colour),
+                                        ),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                          SizedBox(height: 8 * s),
-                          Text.rich(
-                            TextSpan(
-                              children: [
-                                TextSpan(
-                                  text: '${settings.steps} values',
-                                  style: AskanceText.label(13).by(s),
-                                ),
-                                TextSpan(
-                                  text:
-                                      ' · ${settings.scale.shortName}'
-                                      ' · ${study.formattedDate}',
-                                  style: AskanceText.caption(13).by(s),
-                                ),
-                              ],
+                            SizedBox(height: 8 * s),
+                            Text.rich(
+                              TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: '${settings.steps} values',
+                                    style: AskanceText.label(13).by(s),
+                                  ),
+                                  TextSpan(
+                                    text:
+                                        ' · ${settings.scale.shortName}'
+                                        ' · ${study.formattedDate}',
+                                    style: AskanceText.caption(13).by(s),
+                                  ),
+                                ],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               // Long press works too, but nothing advertises it.
