@@ -9,9 +9,12 @@ import 'crop.dart';
 import 'lstar.dart';
 
 /// How the quantised image is presented.
+/// In the order the view selector offers them: the photograph first, since
+/// it is what every other view is cut from. Stored by name, so the order is
+/// free to change.
 enum ViewMode {
-  value('Values', 'Value map'),
   photo('Photo', 'Photograph'),
+  value('Values', 'Value map'),
   split('Split', 'Split'),
 
   /// The value map painted in arbitrary hues of the correct values. Tapping
