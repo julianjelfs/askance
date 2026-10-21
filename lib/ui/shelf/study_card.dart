@@ -380,7 +380,7 @@ class _StudyThumbnailState extends ConsumerState<StudyThumbnail> {
           bias: widget.study.settings.bias,
           contrast: widget.study.settings.contrast,
         );
-        if (widget.study.settings.tone.squint) {
+        if (widget.study.settings.photoNeedsOwnPass) {
           _photoBlur.request(
             source: image,
             outputPx: constraints.biggest * dpr,

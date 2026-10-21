@@ -314,11 +314,13 @@ class _RailState extends ConsumerState<_Rail> {
                       onPressed: session.dealColours,
                     ),
                   ],
-                  // Like the phone's tool bar, the rail only offers what
-                  // adjusts the view on screen: the photograph has its tone
-                  // and squint, and nothing else of the value map's.
+                  // The picture's qualities, which every view shows.
+                  _section('Picture', null, PictureControl(session: session)),
+                  // Like the phone's tool bar, the rail otherwise only offers
+                  // what adjusts the view on screen: the photograph has its
+                  // colour, and nothing else of the value map's.
                   if (mode == ViewMode.photo)
-                    _section('Tone', null, ToneControl(session: session))
+                    _section('Colour', null, ToneControl(session: session))
                   else ...[
                     _section(
                       'Stages',
@@ -340,8 +342,6 @@ class _RailState extends ConsumerState<_Rail> {
                         ),
                       ],
                     ),
-                    _gap,
-                    ...pictureToneControls(session, 1),
                     if (mode == ViewMode.skeleton)
                       _section(
                         'Blocked in under the lines',
@@ -353,14 +353,6 @@ class _RailState extends ConsumerState<_Rail> {
                       null,
                       SmoothingControl(session: session, height: 52),
                     ),
-                    _gap,
-                    ControlLabelRow(
-                      label: 'Detail',
-                      value: '${(session.settings.detail * 100).round()}',
-                    ),
-                    DetailControl(session: session),
-                    const SizedBox(height: 4),
-                    LockDetailControl(session: session),
                     if (kShowTint)
                       _section(
                         'Root of the scale',

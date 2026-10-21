@@ -177,7 +177,7 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
             bias: session.settings.bias,
             contrast: session.settings.contrast,
           );
-          if (session.settings.tone.squint) {
+          if (session.settings.photoNeedsOwnPass) {
             session.photoBlur.request(
               source: session.image!,
               outputPx: Size(_size.width * dpr, _size.height * dpr),

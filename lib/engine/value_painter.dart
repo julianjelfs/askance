@@ -47,9 +47,10 @@ class ValuePainter extends CustomPainter {
   final ViewTransform? blurredView;
   final Size? blurredSize;
 
-  /// The photograph blurred by the study's detail, for PHOTO's squint, with
-  /// the view and size it was rendered for as for [blurred]. Null when PHOTO
-  /// is sharp, or until the pass lands; the photograph is then drawn sharp.
+  /// The photograph blurred by the study's detail, with the view and size it
+  /// was rendered for as for [blurred], when [StudySettings.photoNeedsOwnPass];
+  /// otherwise [blurred] is that photograph and this is ignored. Until it
+  /// lands the photograph is drawn sharp.
   final ui.Image? photoBlurred;
   final ViewTransform? photoBlurredView;
   final Size? photoBlurredSize;
@@ -194,14 +195,17 @@ class ValuePainter extends CustomPainter {
   /// The photograph as PHOTO shows it: toned, and softened when the tone
   /// has a blur and its pass has landed.
   void _paintPhotoView(Canvas canvas, Rect area, Rect dest) {
-    final softened = photoBlurred;
-    if (settings.tone.squint && softened != null) {
+    final own = settings.photoNeedsOwnPass;
+    final softened = own ? photoBlurred : blurred;
+    if (softened != null) {
       // The pass is the photograph blurred, as the study blurs it, over the
       // area it was rendered for; the tone is applied on top of it.
       _paintTonedPhoto(
         canvas,
         area,
-        _passRect(dest, area, photoBlurredView, photoBlurredSize),
+        own
+            ? _passRect(dest, area, photoBlurredView, photoBlurredSize)
+            : _passRect(dest, area, blurredView, blurredSize),
         image: softened,
         crop: kWholeImage,
       );

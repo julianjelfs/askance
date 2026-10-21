@@ -27,39 +27,25 @@ double toneReach(double v, {required double shift, required double contrast}) =>
 double _unclamped(double v, double shift, double contrast) =>
     (v - 0.5) * math.pow(4, contrast) + 0.5 + shift;
 
-/// How PHOTO draws the picture: in colour or black and white, sharp or
-/// blurred by the study's own detail. Ways of looking only; neither changes
-/// the values.
+/// How PHOTO draws the picture: in colour or black and white. A way of
+/// looking only; it never changes the values.
 class PhotoTone {
-  const PhotoTone({this.mono = false, this.squint = false});
+  const PhotoTone({this.mono = false});
 
   final bool mono;
 
-  /// Blurred as the study blurs it before banding, so PHOTO shows the
-  /// picture the values are cut from.
-  final bool squint;
+  PhotoTone copyWith({bool? mono}) => PhotoTone(mono: mono ?? this.mono);
 
-  PhotoTone copyWith({bool? mono, bool? squint}) =>
-      PhotoTone(mono: mono ?? this.mono, squint: squint ?? this.squint);
-
-  Map<String, Object?> toJson() => {'mono': mono, 'squint': squint};
+  Map<String, Object?> toJson() => {'mono': mono};
 
   static PhotoTone fromJson(Object? json) {
     if (json is! Map) return const PhotoTone();
-    return PhotoTone(
-      mono: json['mono'] == true,
-      // Written before the blur was the study's detail: any blur at all
-      // meant the photograph was being squinted at.
-      squint:
-          json['squint'] == true ||
-          (json['blur'] is num && (json['blur'] as num) > 0),
-    );
+    return PhotoTone(mono: json['mono'] == true);
   }
 
   @override
-  bool operator ==(Object other) =>
-      other is PhotoTone && other.mono == mono && other.squint == squint;
+  bool operator ==(Object other) => other is PhotoTone && other.mono == mono;
 
   @override
-  int get hashCode => Object.hash(mono, squint);
+  int get hashCode => mono.hashCode;
 }

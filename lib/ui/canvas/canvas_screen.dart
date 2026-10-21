@@ -520,10 +520,11 @@ class _ToolBar extends StatelessWidget {
         Glyph.staircase,
         'Values · ${session.settings.steps}',
       ),
-      CanvasTool.detail => (Glyph.shapes, 'Shapes'),
+      CanvasTool.picture => (Glyph.tone, 'Picture'),
+      CanvasTool.shapes => (Glyph.shapes, 'Shapes'),
       CanvasTool.scale => (Glyph.tint, 'Tint'),
       CanvasTool.grid => (Glyph.board, 'Board'),
-      CanvasTool.tone => (Glyph.tone, 'Tone'),
+      CanvasTool.tone => (Glyph.mono, 'Colour'),
       CanvasTool.fill => (Glyph.fill, 'Fill'),
     };
 

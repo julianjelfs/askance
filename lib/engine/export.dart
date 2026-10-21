@@ -79,7 +79,7 @@ Future<Uint8List?> renderExport({
     bias: settings.bias,
     contrast: settings.contrast,
   );
-  final photoBlurred = settings.tone.squint
+  final photoBlurred = settings.photoNeedsOwnPass
       ? await renderBlurredSource(
           source: source,
           outputPx: size,

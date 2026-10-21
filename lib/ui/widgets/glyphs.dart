@@ -27,6 +27,7 @@ enum Glyph {
   tone,
   fill,
   dice,
+  mono,
 }
 
 class GlyphIcon extends StatelessWidget {
@@ -93,6 +94,8 @@ class _GlyphPainter extends CustomPainter {
         _fill(canvas, size);
       case Glyph.dice:
         _dice(canvas, size);
+      case Glyph.mono:
+        _mono(canvas, size);
     }
   }
 
@@ -240,6 +243,17 @@ class _GlyphPainter extends CustomPainter {
       Paint()..color = color,
     );
     canvas.drawRect(box, _line(u));
+  }
+
+  /// A circle, half dark: colour or black and white.
+  void _mono(Canvas canvas, Size size) {
+    final u = size.shortestSide;
+    final circle = Rect.fromCircle(
+      center: Offset(u * 0.5, u * 0.5),
+      radius: u * 0.32,
+    );
+    canvas.drawArc(circle, math.pi / 2, math.pi, true, Paint()..color = color);
+    canvas.drawOval(circle, _line(u));
   }
 
   /// A die showing three: another deal of colours.

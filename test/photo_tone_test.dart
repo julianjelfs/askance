@@ -12,18 +12,18 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('switching view closes a tool that would adjust nothing there', () {
-    final session = CanvasSession()..toggleTool(CanvasTool.detail);
+    final session = CanvasSession()..toggleTool(CanvasTool.shapes);
     addTearDown(session.dispose);
     session.setMode(ViewMode.photo);
-    expect(session.openTool, isNull, reason: 'detail is lost on the photo');
+    expect(session.openTool, isNull, reason: 'shapes are lost on the photo');
 
     session.toggleTool(CanvasTool.tone);
     session.setMode(ViewMode.value);
     expect(session.openTool, isNull, reason: 'tone is PHOTO only');
 
-    session.toggleTool(CanvasTool.grid);
+    session.toggleTool(CanvasTool.picture);
     session.setMode(ViewMode.photo);
-    expect(session.openTool, CanvasTool.grid, reason: 'grid is in both');
+    expect(session.openTool, CanvasTool.picture, reason: 'picture is in all');
   });
 
   group('a stored tone', () {
@@ -31,19 +31,26 @@ void main() {
       const settings = StudySettings(
         bias: -0.1,
         contrast: 0.8,
-        tone: PhotoTone(mono: true, squint: true),
+        tone: PhotoTone(mono: true),
       );
       expect(StudySettings.fromJson(settings.toJson()), settings);
     });
 
-    test('kept when PHOTO had its own blur and contrast opens as the '
-        "study's", () {
-      final settings = StudySettings.fromJson({
-        'tone': {'mono': true, 'brightness': 0.3, 'contrast': 0.6, 'blur': 0.4},
-      });
-      expect(settings.tone, const PhotoTone(mono: true, squint: true));
-      expect(settings.contrast, 0.6);
-    });
+    test(
+      "kept when PHOTO had its own contrast opens with it as the study's",
+      () {
+        final settings = StudySettings.fromJson({
+          'tone': {
+            'mono': true,
+            'brightness': 0.3,
+            'contrast': 0.6,
+            'blur': 0.4,
+          },
+        });
+        expect(settings.tone, const PhotoTone(mono: true));
+        expect(settings.contrast, 0.6);
+      },
+    );
 
     test('that is missing or unusable opens untouched', () {
       for (final tone in [null, 'mono', 7]) {
@@ -189,14 +196,17 @@ void main() {
     /// Red just left of the edge, as the canvas paints [settings], with both
     /// passes it would have asked for.
     Future<int> nearEdge(StudySettings settings, {bool peeking = false}) async {
-      Future<ui.Image> pass(double detail) => renderBlurredSource(
+      Future<ui.Image> pass(Smoothing smoothing) => renderBlurredSource(
         source: source,
         outputPx: size,
-        detail: detail,
+        detail: settings.detail,
         view: const ViewTransform(),
+        smoothing: smoothing,
       );
-      final study = await pass(settings.detail);
-      final photo = settings.tone.squint ? await pass(settings.detail) : null;
+      final study = await pass(settings.smoothing);
+      final photo = settings.photoNeedsOwnPass
+          ? await pass(Smoothing.gaussian)
+          : null;
       final disposer = DeferredDisposer();
       final out = ui.PictureRecorder();
       final painter = ValuePainter(
@@ -225,40 +235,49 @@ void main() {
       return bytes[(50 * 200 + 97) * 4];
     }
 
-    const squint = PhotoTone(squint: true);
-
-    test('is sharp, or squinting, blurred by the study\'s detail', () async {
-      expect(
-        await nearEdge(const StudySettings(mode: ViewMode.photo)),
-        lessThan(10),
-      );
-      expect(
-        await nearEdge(
-          const StudySettings(mode: ViewMode.photo, detail: 0, tone: squint),
-        ),
-        greaterThan(40),
-      );
+    test("is blurred by the study's detail, whatever the shapes", () async {
+      for (final smoothing in Smoothing.values) {
+        expect(
+          await nearEdge(
+            StudySettings(
+              mode: ViewMode.photo,
+              detail: 1,
+              smoothing: smoothing,
+            ),
+          ),
+          lessThan(10),
+          reason: '${smoothing.label}, full detail',
+        );
+        expect(
+          await nearEdge(
+            StudySettings(
+              mode: ViewMode.photo,
+              detail: 0,
+              smoothing: smoothing,
+            ),
+          ),
+          greaterThan(40),
+          reason: '${smoothing.label}, least detail',
+        );
+      }
     });
 
     test('is what a peek shows from the value map', () async {
       expect(
-        await nearEdge(
-          const StudySettings(steps: 2, detail: 0, tone: squint),
-          peeking: true,
-        ),
+        await nearEdge(const StudySettings(steps: 2, detail: 0), peeking: true),
         greaterThan(40),
       );
     });
 
     test('is what SPLIT compares the value map against', () async {
       expect(
-        await nearEdge(
-          const StudySettings(mode: ViewMode.split, detail: 0, tone: squint),
-        ),
+        await nearEdge(const StudySettings(mode: ViewMode.split, detail: 0)),
         greaterThan(40),
       );
       expect(
-        await nearEdge(const StudySettings(mode: ViewMode.split, bias: 0.25)),
+        await nearEdge(
+          const StudySettings(mode: ViewMode.split, detail: 1, bias: 0.25),
+        ),
         greaterThan(40),
       );
     });

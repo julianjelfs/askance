@@ -631,65 +631,61 @@ Color _onColour(Color colour) => colour.computeLuminance() > 0.25
 
 /// How PHOTO shows the photograph: colour or black and white, brightness and
 /// contrast. Shared by the phone's tone panel and the desktop rail.
-/// PHOTO: how the photograph is drawn, and the picture's tone, shared with
-/// the value map. Squinting blurs it by the study's own detail, so the
-/// detail is offered here too while it shows.
+/// PHOTO: the photograph in colour or black and white.
 class ToneControl extends StatelessWidget {
   const ToneControl({super.key, required this.session});
   final CanvasSession session;
 
   @override
   Widget build(BuildContext context) {
-    final s = DesignScale.of(context);
-    final settings = session.settings;
-    final tone = settings.tone;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SegmentedControl<bool>(
-          values: const [false, true],
-          selected: tone.mono,
-          labelOf: (v) => v ? 'Black & white' : 'Colour',
-          onChanged: (v) => session.setTone(tone.copyWith(mono: v)),
-        ),
-        SizedBox(height: 8 * s),
-        SegmentedControl<bool>(
-          values: const [false, true],
-          selected: tone.squint,
-          labelOf: (v) => v ? 'Squint' : 'Sharp',
-          onChanged: (v) => session.setTone(tone.copyWith(squint: v)),
-        ),
-        if (tone.squint) ...[
-          SizedBox(height: 12 * s),
-          ControlLabelRow(
-            label: 'Detail',
-            value: '${(settings.detail * 100).round()}',
-          ),
-          DetailControl(session: session),
-        ],
-        SizedBox(height: 12 * s),
-        ...pictureToneControls(session, s),
-      ],
+    final tone = session.settings.tone;
+    return SegmentedControl<bool>(
+      values: const [false, true],
+      selected: tone.mono,
+      labelOf: (v) => v ? 'Black & white' : 'Colour',
+      onChanged: (v) => session.setTone(tone.copyWith(mono: v)),
     );
   }
 }
 
-/// Brightness and contrast: the picture's tone, which the value map bands
-/// and PHOTO shows. The same two controls wherever they appear.
-List<Widget> pictureToneControls(CanvasSession session, double s) => [
-  ControlLabelRow(
-    label: 'Brightness',
-    value: BiasControl.readout(session.settings.bias),
-  ),
-  BiasControl(session: session),
-  SizedBox(height: 10 * s),
-  ControlLabelRow(
-    label: 'Contrast',
-    value: ContrastControl.readout(session.settings.contrast),
-  ),
-  ContrastControl(session: session),
-];
+/// The picture's qualities: how much detail it keeps, and its brightness
+/// and contrast. Every view shows the picture through them, PHOTO included,
+/// and the values are cut from it.
+class PictureControl extends StatelessWidget {
+  const PictureControl({super.key, required this.session});
+  final CanvasSession session;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = DesignScale.of(context);
+    final settings = session.settings;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ControlLabelRow(
+          label: 'Detail',
+          value: '${(settings.detail * 100).round()}',
+        ),
+        DetailControl(session: session),
+        SizedBox(height: 6 * s),
+        LockDetailControl(session: session),
+        SizedBox(height: 14 * s),
+        ControlLabelRow(
+          label: 'Brightness',
+          value: BiasControl.readout(settings.bias),
+        ),
+        BiasControl(session: session),
+        SizedBox(height: 10 * s),
+        ControlLabelRow(
+          label: 'Contrast',
+          value: ContrastControl.readout(settings.contrast),
+        ),
+        ContrastControl(session: session),
+      ],
+    );
+  }
+}
 
 /// EDGES only: how many values, darkest first, are blocked in under the
 /// lines.
@@ -853,20 +849,9 @@ class ToolPanel extends StatelessWidget {
               ValuesControl(session: session),
             ],
           ),
-          gap,
-          ...pictureToneControls(session, s),
         ],
-        CanvasTool.detail => [
-          SmoothingControl(session: session),
-          gap,
-          ControlLabelRow(
-            label: 'Detail',
-            value: '${(session.settings.detail * 100).round()}',
-          ),
-          DetailControl(session: session),
-          SizedBox(height: 6 * s),
-          LockDetailControl(session: session),
-        ],
+        CanvasTool.picture => [PictureControl(session: session)],
+        CanvasTool.shapes => [SmoothingControl(session: session)],
         CanvasTool.scale => [
           const ControlLabelRow(label: 'Root of the scale'),
           ScaleControl(session: session),

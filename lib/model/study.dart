@@ -123,6 +123,11 @@ class StudySettings {
   /// How PHOTO draws the photograph.
   final PhotoTone tone;
 
+  /// Whether PHOTO's blurred photograph needs a pass of its own. Smooth's
+  /// pass is already the photograph blurred by the detail; ROUGH and BLOCK
+  /// shape theirs further.
+  bool get photoNeedsOwnPass => smoothing != Smoothing.gaussian;
+
   /// Whether the tone curve leaves the photograph as it is.
   bool get keepsTone => bias == 0 && contrast == 0;
 

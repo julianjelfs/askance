@@ -13,12 +13,15 @@ import '../engine/value_scale.dart';
 import '../model/study.dart';
 
 enum CanvasTool {
-  /// How many values, where the steps fall, and the stages that set values
-  /// and detail together.
+  /// How many values, and the stages that set values and detail together.
   steps,
 
-  /// How the shapes form: smoothing and detail.
-  detail,
+  /// The picture's qualities, which every view shows and the values are cut
+  /// from: detail, brightness and contrast.
+  picture,
+
+  /// How the shapes form: smooth, rough or straight-edged.
+  shapes,
 
   /// The root of the scale: grey or a tint.
   scale,
@@ -26,7 +29,7 @@ enum CanvasTool {
   /// The board: crop and grid.
   grid,
 
-  /// How PHOTO shows the photograph.
+  /// Whether PHOTO shows the photograph in colour or black and white.
   tone,
 
   /// How many values EDGES blocks in under its lines.
@@ -34,13 +37,21 @@ enum CanvasTool {
 
   /// The tools on the tool bar while [mode] is showing. The view selector
   /// picks how to look and the bar holds what adjusts that view, so it never
-  /// offers a control that would change nothing on screen: values, detail
-  /// and scale are all lost on the untouched photograph, tone is lost on
-  /// everything else, and fill only means something under the edges.
+  /// offers a control that would change nothing on screen: values, shapes
+  /// and scale are all lost on the photograph, colour is lost on everything
+  /// else, and fill only means something under the edges. The picture is
+  /// in every view.
   static List<CanvasTool> barFor(ViewMode mode) => switch (mode) {
-    ViewMode.photo => const [tone, grid],
-    ViewMode.skeleton => [steps, detail, if (kShowTint) scale, fill, grid],
-    _ => [steps, detail, if (kShowTint) scale, grid],
+    ViewMode.photo => const [picture, tone, grid],
+    ViewMode.skeleton => [
+      steps,
+      picture,
+      shapes,
+      if (kShowTint) scale,
+      fill,
+      grid,
+    ],
+    _ => [steps, picture, shapes, if (kShowTint) scale, grid],
   };
 }
 
@@ -516,7 +527,7 @@ class CanvasSession extends ChangeNotifier {
       bias: settings.bias,
       contrast: settings.contrast,
     );
-    if (settings.tone.squint) {
+    if (settings.photoNeedsOwnPass) {
       photoBlur.request(
         source: source,
         outputPx: outputPx,
