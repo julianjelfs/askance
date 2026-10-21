@@ -168,14 +168,23 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
           session.blur.request(
             source: session.image!,
             outputPx: Size(_size.width * dpr, _size.height * dpr),
-            detail: session.settings.pass.detail,
+            detail: session.settings.detail,
             view: session.view,
-            smoothing: session.settings.pass.smoothing,
-            lockDetail: session.settings.pass.lockDetail,
+            smoothing: session.settings.smoothing,
+            lockDetail: session.settings.lockDetail,
             crop: session.settings.crop,
             steps: session.settings.steps,
             bias: session.settings.bias,
           );
+          if (session.settings.photoBlurDetail case final detail?) {
+            session.photoBlur.request(
+              source: session.image!,
+              outputPx: Size(_size.width * dpr, _size.height * dpr),
+              detail: detail,
+              view: session.view,
+              crop: session.settings.crop,
+            );
+          }
         }
 
         return Listener(
@@ -207,7 +216,7 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
             },
             child: RepaintBoundary(
               child: ListenableBuilder(
-                listenable: session.blur,
+                listenable: Listenable.merge([session.blur, session.photoBlur]),
                 builder: (context, _) => CustomPaint(
                   size: Size.infinite,
                   painter: ValuePainter(
@@ -216,6 +225,9 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
                     blurred: session.blur.image,
                     blurredView: session.blur.imageView,
                     blurredSize: session.blur.imageOutputPx,
+                    photoBlurred: session.photoBlur.image,
+                    photoBlurredView: session.photoBlur.imageView,
+                    photoBlurredSize: session.photoBlur.imageOutputPx,
                     settings: session.settings,
                     view: session.view,
                     devicePixelRatio: dpr,

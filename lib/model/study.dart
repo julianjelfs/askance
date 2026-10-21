@@ -202,20 +202,14 @@ class StudySettings {
     (steps: 7, detail: 0.8),
   ];
 
+  /// The detail of a second, plain Gaussian pass that softens the
+  /// photograph wherever it is shown as PHOTO shows it, or null when the
+  /// tone has no blur and the photograph is drawn sharp. Full blur matches
+  /// the lowest detail.
+  double? get photoBlurDetail => tone.blur > 0 ? 1 - tone.blur : null;
+
   /// Which of [stages] the values and detail are at, or null once either has
   /// been moved by hand.
-  /// What the blur pass renders for this study. PHOTO with blur on wants
-  /// the photograph softened, which is a plain Gaussian pass at that
-  /// strength; everything else wants the study's own.
-  ({double detail, Smoothing smoothing, bool lockDetail}) get pass =>
-      mode == ViewMode.photo && tone.blur > 0
-      ? (
-          detail: 1 - tone.blur,
-          smoothing: Smoothing.gaussian,
-          lockDetail: false,
-        )
-      : (detail: detail, smoothing: smoothing, lockDetail: lockDetail);
-
   int? get stage {
     final index = stages.indexWhere(
       (s) => s.steps == steps && s.detail == detail,

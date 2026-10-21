@@ -59,6 +59,10 @@ class CanvasSession extends ChangeNotifier {
   /// shares one finished pass instead of each starting from nothing.
   final BlurPass blur = BlurPass();
 
+  /// The photograph softened by the tone's blur, for PHOTO, a peek and
+  /// SPLIT's photograph. Only asked for while the tone has a blur.
+  final BlurPass photoBlur = BlurPass();
+
   /// The original bytes, kept so exports can re-run the engine from the source
   /// rather than upscaling the screen raster.
   Uint8List? imageBytes;
@@ -503,12 +507,22 @@ class CanvasSession extends ChangeNotifier {
       steps: settings.steps,
       bias: settings.bias,
     );
-    await blur.settled;
+    if (settings.photoBlurDetail case final detail?) {
+      photoBlur.request(
+        source: source,
+        outputPx: outputPx,
+        detail: detail,
+        view: view,
+        crop: settings.crop,
+      );
+    }
+    await Future.wait([blur.settled, photoBlur.settled]);
   }
 
   @override
   void dispose() {
     blur.dispose();
+    photoBlur.dispose();
     _persistDebounce?.cancel();
     image?.dispose();
     super.dispose();

@@ -20,6 +20,9 @@ class ValuePainter extends CustomPainter {
     required this.blurred,
     this.blurredView,
     this.blurredSize,
+    this.photoBlurred,
+    this.photoBlurredView,
+    this.photoBlurredSize,
     required this.settings,
     required this.view,
     required this.devicePixelRatio,
@@ -43,11 +46,19 @@ class ValuePainter extends CustomPainter {
   /// Null means it was rendered for exactly these.
   final ViewTransform? blurredView;
   final Size? blurredSize;
+
+  /// The photograph softened by the tone's blur, with the view and size it
+  /// was rendered for as for [blurred]. Null when the tone has no blur, or
+  /// until the pass lands; the photograph is then drawn sharp.
+  final ui.Image? photoBlurred;
+  final ViewTransform? photoBlurredView;
+  final Size? photoBlurredSize;
   final StudySettings settings;
   final ViewTransform view;
   final double devicePixelRatio;
 
-  /// Press and hold peeks the untouched photograph whatever the mode.
+  /// Press and hold peeks the photograph as PHOTO shows it, or from PHOTO
+  /// itself, the photograph untouched.
   final bool peeking;
 
   /// Live during a drag; written back to the study when the drag ends.
@@ -90,28 +101,19 @@ class ValuePainter extends CustomPainter {
     // Nothing is painted outside the picture: each surface supplies its own
     // ground behind this, and they differ — ink on the canvas, the lighter
     // surface on the desktop stage and on a shelf card.
-    if (showPhoto || blurred == null) {
-      // Only PHOTO is toned. A peek, and the picture before the first pass
-      // lands, are the photograph as it is.
-      final toned = settings.mode == ViewMode.photo && !peeking;
-      final pass = blurred;
-      if (toned && settings.tone.blur > 0 && pass != null) {
-        // Softened: the pass is the photograph blurred, over the area it
-        // was rendered for, and the tone is applied on top of it.
-        _paintTonedPhoto(
-          canvas,
-          area,
-          _passRect(dest, area),
-          image: pass,
-          crop: kWholeImage,
-        );
-      } else if (toned && !settings.tone.isNeutral) {
-        _paintTonedPhoto(canvas, area, dest);
-      } else {
+    if (showPhoto) {
+      // A peek from PHOTO compares the adjusted photograph with the
+      // untouched one; from anywhere else it is PHOTO's view.
+      if (settings.mode == ViewMode.photo && peeking) {
         _paintPhoto(canvas, area, dest);
+      } else {
+        _paintPhotoView(canvas, area, dest);
       }
+    } else if (blurred == null) {
+      // Until the first pass lands.
+      _paintPhoto(canvas, area, dest);
     } else {
-      final pass = _passRect(dest, area);
+      final pass = _passRect(dest, area, blurredView, blurredSize);
       canvas.save();
       canvas.clipRect(area);
       _paintProcessed(
@@ -124,7 +126,7 @@ class ValuePainter extends CustomPainter {
         final x = splitPosition * size.width;
         canvas.save();
         canvas.clipRect(Rect.fromLTWH(0, 0, x, size.height));
-        _paintPhoto(canvas, area, dest);
+        _paintPhotoView(canvas, area, dest);
         canvas.restore();
         // The rule sits on the boundary itself.
         canvas.drawRect(
@@ -166,8 +168,12 @@ class ValuePainter extends CustomPainter {
   /// view puts it — larger under a pinch, moved under a pan, the same shape
   /// when the frame changes — rather than stretched over whatever is visible
   /// now, which showed the wrong passage and then snapped.
-  Rect _passRect(Rect dest, Rect area) {
-    final passView = blurredView, passSize = blurredSize;
+  Rect _passRect(
+    Rect dest,
+    Rect area,
+    ViewTransform? passView,
+    Size? passSize,
+  ) {
     if (passView == null || passSize == null) return area;
     // Both are proportional to the frame, so the pass's own units will do.
     final passDest = passView.destination(_sourceSize, passSize);
@@ -183,6 +189,27 @@ class ValuePainter extends CustomPainter {
       x(passArea.right),
       y(passArea.bottom),
     );
+  }
+
+  /// The photograph as PHOTO shows it: toned, and softened when the tone
+  /// has a blur and its pass has landed.
+  void _paintPhotoView(Canvas canvas, Rect area, Rect dest) {
+    final softened = photoBlurred;
+    if (settings.tone.blur > 0 && softened != null) {
+      // The pass is the photograph blurred over the area it was rendered
+      // for; the tone is applied on top of it.
+      _paintTonedPhoto(
+        canvas,
+        area,
+        _passRect(dest, area, photoBlurredView, photoBlurredSize),
+        image: softened,
+        crop: kWholeImage,
+      );
+    } else if (!settings.tone.isNeutral) {
+      _paintTonedPhoto(canvas, area, dest);
+    } else {
+      _paintPhoto(canvas, area, dest);
+    }
   }
 
   void _paintPhoto(Canvas canvas, Rect area, Rect dest) {

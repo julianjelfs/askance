@@ -78,6 +78,16 @@ Future<Uint8List?> renderExport({
     steps: settings.steps,
     bias: settings.bias,
   );
+  final photoBlurred = switch (settings.photoBlurDetail) {
+    final detail? => await renderBlurredSource(
+      source: source,
+      outputPx: size,
+      detail: detail,
+      view: exportView,
+      crop: settings.crop,
+    ),
+    null => null,
+  };
 
   final disposer = DeferredDisposer();
   final recorder = ui.PictureRecorder();
@@ -86,6 +96,7 @@ Future<Uint8List?> renderExport({
     shader: shader,
     source: source,
     blurred: blurred,
+    photoBlurred: photoBlurred,
     settings: settings,
     view: exportView,
     // The export canvas is already at output resolution, so one logical pixel
@@ -108,6 +119,7 @@ Future<Uint8List?> renderExport({
   painter.disposeResources();
   disposer.disposeAll();
   blurred.dispose();
+  photoBlurred?.dispose();
   return png?.buffer.asUint8List();
 }
 

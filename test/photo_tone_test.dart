@@ -1,6 +1,5 @@
 import 'dart:ui' as ui;
 
-import 'package:askance/engine/blur_pass.dart';
 import 'package:askance/engine/deferred_disposer.dart';
 import 'package:askance/engine/engine.dart';
 import 'package:askance/engine/lstar.dart';
@@ -121,11 +120,13 @@ void main() {
     expect(px, (r: 0x20, g: 0x40, b: 0xFF));
   });
 
-  test(
-    'blur in PHOTO softens the photograph, and none leaves it sharp',
-    () async {
+  group('the photograph as PHOTO shows it', () {
+    late ui.Image source;
+    late ValueShader shader;
+    const size = Size(200, 100);
+
+    setUpAll(() async {
       // Black on the left, white on the right: a hard edge down the middle.
-      const size = Size(200, 100);
       final recorder = ui.PictureRecorder();
       Canvas(recorder)
         ..drawColor(const Color(0xFFFFFFFF), BlendMode.src)
@@ -134,56 +135,94 @@ void main() {
           Paint()..color = const Color(0xFF000000),
         );
       final picture = recorder.endRecording();
-      final source = await picture.toImage(200, 100);
+      source = await picture.toImage(200, 100);
       picture.dispose();
-      addTearDown(source.dispose);
-      final shader = await ValueShader.load();
+      shader = await ValueShader.load();
+    });
+    tearDownAll(() => source.dispose());
 
-      /// Red just left of the edge, as the canvas shows the study.
-      Future<int> nearEdge(double blur) async {
-        final settings = StudySettings(
-          mode: ViewMode.photo,
-          tone: PhotoTone(blur: blur),
-        );
-        final pass = BlurPass();
-        addTearDown(pass.dispose);
-        pass.request(
-          source: source,
-          outputPx: size,
-          detail: settings.pass.detail,
-          view: const ViewTransform(),
-          smoothing: settings.pass.smoothing,
-          lockDetail: settings.pass.lockDetail,
-        );
-        await pass.settled;
-        final disposer = DeferredDisposer();
-        final out = ui.PictureRecorder();
-        final painter = ValuePainter(
-          shader: shader,
-          source: source,
-          blurred: pass.image,
-          blurredView: pass.imageView,
-          blurredSize: pass.imageOutputPx,
-          settings: settings,
-          view: const ViewTransform(),
-          devicePixelRatio: 1,
-          peeking: false,
-          splitPosition: 0.5,
-          disposer: disposer,
-          drawGrid: false,
-        )..paint(Canvas(out, Offset.zero & size), size);
-        final image = await out.endRecording().toImage(200, 100);
-        painter.disposeResources();
-        disposer.disposeAll();
-        final bytes = (await image.toByteData(
-          format: ui.ImageByteFormat.rawRgba,
-        ))!.buffer.asUint8List();
-        image.dispose();
-        return bytes[(50 * 200 + 97) * 4];
-      }
+    /// Red just left of the edge, as the canvas paints [settings], with both
+    /// passes it would have asked for.
+    Future<int> nearEdge(StudySettings settings, {bool peeking = false}) async {
+      Future<ui.Image> pass(double detail) => renderBlurredSource(
+        source: source,
+        outputPx: size,
+        detail: detail,
+        view: const ViewTransform(),
+      );
+      final study = await pass(settings.detail);
+      final photo = settings.photoBlurDetail == null
+          ? null
+          : await pass(settings.photoBlurDetail!);
+      final disposer = DeferredDisposer();
+      final out = ui.PictureRecorder();
+      final painter = ValuePainter(
+        shader: shader,
+        source: source,
+        blurred: study,
+        photoBlurred: photo,
+        settings: settings,
+        view: const ViewTransform(),
+        devicePixelRatio: 1,
+        peeking: peeking,
+        // Split with the photograph across the edge being probed.
+        splitPosition: 0.75,
+        disposer: disposer,
+        drawGrid: false,
+      )..paint(Canvas(out, Offset.zero & size), size);
+      final image = await out.endRecording().toImage(200, 100);
+      painter.disposeResources();
+      disposer.disposeAll();
+      study.dispose();
+      photo?.dispose();
+      final bytes = (await image.toByteData(
+        format: ui.ImageByteFormat.rawRgba,
+      ))!.buffer.asUint8List();
+      image.dispose();
+      return bytes[(50 * 200 + 97) * 4];
+    }
 
-      expect(await nearEdge(0), lessThan(10));
-      expect(await nearEdge(1), greaterThan(40));
-    },
-  );
+    const blurred = PhotoTone(blur: 1);
+
+    test('is sharp with no blur, and softened with it', () async {
+      expect(
+        await nearEdge(const StudySettings(mode: ViewMode.photo)),
+        lessThan(10),
+      );
+      expect(
+        await nearEdge(
+          const StudySettings(mode: ViewMode.photo, tone: blurred),
+        ),
+        greaterThan(40),
+      );
+    });
+
+    test('is what a peek shows from the value map', () async {
+      expect(
+        await nearEdge(
+          const StudySettings(steps: 2, tone: blurred),
+          peeking: true,
+        ),
+        greaterThan(40),
+      );
+    });
+
+    test('is what SPLIT compares the value map against', () async {
+      expect(
+        await nearEdge(
+          const StudySettings(mode: ViewMode.split, tone: blurred),
+        ),
+        greaterThan(40),
+      );
+      expect(
+        await nearEdge(
+          const StudySettings(
+            mode: ViewMode.split,
+            tone: PhotoTone(brightness: 1),
+          ),
+        ),
+        greaterThan(100),
+      );
+    });
+  });
 }

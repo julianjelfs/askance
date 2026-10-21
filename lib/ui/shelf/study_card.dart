@@ -335,11 +335,13 @@ class StudyThumbnail extends ConsumerStatefulWidget {
 class _StudyThumbnailState extends ConsumerState<StudyThumbnail> {
   final _disposer = DeferredDisposer();
   final _blur = BlurPass();
+  final _photoBlur = BlurPass();
 
   @override
   void dispose() {
     _disposer.disposeAll();
     _blur.dispose();
+    _photoBlur.dispose();
     super.dispose();
   }
 
@@ -369,21 +371,31 @@ class _StudyThumbnailState extends ConsumerState<StudyThumbnail> {
         _blur.request(
           source: image,
           outputPx: constraints.biggest * dpr,
-          detail: widget.study.settings.pass.detail,
+          detail: widget.study.settings.detail,
           view: view,
-          smoothing: widget.study.settings.pass.smoothing,
-          lockDetail: widget.study.settings.pass.lockDetail,
+          smoothing: widget.study.settings.smoothing,
+          lockDetail: widget.study.settings.lockDetail,
           crop: widget.study.settings.crop,
           steps: widget.study.settings.steps,
           bias: widget.study.settings.bias,
         );
+        if (widget.study.settings.photoBlurDetail case final detail?) {
+          _photoBlur.request(
+            source: image,
+            outputPx: constraints.biggest * dpr,
+            detail: detail,
+            view: view,
+            crop: widget.study.settings.crop,
+          );
+        }
         return ListenableBuilder(
-          listenable: _blur,
+          listenable: Listenable.merge([_blur, _photoBlur]),
           builder: (context, _) => CustomPaint(
             painter: ValuePainter(
               shader: shader,
               source: image,
               blurred: _blur.image,
+              photoBlurred: _photoBlur.image,
               settings: widget.study.settings,
               view: view,
               devicePixelRatio: dpr,
