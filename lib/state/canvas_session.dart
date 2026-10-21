@@ -506,6 +506,7 @@ class CanvasSession extends ChangeNotifier {
       crop: settings.crop,
       steps: settings.steps,
       bias: settings.bias,
+      tone: settings.tone,
     );
     if (settings.photoBlurDetail case final detail?) {
       photoBlur.request(

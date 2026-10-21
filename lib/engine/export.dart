@@ -77,6 +77,7 @@ Future<Uint8List?> renderExport({
     crop: settings.crop,
     steps: settings.steps,
     bias: settings.bias,
+    tone: settings.tone,
   );
   final photoBlurred = switch (settings.photoBlurDetail) {
     final detail? => await renderBlurredSource(

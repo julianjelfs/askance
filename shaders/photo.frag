@@ -2,8 +2,8 @@
 #include <flutter/runtime_effect.glsl>
 
 // The photograph, as PHOTO shows it: optionally in black and white, with
-// brightness and contrast. A way of looking at the reference, not part of the
-// value engine — nothing here reaches the value map.
+// brightness and contrast. askance.frag bands the photograph through the
+// same curve, so the value map is made from what this shows.
 //
 // Black and white is CIE L*, the lightness the value map quantises, rather
 // than a luma of the gamma-encoded channels, so a passage that reads as a

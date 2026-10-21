@@ -175,6 +175,7 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
             crop: session.settings.crop,
             steps: session.settings.steps,
             bias: session.settings.bias,
+            tone: session.settings.tone,
           );
           if (session.settings.photoBlurDetail case final detail?) {
             session.photoBlur.request(

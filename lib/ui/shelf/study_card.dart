@@ -378,6 +378,7 @@ class _StudyThumbnailState extends ConsumerState<StudyThumbnail> {
           crop: widget.study.settings.crop,
           steps: widget.study.settings.steps,
           bias: widget.study.settings.bias,
+          tone: widget.study.settings.tone,
         );
         if (widget.study.settings.photoBlurDetail case final detail?) {
           _photoBlur.request(

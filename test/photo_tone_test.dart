@@ -225,4 +225,98 @@ void main() {
       );
     });
   });
+
+  group('the value map is made from the photograph as PHOTO shows it', () {
+    /// The colour painted in the middle of a [grey] photograph, quantised
+    /// to two values, once the pass for [settings] has rendered.
+    Future<int> valueOf(int grey, StudySettings settings) async {
+      const size = Size(60, 60);
+      final recorder = ui.PictureRecorder();
+      Canvas(
+        recorder,
+      ).drawColor(Color.fromARGB(255, grey, grey, grey), BlendMode.src);
+      final picture = recorder.endRecording();
+      final source = await picture.toImage(60, 60);
+      picture.dispose();
+      final pass = await renderBlurredSource(
+        source: source,
+        outputPx: size,
+        detail: settings.detail,
+        view: const ViewTransform(),
+        smoothing: settings.smoothing,
+        steps: settings.steps,
+        bias: settings.bias,
+        tone: settings.tone,
+      );
+      final disposer = DeferredDisposer();
+      final out = ui.PictureRecorder();
+      final painter = ValuePainter(
+        shader: await ValueShader.load(),
+        source: source,
+        blurred: pass,
+        settings: settings,
+        view: const ViewTransform(),
+        devicePixelRatio: 1,
+        peeking: false,
+        splitPosition: 0.5,
+        disposer: disposer,
+        drawGrid: false,
+      )..paint(Canvas(out, Offset.zero & size), size);
+      final image = await out.endRecording().toImage(60, 60);
+      painter.disposeResources();
+      disposer.disposeAll();
+      pass.dispose();
+      source.dispose();
+      final bytes = (await image.toByteData(
+        format: ui.ImageByteFormat.rawRgba,
+      ))!.buffer.asUint8List();
+      image.dispose();
+      return bytes[(30 * 60 + 30) * 4];
+    }
+
+    for (final smoothing in [Smoothing.gaussian, Smoothing.block]) {
+      test('brightness lifts a passage into a lighter value, '
+          '${smoothing.label}', () async {
+        // L* about 40: the darker of two values, until brightened.
+        final dark = StudySettings(steps: 2, smoothing: smoothing);
+        final brightened = dark.copyWith(
+          tone: const PhotoTone(brightness: 0.6),
+        );
+        final ramp = dark.palette;
+        expect(await valueOf(95, dark), (ramp[0].r * 255).round());
+        expect(await valueOf(95, brightened), (ramp[1].r * 255).round());
+      });
+    }
+    test('blur softens the study as well as the photograph', () async {
+      // Black on the left, white on the right.
+      final recorder = ui.PictureRecorder();
+      Canvas(recorder)
+        ..drawColor(const Color(0xFFFFFFFF), BlendMode.src)
+        ..drawRect(
+          const Rect.fromLTWH(0, 0, 100, 100),
+          Paint()..color = const Color(0xFF000000),
+        );
+      final picture = recorder.endRecording();
+      final source = await picture.toImage(200, 100);
+      picture.dispose();
+      Future<int> nearEdge(PhotoTone tone) async {
+        final pass = await renderBlurredSource(
+          source: source,
+          outputPx: const Size(200, 100),
+          detail: 1,
+          view: const ViewTransform(),
+          tone: tone,
+        );
+        final bytes = (await pass.toByteData(
+          format: ui.ImageByteFormat.rawRgba,
+        ))!.buffer.asUint8List();
+        pass.dispose();
+        return bytes[(50 * 200 + 97) * 4];
+      }
+
+      expect(await nearEdge(const PhotoTone()), lessThan(10));
+      expect(await nearEdge(const PhotoTone(blur: 1)), greaterThan(40));
+      source.dispose();
+    });
+  });
 }

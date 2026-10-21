@@ -2,6 +2,7 @@ import 'dart:ui' as ui;
 
 import 'package:askance/engine/blur_pass.dart';
 import 'package:askance/engine/engine.dart';
+import 'package:askance/engine/tone.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -20,6 +21,7 @@ void main() {
     Rect crop = const Rect.fromLTRB(0, 0, 1, 1),
     int steps = 3,
     double bias = 0,
+    PhotoTone tone = const PhotoTone(),
   }) async {
     rendered.add((smoothing, outputPx));
     return pixel.clone();

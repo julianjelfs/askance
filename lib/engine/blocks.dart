@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'dart:ui' show Offset;
 
 import 'regions.dart';
+import 'tone.dart';
 
 /// The straight-edged shapes of a band map: for each threshold, the outline of
 /// everything darker than it, reduced to a few straight runs.
@@ -32,6 +33,9 @@ typedef BlockInput = ({
   int height,
   int steps,
   double bias,
+  bool mono,
+  double brightness,
+  double contrast,
   double tolerance,
 });
 
@@ -42,6 +46,11 @@ BlockShapes blockShapes(BlockInput input) {
     input.height,
     input.steps,
     bias: input.bias,
+    tone: PhotoTone(
+      mono: input.mono,
+      brightness: input.brightness,
+      contrast: input.contrast,
+    ),
   );
   final masks = <List<List<Offset>>>[];
   final mask = Uint8List(map.width * map.height);

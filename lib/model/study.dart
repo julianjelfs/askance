@@ -3,7 +3,10 @@ import 'dart:ui' show Color, Offset, Rect;
 import '../engine/crop.dart';
 import '../engine/engine.dart';
 import '../engine/random_ramp.dart';
+import '../engine/tone.dart';
 import '../engine/value_scale.dart';
+
+export '../engine/tone.dart' show PhotoTone;
 
 /// The grid divides the photograph, not the view: at every level each cell is
 /// halved both ways, so the cells are always the picture's own shape. LINES
@@ -24,72 +27,6 @@ enum GridMode {
     'diamond' => diagonals,
     _ => off,
   };
-}
-
-/// How PHOTO shows the photograph: in colour or black and white, with
-/// brightness and contrast. Only PHOTO: the split's photograph and a peek are
-/// always the untouched reference, and the value map never sees any of it.
-class PhotoTone {
-  const PhotoTone({
-    this.mono = false,
-    this.brightness = 0,
-    this.contrast = 0,
-    this.blur = 0,
-  });
-
-  final bool mono;
-
-  /// -1..1, 0 untouched.
-  final double brightness;
-
-  /// -1..1, 0 untouched.
-  final double contrast;
-
-  /// 0..1, 0 sharp. Squinting at the photograph: the same screen-space blur
-  /// the study simplifies with, at full travel as soft as the lowest detail.
-  final double blur;
-
-  bool get isNeutral => !mono && brightness == 0 && contrast == 0 && blur == 0;
-
-  PhotoTone copyWith({
-    bool? mono,
-    double? brightness,
-    double? contrast,
-    double? blur,
-  }) => PhotoTone(
-    mono: mono ?? this.mono,
-    brightness: brightness ?? this.brightness,
-    contrast: contrast ?? this.contrast,
-    blur: blur ?? this.blur,
-  );
-
-  Map<String, Object?> toJson() => {
-    'mono': mono,
-    'brightness': brightness,
-    'contrast': contrast,
-    'blur': blur,
-  };
-
-  static PhotoTone fromJson(Object? json) {
-    if (json is! Map) return const PhotoTone();
-    return PhotoTone(
-      mono: json['mono'] == true,
-      brightness: _double(json['brightness'], 0).clamp(-1.0, 1.0),
-      contrast: _double(json['contrast'], 0).clamp(-1.0, 1.0),
-      blur: _double(json['blur'], 0).clamp(0.0, 1.0),
-    );
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      other is PhotoTone &&
-      other.mono == mono &&
-      other.brightness == brightness &&
-      other.contrast == contrast &&
-      other.blur == blur;
-
-  @override
-  int get hashCode => Object.hash(mono, brightness, contrast, blur);
 }
 
 /// Everything a study remembers. Zoom, pan, peek, chrome visibility and the

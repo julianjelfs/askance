@@ -272,6 +272,7 @@ class ValuePainter extends CustomPainter {
       // Clamped so a steps change never asks for bands that no longer exist.
       skeletonFill: settings.skeletonFill.clamp(0, settings.steps),
       bias: settings.bias,
+      tone: settings.smoothing == Smoothing.block ? null : settings.tone,
     )..setImageSampler(0, source);
 
     canvas.drawRect(area, Paint()..shader = _fragment!);
