@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:askance/engine/deferred_disposer.dart';
 import 'package:askance/engine/engine.dart';
 import 'package:askance/engine/lstar.dart';
+import 'package:askance/engine/tone.dart';
 import 'package:askance/engine/value_painter.dart';
 import 'package:askance/model/study.dart';
 import 'package:askance/state/canvas_session.dart';
@@ -28,9 +29,20 @@ void main() {
   group('a stored tone', () {
     test('survives saving and reopening a study', () {
       const settings = StudySettings(
-        tone: PhotoTone(mono: true, brightness: -0.3, contrast: 0.8, blur: 0.6),
+        bias: -0.1,
+        contrast: 0.8,
+        tone: PhotoTone(mono: true, squint: true),
       );
       expect(StudySettings.fromJson(settings.toJson()), settings);
+    });
+
+    test('kept when PHOTO had its own blur and contrast opens as the '
+        "study's", () {
+      final settings = StudySettings.fromJson({
+        'tone': {'mono': true, 'brightness': 0.3, 'contrast': 0.6, 'blur': 0.4},
+      });
+      expect(settings.tone, const PhotoTone(mono: true, squint: true));
+      expect(settings.contrast, 0.6);
     });
 
     test('that is missing or unusable opens untouched', () {
@@ -107,17 +119,50 @@ void main() {
     }
   });
 
-  test('a peek shows the photograph untouched, whatever the tone', () async {
+  test('a peek from PHOTO shows the photograph untouched, whatever the '
+      'tone', () async {
     const colour = Color(0xFF2040FF);
     final px = await paintPhoto(
       colour,
       const StudySettings(
         mode: ViewMode.photo,
-        tone: PhotoTone(mono: true, contrast: 1),
+        bias: 0.2,
+        contrast: 1,
+        tone: PhotoTone(mono: true),
       ),
       peeking: true,
     );
     expect(px, (r: 0x20, g: 0x40, b: 0xFF));
+  });
+
+  test('PHOTO in colour has the lightness the value map bands', () async {
+    for (final (bias, contrast) in const [
+      (0.15, 0.0),
+      (-0.1, 0.7),
+      (0.0, -0.8),
+    ]) {
+      final settings = StudySettings(
+        mode: ViewMode.photo,
+        bias: bias,
+        contrast: contrast,
+      );
+      for (final colour in const [Color(0xFF2040FF), Color(0xFF8A6A3C)]) {
+        final px = await paintPhoto(colour, settings);
+        final source = lstarOfSrgb8(
+          (colour.r * 255).round(),
+          (colour.g * 255).round(),
+          (colour.b * 255).round(),
+        );
+        expect(
+          lstarOfSrgb8(px.r, px.g, px.b),
+          closeTo(
+            toneCurve(source / 100, shift: bias, contrast: contrast) * 100,
+            1.5,
+          ),
+          reason: '$colour $bias $contrast',
+        );
+      }
+    }
   });
 
   group('the photograph as PHOTO shows it', () {
@@ -151,9 +196,7 @@ void main() {
         view: const ViewTransform(),
       );
       final study = await pass(settings.detail);
-      final photo = settings.photoBlurDetail == null
-          ? null
-          : await pass(settings.photoBlurDetail!);
+      final photo = settings.tone.squint ? await pass(settings.detail) : null;
       final disposer = DeferredDisposer();
       final out = ui.PictureRecorder();
       final painter = ValuePainter(
@@ -182,16 +225,16 @@ void main() {
       return bytes[(50 * 200 + 97) * 4];
     }
 
-    const blurred = PhotoTone(blur: 1);
+    const squint = PhotoTone(squint: true);
 
-    test('is sharp with no blur, and softened with it', () async {
+    test('is sharp, or squinting, blurred by the study\'s detail', () async {
       expect(
         await nearEdge(const StudySettings(mode: ViewMode.photo)),
         lessThan(10),
       );
       expect(
         await nearEdge(
-          const StudySettings(mode: ViewMode.photo, tone: blurred),
+          const StudySettings(mode: ViewMode.photo, detail: 0, tone: squint),
         ),
         greaterThan(40),
       );
@@ -200,7 +243,7 @@ void main() {
     test('is what a peek shows from the value map', () async {
       expect(
         await nearEdge(
-          const StudySettings(steps: 2, tone: blurred),
+          const StudySettings(steps: 2, detail: 0, tone: squint),
           peeking: true,
         ),
         greaterThan(40),
@@ -210,25 +253,20 @@ void main() {
     test('is what SPLIT compares the value map against', () async {
       expect(
         await nearEdge(
-          const StudySettings(mode: ViewMode.split, tone: blurred),
+          const StudySettings(mode: ViewMode.split, detail: 0, tone: squint),
         ),
         greaterThan(40),
       );
       expect(
-        await nearEdge(
-          const StudySettings(
-            mode: ViewMode.split,
-            tone: PhotoTone(brightness: 1),
-          ),
-        ),
-        greaterThan(100),
+        await nearEdge(const StudySettings(mode: ViewMode.split, bias: 0.25)),
+        greaterThan(40),
       );
     });
   });
 
   group('the value map is made from the photograph as PHOTO shows it', () {
-    /// The colour painted in the middle of a [grey] photograph, quantised
-    /// to two values, once the pass for [settings] has rendered.
+    /// The colour painted in the middle of a [grey] photograph once the
+    /// pass for [settings] has rendered.
     Future<int> valueOf(int grey, StudySettings settings) async {
       const size = Size(60, 60);
       final recorder = ui.PictureRecorder();
@@ -246,7 +284,7 @@ void main() {
         smoothing: settings.smoothing,
         steps: settings.steps,
         bias: settings.bias,
-        tone: settings.tone,
+        contrast: settings.contrast,
       );
       final disposer = DeferredDisposer();
       final out = ui.PictureRecorder();
@@ -275,48 +313,28 @@ void main() {
     }
 
     for (final smoothing in [Smoothing.gaussian, Smoothing.block]) {
-      test('brightness lifts a passage into a lighter value, '
+      test('contrast pushes a passage into another value, '
           '${smoothing.label}', () async {
-        // L* about 40: the darker of two values, until brightened.
-        final dark = StudySettings(steps: 2, smoothing: smoothing);
-        final brightened = dark.copyWith(
-          tone: const PhotoTone(brightness: 0.6),
+        // L* about 40: the middle of three values, until the contrast
+        // spreads it down into the darkest.
+        final flat = StudySettings(steps: 3, smoothing: smoothing);
+        final punchy = flat.copyWith(contrast: 0.5);
+        final ramp = flat.palette;
+        expect(await valueOf(95, flat), (ramp[1].r * 255).round());
+        expect(await valueOf(95, punchy), (ramp[0].r * 255).round());
+      });
+
+      test('a steep contrast keeps a passage in its own value, '
+          '${smoothing.label}', () async {
+        // L* about 45, which full contrast puts in the second of five
+        // values. BLOCK fills it with a grey the shader must read back there.
+        final steep = StudySettings(
+          steps: 5,
+          smoothing: smoothing,
+          contrast: 1,
         );
-        final ramp = dark.palette;
-        expect(await valueOf(95, dark), (ramp[0].r * 255).round());
-        expect(await valueOf(95, brightened), (ramp[1].r * 255).round());
+        expect(await valueOf(107, steep), (steep.palette[1].r * 255).round());
       });
     }
-    test('blur softens the study as well as the photograph', () async {
-      // Black on the left, white on the right.
-      final recorder = ui.PictureRecorder();
-      Canvas(recorder)
-        ..drawColor(const Color(0xFFFFFFFF), BlendMode.src)
-        ..drawRect(
-          const Rect.fromLTWH(0, 0, 100, 100),
-          Paint()..color = const Color(0xFF000000),
-        );
-      final picture = recorder.endRecording();
-      final source = await picture.toImage(200, 100);
-      picture.dispose();
-      Future<int> nearEdge(PhotoTone tone) async {
-        final pass = await renderBlurredSource(
-          source: source,
-          outputPx: const Size(200, 100),
-          detail: 1,
-          view: const ViewTransform(),
-          tone: tone,
-        );
-        final bytes = (await pass.toByteData(
-          format: ui.ImageByteFormat.rawRgba,
-        ))!.buffer.asUint8List();
-        pass.dispose();
-        return bytes[(50 * 200 + 97) * 4];
-      }
-
-      expect(await nearEdge(const PhotoTone()), lessThan(10));
-      expect(await nearEdge(const PhotoTone(blur: 1)), greaterThan(40));
-      source.dispose();
-    });
   });
 }

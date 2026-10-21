@@ -31,13 +31,10 @@ uniform vec3 uC6;
 // painting blocked in dark-first.
 uniform float uFill;
 
-// The photograph is banded as PHOTO shows it: brightness and contrast, on
-// the lightness in black and white and on each channel in colour. Off for
-// BLOCK, whose pass is already its bands' greys.
-uniform float uTone;      // 1 = apply
-uniform float uToneMono;  // 1 = black and white
-uniform float uBrightness;// -1..1
-uniform float uContrast;  // -1..1
+// Spreads the steps apart or squeezes them together about the middle, -1..1.
+// With uBias, the picture's tone curve, which PHOTO shows the photograph
+// through too.
+uniform float uContrast;
 
 uniform sampler2D uSrc;
 
@@ -64,29 +61,20 @@ float lstar(vec3 c) {
   return y > 0.008856 ? 116.0 * pow(y, 1.0 / 3.0) - 16.0 : 903.3 * y;
 }
 
-// The tone curve, as photo.frag and PhotoTone.curve have it.
+// The tone curve, as photo.frag and toneCurve have it.
 float tone(float v) {
   float k = pow(4.0, uContrast);
-  return clamp((v - 0.5) * k + 0.5 + uBrightness * 0.5, 0.0, 1.0);
+  return clamp((v - 0.5) * k + 0.5 + uBias, 0.0, 1.0);
 }
 
 // Thresholds are absolute, never derived from what happens to be on screen,
 // so a pixel keeps its value between a wide view and a close-up.
 float bandAt(vec2 devPx) {
   vec3 c = texture(uSrc, devPx / uDevice).rgb;
-  float l;
-  if (uTone < 0.5) {
-    l = lstar(c);
-  } else if (uToneMono > 0.5) {
-    l = tone(lstar(c) / 100.0) * 100.0;
-  } else {
-    l = lstar(vec3(tone(c.r), tone(c.g), tone(c.b)));
-  }
-  // uBias slides the whole ladder of thresholds at once. The steps stay
-  // evenly spaced in L*, so a value still means the same thing; it only
-  // decides which side of a boundary a borderline passage falls on.
+  // Banded through the tone curve: uBias slides the whole ladder of
+  // thresholds at once, uContrast spreads or squeezes it about the middle.
   return clamp(
-    floor((l / 100.0 + uBias) * uSteps),
+    floor(tone(lstar(c) / 100.0) * uSteps),
     0.0,
     uSteps - 1.0
   );

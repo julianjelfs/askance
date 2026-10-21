@@ -315,8 +315,8 @@ class _RailState extends ConsumerState<_Rail> {
                     ),
                   ],
                   // Like the phone's tool bar, the rail only offers what
-                  // adjusts the view on screen: the photograph has its tone,
-                  // and nothing of the value map's.
+                  // adjusts the view on screen: the photograph has its tone
+                  // and squint, and nothing else of the value map's.
                   if (mode == ViewMode.photo)
                     _section('Tone', null, ToneControl(session: session))
                   else ...[
@@ -341,11 +341,7 @@ class _RailState extends ConsumerState<_Rail> {
                       ],
                     ),
                     _gap,
-                    ControlLabelRow(
-                      label: 'Where the steps fall',
-                      value: BiasControl.readout(session.settings.bias),
-                    ),
-                    BiasControl(session: session),
+                    ...pictureToneControls(session, 1),
                     if (mode == ViewMode.skeleton)
                       _section(
                         'Blocked in under the lines',

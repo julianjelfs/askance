@@ -77,18 +77,18 @@ Future<Uint8List?> renderExport({
     crop: settings.crop,
     steps: settings.steps,
     bias: settings.bias,
-    tone: settings.tone,
+    contrast: settings.contrast,
   );
-  final photoBlurred = switch (settings.photoBlurDetail) {
-    final detail? => await renderBlurredSource(
-      source: source,
-      outputPx: size,
-      detail: detail,
-      view: exportView,
-      crop: settings.crop,
-    ),
-    null => null,
-  };
+  final photoBlurred = settings.tone.squint
+      ? await renderBlurredSource(
+          source: source,
+          outputPx: size,
+          detail: settings.detail,
+          view: exportView,
+          lockDetail: settings.lockDetail,
+          crop: settings.crop,
+        )
+      : null;
 
   final disposer = DeferredDisposer();
   final recorder = ui.PictureRecorder();

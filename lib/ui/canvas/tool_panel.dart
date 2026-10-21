@@ -185,7 +185,31 @@ class BiasControl extends StatelessWidget {
             session.setBias((v - 0.5) * StudySettings.maxBias * 2),
       ),
       // A positive bias lifts every pixel's lightness before it is banded.
-      const SliderEnds('More reads dark', 'More reads light'),
+      const SliderEnds('Darker', 'Lighter'),
+    ],
+  );
+}
+
+/// Spreads the steps apart or squeezes them together about the middle.
+class ContrastControl extends StatelessWidget {
+  const ContrastControl({super.key, required this.session});
+  final CanvasSession session;
+
+  static String readout(double contrast) {
+    final n = (contrast * 50).round();
+    return n == 0 ? '0' : (n > 0 ? '+$n' : '$n');
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      RuleSlider(
+        origin: 0.5,
+        value: session.settings.contrast / 2 + 0.5,
+        onChanged: (v) => session.setContrast(v * 2 - 1),
+      ),
+      const SliderEnds('Flatter', 'Punchier'),
     ],
   );
 }
@@ -607,19 +631,18 @@ Color _onColour(Color colour) => colour.computeLuminance() > 0.25
 
 /// How PHOTO shows the photograph: colour or black and white, brightness and
 /// contrast. Shared by the phone's tone panel and the desktop rail.
+/// PHOTO: how the photograph is drawn, and the picture's tone, shared with
+/// the value map. Squinting blurs it by the study's own detail, so the
+/// detail is offered here too while it shows.
 class ToneControl extends StatelessWidget {
   const ToneControl({super.key, required this.session});
   final CanvasSession session;
 
-  static String readout(double v) {
-    final n = (v * 50).round();
-    return n == 0 ? '0' : (n > 0 ? '+$n' : '$n');
-  }
-
   @override
   Widget build(BuildContext context) {
     final s = DesignScale.of(context);
-    final tone = session.settings.tone;
+    final settings = session.settings;
+    final tone = settings.tone;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -630,36 +653,43 @@ class ToneControl extends StatelessWidget {
           labelOf: (v) => v ? 'Black & white' : 'Colour',
           onChanged: (v) => session.setTone(tone.copyWith(mono: v)),
         ),
-        SizedBox(height: 16 * s),
-        ControlLabelRow(label: 'Brightness', value: readout(tone.brightness)),
-        RuleSlider(
-          origin: 0.5,
-          value: tone.brightness / 2 + 0.5,
-          onChanged: (v) =>
-              session.setTone(tone.copyWith(brightness: v * 2 - 1)),
+        SizedBox(height: 8 * s),
+        SegmentedControl<bool>(
+          values: const [false, true],
+          selected: tone.squint,
+          labelOf: (v) => v ? 'Squint' : 'Sharp',
+          onChanged: (v) => session.setTone(tone.copyWith(squint: v)),
         ),
-        SizedBox(height: 10 * s),
-        ControlLabelRow(label: 'Contrast', value: readout(tone.contrast)),
-        RuleSlider(
-          origin: 0.5,
-          value: tone.contrast / 2 + 0.5,
-          onChanged: (v) => session.setTone(tone.copyWith(contrast: v * 2 - 1)),
-        ),
-        SizedBox(height: 10 * s),
-        // Squinting at the photograph, to see its big shapes without
-        // committing to values.
-        ControlLabelRow(
-          label: 'Blur',
-          value: tone.blur == 0 ? 'Off' : '${(tone.blur * 100).round()}',
-        ),
-        RuleSlider(
-          value: tone.blur,
-          onChanged: (v) => session.setTone(tone.copyWith(blur: v)),
-        ),
+        if (tone.squint) ...[
+          SizedBox(height: 12 * s),
+          ControlLabelRow(
+            label: 'Detail',
+            value: '${(settings.detail * 100).round()}',
+          ),
+          DetailControl(session: session),
+        ],
+        SizedBox(height: 12 * s),
+        ...pictureToneControls(session, s),
       ],
     );
   }
 }
+
+/// Brightness and contrast: the picture's tone, which the value map bands
+/// and PHOTO shows. The same two controls wherever they appear.
+List<Widget> pictureToneControls(CanvasSession session, double s) => [
+  ControlLabelRow(
+    label: 'Brightness',
+    value: BiasControl.readout(session.settings.bias),
+  ),
+  BiasControl(session: session),
+  SizedBox(height: 10 * s),
+  ControlLabelRow(
+    label: 'Contrast',
+    value: ContrastControl.readout(session.settings.contrast),
+  ),
+  ContrastControl(session: session),
+];
 
 /// EDGES only: how many values, darkest first, are blocked in under the
 /// lines.
@@ -824,11 +854,7 @@ class ToolPanel extends StatelessWidget {
             ],
           ),
           gap,
-          ControlLabelRow(
-            label: 'Where the steps fall',
-            value: BiasControl.readout(session.settings.bias),
-          ),
-          BiasControl(session: session),
+          ...pictureToneControls(session, s),
         ],
         CanvasTool.detail => [
           SmoothingControl(session: session),

@@ -43,6 +43,7 @@ class StudySettings {
     this.smoothing = Smoothing.gaussian,
     this.lockDetail = false,
     this.bias = 0,
+    this.contrast = 0,
     this.splitPosition = 0.5,
     this.randomSeed = 0,
     this.splitBase = ViewMode.value,
@@ -86,6 +87,13 @@ class StudySettings {
   /// this only decides which side of a boundary a borderline passage falls
   /// on, which is what an under- or over-exposed photograph needs.
   final double bias;
+
+  /// Spreads the steps apart, -1..1, or squeezes them together, about the
+  /// middle of the range. Up, the middle values split into more of the
+  /// steps and the darks and lights merge; down, the reverse. With [bias],
+  /// the picture's tone curve: the value map bands the photograph through
+  /// it, and PHOTO shows the photograph through it.
+  final double contrast;
   final double splitPosition;
 
   /// Which deal of colours the RANDOM mode is showing. Kept with the study so
@@ -112,8 +120,11 @@ class StudySettings {
   /// board.
   final Rect crop;
 
-  /// How PHOTO shows the photograph.
+  /// How PHOTO draws the photograph.
   final PhotoTone tone;
+
+  /// Whether the tone curve leaves the photograph as it is.
+  bool get keepsTone => bias == 0 && contrast == 0;
 
   /// The colours the processed image is painted in, darkest first: the
   /// scale's ramp, or the random deal when RANDOM is showing or is what split
@@ -138,12 +149,6 @@ class StudySettings {
     (steps: 6, detail: 0.7),
     (steps: 7, detail: 0.8),
   ];
-
-  /// The detail of a second, plain Gaussian pass that softens the
-  /// photograph wherever it is shown as PHOTO shows it, or null when the
-  /// tone has no blur and the photograph is drawn sharp. Full blur matches
-  /// the lowest detail.
-  double? get photoBlurDetail => tone.blur > 0 ? 1 - tone.blur : null;
 
   /// Which of [stages] the values and detail are at, or null once either has
   /// been moved by hand.
@@ -174,6 +179,7 @@ class StudySettings {
     Smoothing? smoothing,
     bool? lockDetail,
     double? bias,
+    double? contrast,
     double? splitPosition,
     int? randomSeed,
     ViewMode? splitBase,
@@ -191,6 +197,7 @@ class StudySettings {
     smoothing: smoothing ?? this.smoothing,
     lockDetail: lockDetail ?? this.lockDetail,
     bias: bias ?? this.bias,
+    contrast: contrast ?? this.contrast,
     splitPosition: splitPosition ?? this.splitPosition,
     randomSeed: randomSeed ?? this.randomSeed,
     splitBase: splitBase ?? this.splitBase,
@@ -210,6 +217,7 @@ class StudySettings {
     'smoothing': smoothing.name,
     'lockDetail': lockDetail,
     'bias': bias,
+    'contrast': contrast,
     'splitPosition': splitPosition,
     'randomSeed': randomSeed,
     'splitBase': splitBase.name,
@@ -246,6 +254,12 @@ class StudySettings {
         ? !(json['adaptiveDetail']! as bool)
         : false,
     bias: _double(json['bias'], 0).clamp(-maxBias, maxBias),
+    // Contrast was once PHOTO's alone, kept with the rest of its tone.
+    contrast: _double(
+      json['contrast'] ??
+          (json['tone'] is Map ? (json['tone'] as Map)['contrast'] : null),
+      0,
+    ).clamp(-1.0, 1.0),
     splitPosition: _double(json['splitPosition'], 0.5).clamp(0.0, 1.0),
     randomSeed: _int(json['randomSeed'], 0),
     splitBase:
@@ -277,6 +291,7 @@ class StudySettings {
       other.smoothing == smoothing &&
       other.lockDetail == lockDetail &&
       other.bias == bias &&
+      other.contrast == contrast &&
       other.splitPosition == splitPosition &&
       other.randomSeed == randomSeed &&
       other.splitBase == splitBase &&
@@ -296,6 +311,7 @@ class StudySettings {
     smoothing,
     lockDetail,
     bias,
+    contrast,
     splitPosition,
     randomSeed,
     splitBase,

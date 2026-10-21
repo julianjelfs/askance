@@ -1,89 +1,65 @@
 import 'dart:math' as math;
 
-/// How PHOTO shows the photograph: in colour or black and white, with
-/// brightness, contrast and blur. PHOTO, a peek and SPLIT's photograph show
-/// it, and the value map is made from the photograph as it leaves.
+/// The picture's tone: a lightness [v] from 0 to 1 as the study sees it once
+/// [shift] and [contrast] have been applied. The value map bands this, and
+/// PHOTO, a peek and SPLIT's photograph show it, so what is blocked in is
+/// the picture you are looking at.
+///
+/// Contrast pivots on the middle; full travel either way is 4x steeper or
+/// flatter, which spreads the steps apart or squeezes them together. Shift
+/// slides every value at once, which moves where the steps fall.
+/// `shaders/askance.frag` and `shaders/photo.frag` hold the same curve.
+double toneCurve(double v, {required double shift, required double contrast}) =>
+    _unclamped(v, shift, contrast).clamp(0.0, 1.0);
+
+/// The lightness [toneCurve] takes to [toned], unclamped: below 0 or above
+/// 1 when no lightness reaches it.
+double toneUncurve(
+  double toned, {
+  required double shift,
+  required double contrast,
+}) => (toned - 0.5 - shift) / math.pow(4, contrast) + 0.5;
+
+/// [toneCurve] before it is clamped: where black and white land.
+double toneReach(double v, {required double shift, required double contrast}) =>
+    _unclamped(v, shift, contrast);
+
+double _unclamped(double v, double shift, double contrast) =>
+    (v - 0.5) * math.pow(4, contrast) + 0.5 + shift;
+
+/// How PHOTO draws the picture: in colour or black and white, sharp or
+/// blurred by the study's own detail. Ways of looking only; neither changes
+/// the values.
 class PhotoTone {
-  const PhotoTone({
-    this.mono = false,
-    this.brightness = 0,
-    this.contrast = 0,
-    this.blur = 0,
-  });
+  const PhotoTone({this.mono = false, this.squint = false});
 
   final bool mono;
 
-  /// -1..1, 0 untouched.
-  final double brightness;
+  /// Blurred as the study blurs it before banding, so PHOTO shows the
+  /// picture the values are cut from.
+  final bool squint;
 
-  /// -1..1, 0 untouched.
-  final double contrast;
+  PhotoTone copyWith({bool? mono, bool? squint}) =>
+      PhotoTone(mono: mono ?? this.mono, squint: squint ?? this.squint);
 
-  /// 0..1, 0 sharp. Squinting at the photograph: the same screen-space blur
-  /// the study simplifies with, at full travel as soft as the lowest detail.
-  final double blur;
-
-  /// Brightness and contrast, the part of the tone that moves a pixel's
-  /// value: [v], a channel or a lightness from 0 to 1, as PHOTO shows it.
-  /// Contrast pivots on the middle; full travel either way is 4x steeper or
-  /// flatter. Brightness slides by up to half the range. `shaders/photo.frag`
-  /// and `shaders/askance.frag` hold the same curve.
-  double curve(double v) =>
-      ((v - 0.5) * math.pow(4, contrast) + 0.5 + brightness * 0.5).clamp(
-        0.0,
-        1.0,
-      );
-
-  /// The [v] that [curve] takes to [toned], unclamped: below 0 or above 1
-  /// when no value reaches it.
-  double uncurve(double toned) =>
-      (toned - 0.5 - brightness * 0.5) / math.pow(4, contrast) + 0.5;
-
-  /// Whether [curve] leaves every value where it was.
-  bool get keepsValues => brightness == 0 && contrast == 0;
-
-  bool get isNeutral => !mono && brightness == 0 && contrast == 0 && blur == 0;
-
-  PhotoTone copyWith({
-    bool? mono,
-    double? brightness,
-    double? contrast,
-    double? blur,
-  }) => PhotoTone(
-    mono: mono ?? this.mono,
-    brightness: brightness ?? this.brightness,
-    contrast: contrast ?? this.contrast,
-    blur: blur ?? this.blur,
-  );
-
-  Map<String, Object?> toJson() => {
-    'mono': mono,
-    'brightness': brightness,
-    'contrast': contrast,
-    'blur': blur,
-  };
+  Map<String, Object?> toJson() => {'mono': mono, 'squint': squint};
 
   static PhotoTone fromJson(Object? json) {
     if (json is! Map) return const PhotoTone();
     return PhotoTone(
       mono: json['mono'] == true,
-      brightness: _number(json['brightness'], 0).clamp(-1.0, 1.0),
-      contrast: _number(json['contrast'], 0).clamp(-1.0, 1.0),
-      blur: _number(json['blur'], 0).clamp(0.0, 1.0),
+      // Written before the blur was the study's detail: any blur at all
+      // meant the photograph was being squinted at.
+      squint:
+          json['squint'] == true ||
+          (json['blur'] is num && (json['blur'] as num) > 0),
     );
   }
 
   @override
   bool operator ==(Object other) =>
-      other is PhotoTone &&
-      other.mono == mono &&
-      other.brightness == brightness &&
-      other.contrast == contrast &&
-      other.blur == blur;
+      other is PhotoTone && other.mono == mono && other.squint == squint;
 
   @override
-  int get hashCode => Object.hash(mono, brightness, contrast, blur);
+  int get hashCode => Object.hash(mono, squint);
 }
-
-double _number(Object? value, double fallback) =>
-    value is num ? value.toDouble() : fallback;

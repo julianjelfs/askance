@@ -59,8 +59,8 @@ class CanvasSession extends ChangeNotifier {
   /// shares one finished pass instead of each starting from nothing.
   final BlurPass blur = BlurPass();
 
-  /// The photograph softened by the tone's blur, for PHOTO, a peek and
-  /// SPLIT's photograph. Only asked for while the tone has a blur.
+  /// The photograph blurred by the study's detail, for PHOTO's squint, a
+  /// peek and SPLIT's photograph. Only asked for while PHOTO squints.
   final BlurPass photoBlur = BlurPass();
 
   /// The original bytes, kept so exports can re-run the engine from the source
@@ -254,6 +254,14 @@ class CanvasSession extends ChangeNotifier {
     final next = bias.clamp(-StudySettings.maxBias, StudySettings.maxBias);
     if (next == settings.bias) return;
     settings = settings.copyWith(bias: next);
+    _persistSoon();
+    notifyListeners();
+  }
+
+  void setContrast(double contrast) {
+    final next = contrast.clamp(-1.0, 1.0);
+    if (next == settings.contrast) return;
+    settings = settings.copyWith(contrast: next);
     _persistSoon();
     notifyListeners();
   }
@@ -506,14 +514,15 @@ class CanvasSession extends ChangeNotifier {
       crop: settings.crop,
       steps: settings.steps,
       bias: settings.bias,
-      tone: settings.tone,
+      contrast: settings.contrast,
     );
-    if (settings.photoBlurDetail case final detail?) {
+    if (settings.tone.squint) {
       photoBlur.request(
         source: source,
         outputPx: outputPx,
-        detail: detail,
+        detail: settings.detail,
         view: view,
+        lockDetail: settings.lockDetail,
         crop: settings.crop,
       );
     }

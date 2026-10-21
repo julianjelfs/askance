@@ -378,14 +378,15 @@ class _StudyThumbnailState extends ConsumerState<StudyThumbnail> {
           crop: widget.study.settings.crop,
           steps: widget.study.settings.steps,
           bias: widget.study.settings.bias,
-          tone: widget.study.settings.tone,
+          contrast: widget.study.settings.contrast,
         );
-        if (widget.study.settings.photoBlurDetail case final detail?) {
+        if (widget.study.settings.tone.squint) {
           _photoBlur.request(
             source: image,
             outputPx: constraints.biggest * dpr,
-            detail: detail,
+            detail: widget.study.settings.detail,
             view: view,
+            lockDetail: widget.study.settings.lockDetail,
             crop: widget.study.settings.crop,
           );
         }

@@ -33,8 +33,6 @@ typedef BlockInput = ({
   int height,
   int steps,
   double bias,
-  bool mono,
-  double brightness,
   double contrast,
   double tolerance,
 });
@@ -46,11 +44,7 @@ BlockShapes blockShapes(BlockInput input) {
     input.height,
     input.steps,
     bias: input.bias,
-    tone: PhotoTone(
-      mono: input.mono,
-      brightness: input.brightness,
-      contrast: input.contrast,
-    ),
+    contrast: input.contrast,
   );
   final masks = <List<List<Offset>>>[];
   final mask = Uint8List(map.width * map.height);
@@ -269,10 +263,22 @@ double _distanceToSegment(Offset p, Offset a, Offset b) {
 }
 
 /// The L* a block of [band] is filled with: the middle of the part of the
-/// band the shader can reach once [bias] has slid the thresholds, so the
-/// shader puts it straight back in the band it came from.
-double bandCentreLstar(int band, int steps, double bias) {
-  final low = math.max(0.0, band / steps - bias);
-  final high = math.min(1.0, (band + 1) / steps - bias);
-  return (low + high) / 2 * 100;
+/// band the shader can reach once the tone curve, [bias] the shift and
+/// [contrast] the spread, has moved the thresholds, taken back through the
+/// curve, so the shader puts it straight back in the band it came from.
+double bandCentreLstar(
+  int band,
+  int steps,
+  double bias, {
+  double contrast = 0,
+}) {
+  final low = math.max(
+    band / steps,
+    toneReach(0, shift: bias, contrast: contrast),
+  );
+  final high = math.min(
+    (band + 1) / steps,
+    toneReach(1, shift: bias, contrast: contrast),
+  );
+  return toneUncurve((low + high) / 2, shift: bias, contrast: contrast) * 100;
 }

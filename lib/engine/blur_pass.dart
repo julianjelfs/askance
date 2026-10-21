@@ -7,7 +7,6 @@ import 'package:flutter/scheduler.dart';
 
 import 'crop.dart';
 import 'engine.dart';
-import 'tone.dart';
 
 /// What a blur render needs to know.
 @immutable
@@ -22,7 +21,7 @@ class _BlurRequest {
     required this.crop,
     required this.steps,
     required this.bias,
-    required this.tone,
+    required this.contrast,
     required this.key,
   });
 
@@ -35,7 +34,7 @@ class _BlurRequest {
   final Rect crop;
   final int steps;
   final double bias;
-  final PhotoTone tone;
+  final double contrast;
   final Object key;
 }
 
@@ -63,7 +62,7 @@ typedef BlurRenderer =
       Rect crop,
       int steps,
       double bias,
-      PhotoTone tone,
+      double contrast,
     });
 
 /// Owns the blurred offscreen that the shader samples.
@@ -128,7 +127,7 @@ class BlurPass extends ChangeNotifier {
     Rect crop = kWholeImage,
     int steps = 3,
     double bias = 0,
-    PhotoTone tone = const PhotoTone(),
+    double contrast = 0,
   }) {
     if (_disposed || outputPx.isEmpty) return;
     final key = blurKeyFor(
@@ -141,7 +140,7 @@ class BlurPass extends ChangeNotifier {
       crop: crop,
       steps: steps,
       bias: bias,
-      tone: tone,
+      contrast: contrast,
     );
     if (key == _key || key == _queued?.key) return;
     _queued = _BlurRequest(
@@ -154,7 +153,7 @@ class BlurPass extends ChangeNotifier {
       crop: crop,
       steps: steps,
       bias: bias,
-      tone: tone,
+      contrast: contrast,
       key: key,
     );
     if (_rendering) return;
@@ -192,7 +191,7 @@ class BlurPass extends ChangeNotifier {
             crop: request.crop,
             steps: request.steps,
             bias: request.bias,
-            tone: request.tone,
+            contrast: request.contrast,
           );
         } catch (e) {
           // Whatever asked for this can ask again; a failed pass should not

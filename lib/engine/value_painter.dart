@@ -47,9 +47,9 @@ class ValuePainter extends CustomPainter {
   final ViewTransform? blurredView;
   final Size? blurredSize;
 
-  /// The photograph softened by the tone's blur, with the view and size it
-  /// was rendered for as for [blurred]. Null when the tone has no blur, or
-  /// until the pass lands; the photograph is then drawn sharp.
+  /// The photograph blurred by the study's detail, for PHOTO's squint, with
+  /// the view and size it was rendered for as for [blurred]. Null when PHOTO
+  /// is sharp, or until the pass lands; the photograph is then drawn sharp.
   final ui.Image? photoBlurred;
   final ViewTransform? photoBlurredView;
   final Size? photoBlurredSize;
@@ -195,9 +195,9 @@ class ValuePainter extends CustomPainter {
   /// has a blur and its pass has landed.
   void _paintPhotoView(Canvas canvas, Rect area, Rect dest) {
     final softened = photoBlurred;
-    if (settings.tone.blur > 0 && softened != null) {
-      // The pass is the photograph blurred over the area it was rendered
-      // for; the tone is applied on top of it.
+    if (settings.tone.squint && softened != null) {
+      // The pass is the photograph blurred, as the study blurs it, over the
+      // area it was rendered for; the tone is applied on top of it.
       _paintTonedPhoto(
         canvas,
         area,
@@ -205,7 +205,7 @@ class ValuePainter extends CustomPainter {
         image: softened,
         crop: kWholeImage,
       );
-    } else if (!settings.tone.isNeutral) {
+    } else if (settings.tone.mono || !settings.keepsTone) {
       _paintTonedPhoto(canvas, area, dest);
     } else {
       _paintPhoto(canvas, area, dest);
@@ -234,14 +234,13 @@ class ValuePainter extends CustomPainter {
     // A fresh shader every paint, for the reason given in _paintProcessed.
     final old = _photoFragment;
     if (old != null) disposer.retire(old.dispose);
-    final tone = settings.tone;
     _photoFragment = shader.buildPhoto(
       source: image ?? source,
       dest: dest,
       crop: crop ?? settings.crop,
-      mono: tone.mono,
-      brightness: tone.brightness,
-      contrast: tone.contrast,
+      mono: settings.tone.mono,
+      shift: settings.bias,
+      contrast: settings.contrast,
     );
     canvas.drawRect(area, Paint()..shader = _photoFragment!);
   }
@@ -272,7 +271,7 @@ class ValuePainter extends CustomPainter {
       // Clamped so a steps change never asks for bands that no longer exist.
       skeletonFill: settings.skeletonFill.clamp(0, settings.steps),
       bias: settings.bias,
-      tone: settings.smoothing == Smoothing.block ? null : settings.tone,
+      contrast: settings.contrast,
     )..setImageSampler(0, source);
 
     canvas.drawRect(area, Paint()..shader = _fragment!);

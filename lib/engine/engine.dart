@@ -7,7 +7,6 @@ import 'package:flutter/painting.dart';
 import 'blocks.dart';
 import 'crop.dart';
 import 'lstar.dart';
-import 'tone.dart';
 
 /// How the quantised image is presented.
 enum ViewMode {
@@ -358,12 +357,12 @@ Future<ui.Image> renderBlurredSource({
   Rect crop = kWholeImage,
   int steps = 3,
   double bias = 0,
-  PhotoTone tone = const PhotoTone(),
+  double contrast = 0,
   double quadrantRadius = kKuwaharaRadius,
 }) async {
   if (smoothing == Smoothing.block) {
     return _renderBlocks(
-      tone: tone,
+      contrast: contrast,
       source: source,
       outputPx: outputPx,
       detail: detail,
@@ -392,7 +391,7 @@ Future<ui.Image> renderBlurredSource({
   // the photograph and zooming magnifies the same simplification — the way
   // leaning closer to a painting doesn't add detail the painter left out.
   final zoomHold = lockDetail ? view.zoom : 1.0;
-  final sigma = studySigma(detail, outputPx.width, zoomHold, tone);
+  final sigma = blurSigma(detail, outputPx.width) * zoomHold;
 
   // How wide a window the flattening pass wants, if it is going to run. Worked
   // out at the reference width and scaled like the sigma: in output pixels it
@@ -500,22 +499,6 @@ Future<ui.Image> renderBlurredSource({
   return flattened;
 }
 
-/// The study's blur: the detail's, held to the photograph by [zoomHold] when
-/// detail is locked, combined with the tone's blur, which squints at the
-/// screen and so is never held. Two Gaussians in a row are one whose sigmas
-/// add in quadrature.
-double studySigma(
-  double detail,
-  double renderWidth,
-  double zoomHold,
-  PhotoTone tone,
-) {
-  final own = blurSigma(detail, renderWidth) * zoomHold;
-  if (tone.blur <= 0) return own;
-  final squint = blurSigma(1 - tone.blur, renderWidth);
-  return math.sqrt(own * own + squint * squint);
-}
-
 /// Width the BLOCK outlines are traced at, in pixels. The blur has already
 /// taken out everything much finer than the shapes being kept, so tracing at
 /// full resolution only multiplies the work.
@@ -538,7 +521,7 @@ Future<ui.Image> _renderBlocks({
   required Rect crop,
   required int steps,
   required double bias,
-  required PhotoTone tone,
+  required double contrast,
 }) async {
   final sourceSize = croppedSize(
     Size(source.width.toDouble(), source.height.toDouble()),
@@ -558,7 +541,6 @@ Future<ui.Image> _renderBlocks({
     view: view,
     lockDetail: lockDetail,
     crop: crop,
-    tone: tone,
   );
   final rgba = (await traced.toByteData(
     format: ui.ImageByteFormat.rawRgba,
@@ -566,27 +548,21 @@ Future<ui.Image> _renderBlocks({
   final tw = traced.width, th = traced.height;
   traced.dispose();
 
-  final sigma = studySigma(
-    detail,
-    outputPx.width * f,
-    lockDetail ? view.zoom : 1,
-    tone,
-  );
+  final sigma =
+      blurSigma(detail, outputPx.width * f) * (lockDetail ? view.zoom : 1);
   final shapes = await compute(blockShapes, (
     rgba: rgba,
     width: tw,
     height: th,
     steps: steps,
     bias: bias,
-    mono: tone.mono,
-    brightness: tone.brightness,
-    contrast: tone.contrast,
+    contrast: contrast,
     tolerance: math.max(1.0, sigma * kBlockStraightness),
   ));
 
   Color grey(int band) {
     final v = clampChannel8(
-      luminanceOfLstar(bandCentreLstar(band, steps, bias)),
+      luminanceOfLstar(bandCentreLstar(band, steps, bias, contrast: contrast)),
     );
     return Color.fromARGB(255, v, v, v);
   }
@@ -688,7 +664,7 @@ Object blurKeyFor({
   Rect crop = kWholeImage,
   int steps = 3,
   double bias = 0,
-  PhotoTone tone = const PhotoTone(),
+  double contrast = 0,
 }) => Object.hash(
   // The pass belongs to a particular photograph. Without this a new image
   // loaded under identical settings collided with the old key, and the
@@ -706,11 +682,7 @@ Object blurKeyFor({
   // of values is the shader's business and must not cost a new blur.
   smoothing == Smoothing.block ? steps : 0,
   smoothing == Smoothing.block ? bias : 0,
-  tone.blur,
-  // Likewise the tone's curve, which the shader applies for the others.
-  smoothing == Smoothing.block ? tone.mono : false,
-  smoothing == Smoothing.block ? tone.brightness : 0,
-  smoothing == Smoothing.block ? tone.contrast : 0,
+  smoothing == Smoothing.block ? contrast : 0,
 );
 
 /// Wraps the compiled fragment program and knows how to set its uniforms.
@@ -734,7 +706,7 @@ class ValueShader {
     required Rect dest,
     required Rect crop,
     required bool mono,
-    required double brightness,
+    required double shift,
     required double contrast,
   }) => _photo.fragmentShader()
     ..setFloat(0, dest.left)
@@ -746,7 +718,7 @@ class ValueShader {
     ..setFloat(6, crop.right)
     ..setFloat(7, crop.bottom)
     ..setFloat(8, mono ? 1 : 0)
-    ..setFloat(9, brightness)
+    ..setFloat(9, shift)
     ..setFloat(10, contrast)
     ..setImageSampler(0, source);
 
@@ -758,9 +730,7 @@ class ValueShader {
     required bool skeleton,
     required int skeletonFill,
     required double bias,
-    // The tone the pass is banded as, or null for a pass that is already
-    // its bands' greys, as BLOCK's is.
-    required PhotoTone? tone,
+    required double contrast,
   }) {
     final shader = _program.fragmentShader();
     shader
@@ -784,10 +754,7 @@ class ValueShader {
     }
     shader
       ..setFloat(31, skeletonFill.toDouble())
-      ..setFloat(32, tone == null ? 0 : 1)
-      ..setFloat(33, tone?.mono ?? false ? 1 : 0)
-      ..setFloat(34, tone?.brightness ?? 0)
-      ..setFloat(35, tone?.contrast ?? 0);
+      ..setFloat(32, contrast);
     return shader;
   }
 }
