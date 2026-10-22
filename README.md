@@ -115,9 +115,10 @@ only compiled output, because GitHub's free plan will not serve Pages from a
 private repository; this repository stays private and is the only source of
 truth.
 
-`web/index.html` carries a static landing (heading, copy, the preview card)
-for crawlers and link previews, which otherwise see an empty canvas; the app
-paints over it once it starts. Offline support is `web/sw.js`, not Flutter's
+`web/index.html` carries Open Graph tags for link previews and a short
+description for search engines, which otherwise see an empty canvas. The
+description is visually hidden: the app's own splash and tour are the
+introduction. Offline support is `web/sw.js`, not Flutter's
 deprecated worker: `tool/stamp-sw.sh` writes a hash of the build into it on
 every web build, which gives each deploy its own cache.
 

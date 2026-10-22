@@ -52,72 +52,37 @@
 
   <style>
     /*
-      The landing below is what crawlers, link previews and anyone waiting on
-      the first download see: Flutter draws into a canvas, so without it the
-      page has no text at all. Flutter's view is added to <body> after it and
-      covers it once the app paints, so nothing has to remove it.
+      Flutter draws into a canvas, so without this the page has no text for
+      a search engine to read. It is never shown: the app has its own
+      splash and tour, and a second introduction flashing past before them
+      is noise. Screen readers get it while the app loads; once the app
+      draws it is hidden from them too. Link previews read the meta tags
+      above, not this.
     */
-    @font-face {
-      font-family: "Bricolage Display";
-      src: url("assets/assets/fonts/BricolageGrotesqueDisplay-Bold.ttf");
-      font-weight: 700;
-      font-display: swap;
-    }
-    #landing {
-      position: fixed;
-      inset: 0;
-      overflow: auto;
-      background: #f3f1ec;
-      color: #1c1b1a;
-      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
-    }
-    #landing main {
-      max-width: 36rem;
-      margin: 0 auto;
-      padding: 32px 16px;
-    }
-    #landing h1 {
-      margin: 0 0 12px;
-      font: 700 40px/1.1 "Bricolage Display", system-ui, sans-serif;
-    }
-    #landing p { margin: 0 0 12px; }
-    #landing .lede { font-size: 18px; }
-    #landing .quiet { color: #6a655e; font-size: 14px; }
-    #landing img {
-      display: block;
-      width: 100%;
-      height: auto;
-      margin: 20px 0;
-      border-radius: 8px;
-    }
-    /* Launched from the home screen it is a splash, not a pitch. */
-    @media (display-mode: standalone) {
-      #landing .pitch { display: none; }
+    #about {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
     }
   </style>
 </head>
 <body style="background-color:#f3f1ec">
-  <div id="landing">
-    <main>
-      <h1>Askance</h1>
-      <div class="pitch">
-        <p class="lede">A free value study tool for painters. It flattens a
-          photograph into two to seven values, spaced the way the eye reads
-          them, so you can see the shapes light actually makes.</p>
-        <p>Compare it with the photograph in a split view, lay a drawing grid
-          over it, read each value off a Munsell scale, and export or print
-          it at 300&nbsp;dpi. Works on your phone, installs as an app, and
-          keeps working with no signal.</p>
-        <img src="og-image.jpg" width="1200" height="630" loading="lazy"
-          fetchpriority="low"
-          alt="A portrait beside the same portrait reduced to four tonal values">
-        <p class="quiet">No account, nothing to pay. Your photos are never
-          uploaded. Visits are counted anonymously with GoatCounter, without
-          cookies.</p>
-      </div>
-      <p class="quiet" role="status">Loading the app…</p>
-    </main>
-  </div>
+  <main id="about">
+    <h1>Askance</h1>
+    <p>A free value study tool for painters. It flattens a photograph into
+      two to seven values, spaced the way the eye reads them, so you can see
+      the shapes light actually makes.</p>
+    <p>Compare it with the photograph in a split view, lay a drawing grid
+      over it, read each value off a Munsell scale, and export or print it
+      at 300&nbsp;dpi. Works on your phone, installs as an app, and keeps
+      working with no signal.</p>
+    <p>No account, nothing to pay. Your photos are never uploaded. Visits
+      are counted anonymously with GoatCounter, without cookies.</p>
+    <p role="status">Loading the app…</p>
+  </main>
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader
@@ -128,12 +93,12 @@
   -->
   <script src="flutter_bootstrap.js" async></script>
   <script>
-    // Once the app has drawn, the landing is behind it: keep screen readers
-    // off it, and tell the service worker what this browser loaded before
+    // Once the app has drawn, keep screen readers off the description and
+    // tell the service worker what this browser loaded before
     // the worker was in control, so even a first visit works offline next
     // time.
     window.addEventListener('flutter-first-frame', () => {
-      document.getElementById('landing').setAttribute('aria-hidden', 'true');
+      document.getElementById('about').setAttribute('aria-hidden', 'true');
       if (!('serviceWorker' in navigator)) return;
       navigator.serviceWorker.ready.then((reg) => {
         const urls = performance
