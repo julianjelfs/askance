@@ -1,6 +1,10 @@
+import 'dart:typed_data';
+
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../analytics/analytics.dart';
 import '../../build_stamp.dart';
 import '../../model/study.dart';
 import '../../state/providers.dart';
@@ -67,6 +71,10 @@ class _ShelfScreenState extends ConsumerState<ShelfScreen> {
         columns: columns,
         onOpen: (study) => openStudy(context, ref, study),
         onNew: () => showImportSheet(context, ref),
+        onSample: () {
+          _dismissTour();
+          startSampleStudy(context, ref);
+        },
       ),
     );
 
@@ -134,6 +142,7 @@ class ShelfGrid extends ConsumerWidget {
     required this.columns,
     required this.onOpen,
     this.onNew,
+    this.onSample,
   });
 
   final List<Study> studies;
@@ -143,12 +152,18 @@ class ShelfGrid extends ConsumerWidget {
   /// What tapping the empty shelf does; null leaves it inert.
   final VoidCallback? onNew;
 
+  /// Offered on the empty shelf only: once anything is on it, the sample has
+  /// done its job.
+  final VoidCallback? onSample;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = DesignScale.of(context);
     final gap = 10 * s;
 
-    if (studies.isEmpty) return EmptySlotCard(onNew: onNew);
+    if (studies.isEmpty) {
+      return EmptySlotCard(onNew: onNew, onSample: onSample);
+    }
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -608,11 +623,28 @@ Future<void> startStudy(
 }) async {
   final picked = fromCamera ? await takePhoto() : await pickFromLibrary();
   if (picked == null || !context.mounted) return;
+  countEvent(AppEvent.photoLoaded);
+  await _startStudyFrom(context, ref, picked.bytes);
+}
 
+/// The portrait the tour runs on, opened as a study of its own, so a visitor
+/// with no photograph to hand still gets to drive the app.
+Future<void> startSampleStudy(BuildContext context, WidgetRef ref) async {
+  final data = await rootBundle.load(kSamplePortrait);
+  if (!context.mounted) return;
+  countEvent(AppEvent.sampleLoaded);
+  await _startStudyFrom(context, ref, data.buffer.asUint8List());
+}
+
+Future<void> _startStudyFrom(
+  BuildContext context,
+  WidgetRef ref,
+  Uint8List bytes,
+) async {
   final session = ref.read(sessionProvider);
-  final image = await decodeImage(picked.bytes);
+  final image = await decodeImage(bytes);
   session.startFreshStudy();
-  session.loadImage(image, picked.bytes);
+  session.loadImage(image, bytes);
   // Straight onto the shelf: with nothing gated there is no keep step, and a
   // photograph you opened should already be safe when you look up.
   await ref.read(studiesProvider.notifier).keep(session);

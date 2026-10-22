@@ -299,6 +299,13 @@ void main() {
     // ignore: avoid_print
     print('Web');
     await _write('web/favicon.png', 32, ground: Ground.fullBleed);
+    // What iOS asks for when a page is added to the home screen; given only
+    // the 192 it scales that down itself.
+    await _write(
+      'web/icons/apple-touch-icon.png',
+      180,
+      ground: Ground.fullBleed,
+    );
     for (final size in [192.0, 512.0]) {
       await _write(
         'web/icons/Icon-${size.round()}.png',

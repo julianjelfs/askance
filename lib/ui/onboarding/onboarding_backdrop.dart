@@ -12,10 +12,14 @@ import '../../model/study.dart';
 import '../../state/providers.dart';
 import '../../theme.dart';
 
+/// The photograph the tour runs on, which the empty shelf also offers as a
+/// study to try.
+const kSamplePortrait = 'assets/onboarding-portrait.jpg';
+
 /// The photograph the onboarding panels are drawn over, decoded once.
 final onboardingImageProvider = FutureProvider<ui.Image?>((ref) async {
   try {
-    final data = await rootBundle.load('assets/onboarding-portrait.jpg');
+    final data = await rootBundle.load(kSamplePortrait);
     final image = await decodeImage(data.buffer.asUint8List());
     ref.onDispose(image.dispose);
     return image;

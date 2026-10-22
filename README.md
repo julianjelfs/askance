@@ -10,9 +10,9 @@ One Flutter codebase; runs on Android, iOS, macOS and the web. A phone layout
 and a desktop/web layout share every control.
 
 A build of the web version is published at
-<https://askance.julianjelfs.co.uk/> and installs as a PWA. The web
-build works everywhere but renders noticeably slower than a device build — the
-engine leans on GPU round trips that WebGL makes expensive.
+<https://askance.julianjelfs.co.uk/> and installs as a PWA that opens
+offline. The web build works everywhere but renders noticeably slower than a
+device build — the engine leans on GPU round trips that WebGL makes expensive.
 
 ## What it does
 
@@ -59,6 +59,12 @@ no accounts, no payments. A photograph you open lands on the shelf
 immediately — there is no separate keep step — and the share sheet is purely
 about the ways out: an image file, a print, the clipboard, another device.
 
+The web build counts visits and a handful of named events (a photograph
+opened, the sample opened, an export saved, copied or printed, a study
+received, the app installed) with GoatCounter, which sets no cookies.
+`lib/analytics/` takes nothing but an event name, so no image, filename or
+setting can be sent. The native apps count nothing.
+
 ## The engine
 
 The heart of the app; everything else is chrome around it. The full story is
@@ -102,11 +108,18 @@ short version:
 | `make check`       | format, analyze, test — run before committing   |
 | `make ship-android`| release APK, installed on the device            |
 | `make deploy-web`  | build and publish the GitHub Pages site         |
+| `make og-image`    | regenerate the link-preview card                |
 
 The Pages site lives in a separate public repository (`askance-web`) holding
 only compiled output, because GitHub's free plan will not serve Pages from a
 private repository; this repository stays private and is the only source of
 truth.
+
+`web/index.html` carries a static landing (heading, copy, the preview card)
+for crawlers and link previews, which otherwise see an empty canvas; the app
+paints over it once it starts. Offline support is `web/sw.js`, not Flutter's
+deprecated worker: `tool/stamp-sw.sh` writes a hash of the build into it on
+every web build, which gives each deploy its own cache.
 
 Release Android builds are signed with an upload key held outside the
 repository, with its passwords in `android/key.properties` (gitignored). A

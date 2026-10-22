@@ -419,6 +419,7 @@ class EmptySlotCard extends StatelessWidget {
     super.key,
     this.label = 'No studies yet. Start one from a photograph.',
     this.onNew,
+    this.onSample,
   });
 
   final String label;
@@ -426,6 +427,9 @@ class EmptySlotCard extends StatelessWidget {
   /// Tapping the slot starts a study: an empty space that invites filling
   /// should accept the invitation itself.
   final VoidCallback? onNew;
+
+  /// For someone with no photograph to hand: a study of the sample portrait.
+  final VoidCallback? onSample;
 
   @override
   Widget build(BuildContext context) {
@@ -453,6 +457,27 @@ class EmptySlotCard extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: AskanceText.body(14, color: AskanceColors.muted).by(s),
               ),
+              if (onSample != null)
+                Semantics(
+                  button: true,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: onSample,
+                    child: Padding(
+                      // A tall target: the line sits inside the slot's own
+                      // tap area, and a near miss should not open the picker.
+                      padding: EdgeInsets.only(top: 10 * s, bottom: 4 * s),
+                      child: Text(
+                        'Or try it on a sample portrait',
+                        textAlign: TextAlign.center,
+                        style: AskanceText.label(
+                          14,
+                          color: AskanceColors.accentInk,
+                        ).by(s),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

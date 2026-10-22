@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en-GB">
 <head>
   <!--
     If you are serving your web app in a path other than the root, change the
@@ -18,21 +18,106 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="Flattens a photograph into a handful of values, so you can see the shapes light actually makes.">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Askance: a free value study tool for painters</title>
+  <meta name="description" content="Free value study tool for painters. Turn any reference photo into 2 to 7 tonal values, with a split view, a drawing grid and print-size exports. No account needed.">
+  <link rel="canonical" href="https://askance.julianjelfs.co.uk/">
+
+  <!--
+    Link previews. Absolute URLs, because the bots that read these do not
+    resolve against <base>. Regenerate the image with `make og-image`.
+  -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Askance">
+  <meta property="og:url" content="https://askance.julianjelfs.co.uk/">
+  <meta property="og:title" content="Askance: value studies for painters">
+  <meta property="og:description" content="Flatten any photo into a handful of tonal values. Free, no account.">
+  <meta property="og:image" content="https://askance.julianjelfs.co.uk/og-image.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="A portrait beside the same portrait reduced to four tonal values">
+  <meta name="twitter:card" content="summary_large_image">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="Askance">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>Askance</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    /*
+      The landing below is what crawlers, link previews and anyone waiting on
+      the first download see: Flutter draws into a canvas, so without it the
+      page has no text at all. Flutter's view is added to <body> after it and
+      covers it once the app paints, so nothing has to remove it.
+    */
+    @font-face {
+      font-family: "Bricolage Display";
+      src: url("assets/assets/fonts/BricolageGrotesqueDisplay-Bold.ttf");
+      font-weight: 700;
+      font-display: swap;
+    }
+    #landing {
+      position: fixed;
+      inset: 0;
+      overflow: auto;
+      background: #f3f1ec;
+      color: #1c1b1a;
+      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    #landing main {
+      max-width: 36rem;
+      margin: 0 auto;
+      padding: 32px 16px;
+    }
+    #landing h1 {
+      margin: 0 0 12px;
+      font: 700 40px/1.1 "Bricolage Display", system-ui, sans-serif;
+    }
+    #landing p { margin: 0 0 12px; }
+    #landing .lede { font-size: 18px; }
+    #landing .quiet { color: #6a655e; font-size: 14px; }
+    #landing img {
+      display: block;
+      width: 100%;
+      height: auto;
+      margin: 20px 0;
+      border-radius: 8px;
+    }
+    /* Launched from the home screen it is a splash, not a pitch. */
+    @media (display-mode: standalone) {
+      #landing .pitch { display: none; }
+    }
+  </style>
 </head>
 <body style="background-color:#f3f1ec">
+  <div id="landing">
+    <main>
+      <h1>Askance</h1>
+      <div class="pitch">
+        <p class="lede">A free value study tool for painters. It flattens a
+          photograph into two to seven values, spaced the way the eye reads
+          them, so you can see the shapes light actually makes.</p>
+        <p>Compare it with the photograph in a split view, lay a drawing grid
+          over it, read each value off a Munsell scale, and export or print
+          it at 300&nbsp;dpi. Works on your phone, installs as an app, and
+          keeps working with no signal.</p>
+        <img src="og-image.jpg" width="1200" height="630" loading="lazy"
+          fetchpriority="low"
+          alt="A portrait beside the same portrait reduced to four tonal values">
+        <p class="quiet">No account, nothing to pay. Your photos are never
+          uploaded. Visits are counted anonymously with GoatCounter, without
+          cookies.</p>
+      </div>
+      <p class="quiet" role="status">Loading the app…</p>
+    </main>
+  </div>
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader
@@ -43,12 +128,40 @@
   -->
   <script src="flutter_bootstrap.js" async></script>
   <script>
-    // Flutter's service worker downloads a new deploy in the background but
-    // leaves it "waiting" until every window of the old one has closed —
-    // which an installed PWA effectively never does, so refreshing forever
-    // still showed the previous build. The generated worker listens for a
-    // 'skipWaiting' message; send it as soon as an update finishes
-    // installing, and reload once when the new worker takes over.
+    // Once the app has drawn, the landing is behind it: keep screen readers
+    // off it, and tell the service worker what this browser loaded before
+    // the worker was in control, so even a first visit works offline next
+    // time.
+    window.addEventListener('flutter-first-frame', () => {
+      document.getElementById('landing').setAttribute('aria-hidden', 'true');
+      if (!('serviceWorker' in navigator)) return;
+      navigator.serviceWorker.ready.then((reg) => {
+        const urls = performance
+          .getEntriesByType('resource')
+          .map((entry) => entry.name)
+          .filter((url) => new URL(url).origin === location.origin);
+        urls.push(new URL('./', document.baseURI).href);
+        reg.active?.postMessage({ type: 'warm', urls });
+      });
+    }, { once: true });
+
+    // Counted by name only, like the in-app events.
+    window.addEventListener('appinstalled', () => {
+      window.goatcounter?.count?.({
+        path: 'pwa-installed', title: 'Installed the app', event: true,
+      });
+    });
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
+    }
+
+    // A new deploy's worker installs in the background but waits until
+    // every window of the old one has closed, which an installed PWA
+    // effectively never does, so refreshing forever still showed the
+    // previous build. sw.js listens for a 'skipWaiting' message; send it as
+    // soon as an update finishes installing, and reload once when the new
+    // worker takes over.
     // Only armed when an old worker already controls the page: on the very
     // first visit there is nothing stale to replace, and the new worker
     // claiming the page must not trigger a pointless reload.
@@ -74,5 +187,7 @@
       });
     }
   </script>
+  <script data-goatcounter="https://askance.goatcounter.com/count"
+          async src="//gc.zgo.at/count.js"></script>
 </body>
 </html>

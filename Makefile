@@ -32,6 +32,7 @@ IPHONE  ?=
 DEVICE  ?=
 
 PICK := ./tool/pick-device.sh
+STAMP_SW := ./tool/stamp-sw.sh
 APK  := build/app/outputs/flutter-apk/app-release.apk
 
 .DEFAULT_GOAL := help
@@ -117,7 +118,8 @@ build-macos:
 
 ## build-web: release web build into build/web
 build-web:
-	flutter build web --release
+	flutter build web --wasm --release --no-web-resources-cdn
+	$(STAMP_SW) build/web
 
 ## serve: build for web and serve it on :8000
 serve: build-web
@@ -133,12 +135,15 @@ serve: build-web
 # engine markedly faster than the JavaScript fallback; browsers without
 # WasmGC get that fallback automatically from the same build.
 # The build stamp shows in the UI, so a device can prove which build it runs.
+# --no-web-resources-cdn serves the renderer from this site rather than
+# Google's CDN, so the service worker can cache it and the app opens offline.
 # Served from the root of its own domain. The force-push replaces the whole askance-web
 # repo, so the CNAME file that holds GitHub Pages' custom domain is written every time;
 # leave it out and the domain is dropped on the next deploy.
 deploy-web:
-	flutter build web --wasm --release --base-href / \
+	flutter build web --wasm --release --base-href / --no-web-resources-cdn \
 		--dart-define=BUILD_STAMP=$$(git rev-parse --short HEAD)
+	$(STAMP_SW) build/web
 	cd build/web && touch .nojekyll && echo askance.julianjelfs.co.uk > CNAME && \
 	git init -q -b main && \
 	git add -A && (git commit -q -m "Deploy web build" || true) && \
@@ -171,6 +176,13 @@ check: format analyze test
 icons:
 	flutter test tool/generate_icons.dart
 
+## og-image: regenerate the link-preview card, web/og-image.jpg
+# The engine renders a PNG; sips (macOS) recompresses it, because preview bots
+# give up on large images and a photograph does not need lossless.
+og-image:
+	flutter test tool/generate_og_image.dart
+	sips -s format jpeg -s formatOptions 82 build/og-image.png --out web/og-image.jpg
+
 ## outdated: dependencies with newer versions
 outdated:
 	flutter pub outdated
@@ -181,4 +193,5 @@ clean:
 
 .PHONY: help devices run android iphone mac web all apk apk-all bundle \
         install ship-android ship-iphone build-ios-sim build-ios build-macos \
-        build-web serve logs test analyze format check icons outdated clean
+        build-web serve logs test analyze format check icons og-image outdated \
+        clean

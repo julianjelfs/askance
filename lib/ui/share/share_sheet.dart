@@ -6,6 +6,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
+import '../../analytics/analytics.dart';
 import '../../engine/crop.dart';
 import '../../engine/export.dart';
 import '../../state/canvas_session.dart';
@@ -128,6 +129,7 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
       png,
       exportFilename(_session.name, _size.frameFor(_pictureSize)),
     );
+    if (result.ok) countEvent(AppEvent.exportSaved);
     _report(result.message);
   });
 
@@ -136,6 +138,7 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
       png,
       exportFilename(_session.name, _size.frameFor(_pictureSize)),
     );
+    if (result.ok) countEvent(AppEvent.exportCopied);
     _report(result.message);
   });
 
@@ -151,7 +154,8 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
             pw.Center(child: pw.Image(image, fit: pw.BoxFit.contain)),
       ),
     );
-    await Printing.layoutPdf(onLayout: (_) => doc.save());
+    final printed = await Printing.layoutPdf(onLayout: (_) => doc.save());
+    if (printed) countEvent(AppEvent.exportPrinted);
   });
 
   @override

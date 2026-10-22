@@ -5,6 +5,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'dart:async' show unawaited;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
+import '../../analytics/analytics.dart';
 import '../../build_stamp.dart';
 import '../../data/qr_transfer/still_decode.dart';
 import '../pick_image.dart';
@@ -109,6 +110,7 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
       // An arrived study is as much an import as a picked photograph: onto
       // the shelf without a keep step.
       await ref.read(studiesProvider.notifier).keep(session);
+      countEvent(AppEvent.studyReceived);
       if (!mounted) return;
       Navigator.of(
         context,
