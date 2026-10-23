@@ -808,6 +808,19 @@ class BoardControl extends StatelessWidget {
         SizedBox(height: 14 * s),
         const ControlLabelRow(label: 'Grid'),
         GridControl(session: session),
+        SizedBox(height: 8 * s),
+        // Zooming magnifies the grid with the picture. Resetting lays it
+        // over what is on screen, for when the zoom is the framing.
+        ActionButton(
+          label: 'Reset grid to this view',
+          solid: false,
+          height: 38,
+          fontSize: 13.5,
+          centred: true,
+          enabled:
+              session.settings.grid != GridMode.off && !session.gridFitsView,
+          onPressed: session.resetGrid,
+        ),
       ],
     );
   }

@@ -382,12 +382,33 @@ class CanvasSession extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// The part of the picture on screen now, as [StudySettings.gridFrame]
+  /// measures it. The zoom stays inside the picture's own frame, so which
+  /// part shows does not depend on the room it is shown in, and the picture's
+  /// own size will do for one.
+  Rect get shownFrame =>
+      _sourceSize.isEmpty ? kWholeImage : view.shown(_sourceSize, _sourceSize);
+
+  /// Whether the grid already divides exactly what is on screen.
+  bool get gridFitsView => settings.gridFrame == shownFrame;
+
+  /// Lays the grid over what is on screen: the view framed by zooming becomes
+  /// the board the grid divides, and zooming from here magnifies it.
+  void resetGrid() {
+    final frame = shownFrame;
+    if (frame == settings.gridFrame) return;
+    settings = settings.copyWith(gridFrame: frame);
+    _persistSoon();
+    notifyListeners();
+  }
+
   /// Crops the study to [crop], a fraction of each side of the photograph,
   /// and shows the new picture whole: a zoom and pan chosen inside the old
-  /// crop describe a different passage inside the new one.
+  /// crop describe a different passage inside the new one, and so does a
+  /// grid reset to one.
   void setCrop(Rect crop) {
     if (crop == settings.crop) return;
-    settings = settings.copyWith(crop: crop);
+    settings = settings.copyWith(crop: crop, gridFrame: kWholeImage);
     view = const ViewTransform();
     _persistSoon();
     notifyListeners();

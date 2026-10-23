@@ -49,6 +49,7 @@ class StudySettings {
     this.splitBase = ViewMode.value,
     this.view = const ViewTransform(),
     this.crop = kWholeImage,
+    this.gridFrame = kWholeImage,
     this.tone = const PhotoTone(),
   });
 
@@ -62,6 +63,12 @@ class StudySettings {
   /// quadrants, level 2 halves each of those, and so on. Zooming in halves
   /// further on its own, so this is a density rather than a fixed grid.
   final int gridLevel;
+
+  /// The part of the picture the grid divides, as a fraction of each side of
+  /// the crop. The whole of it until the grid is reset to a zoomed view: the
+  /// passage framed there is what goes on the board, and zooming further only
+  /// magnifies the grid with the picture.
+  final Rect gridFrame;
 
   /// Cells across (and down) at the current level.
   int get gridDivisions => divisionsAt(gridLevel);
@@ -190,6 +197,7 @@ class StudySettings {
     ViewMode? splitBase,
     ViewTransform? view,
     Rect? crop,
+    Rect? gridFrame,
     PhotoTone? tone,
   }) => StudySettings(
     steps: steps ?? this.steps,
@@ -208,6 +216,7 @@ class StudySettings {
     splitBase: splitBase ?? this.splitBase,
     view: view ?? this.view,
     crop: crop ?? this.crop,
+    gridFrame: gridFrame ?? this.gridFrame,
     tone: tone ?? this.tone,
   );
 
@@ -230,6 +239,7 @@ class StudySettings {
     'panX': view.offset.dx,
     'panY': view.offset.dy,
     'crop': cropToJson(crop),
+    'gridFrame': cropToJson(gridFrame),
     'tone': tone.toJson(),
   };
 
@@ -280,6 +290,8 @@ class StudySettings {
       offset: Offset(_double(json['panX'], 0), _double(json['panY'], 0)),
     ),
     crop: cropFromJson(json['crop']),
+    // Stored and checked the same way as the crop: a rect inside the picture.
+    gridFrame: cropFromJson(json['gridFrame']),
     tone: PhotoTone.fromJson(json['tone']),
   );
 
@@ -302,6 +314,7 @@ class StudySettings {
       other.splitBase == splitBase &&
       other.view == view &&
       other.crop == crop &&
+      other.gridFrame == gridFrame &&
       other.tone == tone;
 
   @override
@@ -322,6 +335,7 @@ class StudySettings {
     splitBase,
     view,
     crop,
+    gridFrame,
     tone,
   );
 }

@@ -78,6 +78,16 @@ void main() {
     expect(session.view, const ViewTransform());
   });
 
+  test('cropping lays the grid over the whole new picture', () {
+    final session = CanvasSession()
+      ..settings = const StudySettings(
+        gridFrame: Rect.fromLTRB(0.25, 0.25, 0.75, 0.75),
+      );
+    addTearDown(session.dispose);
+    session.setCrop(const Rect.fromLTRB(0, 0, 0.5, 1));
+    expect(session.settings.gridFrame, kWholeImage);
+  });
+
   group('an export', () {
     test('of an A4 crop at print size is A4 at 300 dpi', () {
       final frame = ExportSize.print.frameFor(

@@ -1,3 +1,6 @@
+import 'dart:ui';
+
+import 'package:askance/engine/engine.dart';
 import 'package:askance/engine/value_painter.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -16,6 +19,31 @@ void main() {
     test('never deeper than the cap', () {
       expect(gridLevelAt(4, 64), maxGridDepth);
     });
+  });
+
+  test('a grid reset to the view divides exactly what is on screen', () {
+    const picture = Size(2100, 2970);
+    const output = Size(400, 800);
+    for (final view in [
+      const ViewTransform(),
+      const ViewTransform(zoom: 2.4, offset: Offset(-0.9, -0.3)),
+      const ViewTransform().zoomedAt(
+        const Offset(300, 200),
+        4,
+        picture,
+        output,
+      ),
+    ]) {
+      final grid = gridRectIn(
+        view.destination(picture, output),
+        view.shown(picture, output),
+      );
+      final area = view.visible(picture, output);
+      expect(grid.left, closeTo(area.left, 1e-6));
+      expect(grid.top, closeTo(area.top, 1e-6));
+      expect(grid.right, closeTo(area.right, 1e-6));
+      expect(grid.bottom, closeTo(area.bottom, 1e-6));
+    }
   });
 
   group('rule strength', () {

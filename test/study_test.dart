@@ -1,3 +1,5 @@
+import 'dart:ui' show Rect;
+
 import 'package:askance/engine/engine.dart';
 import 'package:askance/engine/value_scale.dart';
 import 'package:askance/model/study.dart';
@@ -26,6 +28,8 @@ void main() {
         mode: ViewMode.skeleton,
         grid: GridMode.diagonals,
         gridLevel: 3,
+        // A grid reset to a zoomed view keeps that framing when reopened.
+        gridFrame: Rect.fromLTRB(0.25, 0.1, 0.75, 0.6),
         skeletonFill: 3,
         lockDetail: true,
         splitPosition: 0.25,

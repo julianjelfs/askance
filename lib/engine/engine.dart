@@ -220,6 +220,20 @@ class ViewTransform {
   Rect visible(Size source, Size output) =>
       destination(source, output).intersect(frame(source, output));
 
+  /// The part of the picture on screen, as a fraction of each side: the
+  /// whole of it at 1x, a passage of it once zoomed.
+  Rect shown(Size source, Size output) {
+    final dest = destination(source, output);
+    if (dest.isEmpty) return const Rect.fromLTRB(0, 0, 1, 1);
+    final area = visible(source, output);
+    return Rect.fromLTRB(
+      (area.left - dest.left) / dest.width,
+      (area.top - dest.top) / dest.height,
+      (area.right - dest.left) / dest.width,
+      (area.bottom - dest.top) / dest.height,
+    );
+  }
+
   static Rect _clampToCover(Rect r, Rect frame) {
     var dx = 0.0, dy = 0.0;
     if (r.width >= frame.width) {

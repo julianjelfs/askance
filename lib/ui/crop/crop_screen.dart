@@ -507,7 +507,17 @@ class _CropPainter extends CustomPainter {
       ..drawRect(imageRect, Paint()..color = const Color(0xB3201E1D))
       ..restore();
     if (settings.grid != GridMode.off) {
-      paintGrid(canvas, lit, lit, settings.grid, settings.gridLevel.toDouble());
+      // A grid reset to a passage keeps it while the crop is the one it was
+      // reset in; any other crop starts the grid over the whole of it.
+      final frame = crop == settings.crop ? settings.gridFrame : kWholeImage;
+      final grid = gridRectIn(lit, frame);
+      paintGrid(
+        canvas,
+        grid,
+        grid,
+        settings.grid,
+        settings.gridLevel.toDouble(),
+      );
     }
     canvas.drawRect(
       lit.deflate(kRule / 2),

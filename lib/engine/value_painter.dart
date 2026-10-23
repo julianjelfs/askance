@@ -138,16 +138,22 @@ class ValuePainter extends CustomPainter {
     }
 
     if (drawGrid && settings.grid != GridMode.off) {
-      // Divides the photograph, not the view: the grid is drawn across the
-      // whole image at its current size and clipped to what shows, so
-      // zooming magnifies the cells with the picture — and, as they grow,
-      // halves them again, so the grid keeps roughly the density chosen.
+      // Divides the picture, not the view: the grid is drawn across its
+      // frame — the whole picture, or the passage it was reset to — at its
+      // current size and clipped to what shows, so zooming magnifies the
+      // cells with the picture — and, as they grow, halves them again, so
+      // the grid keeps roughly the density chosen.
+      final grid = gridRectIn(dest, settings.gridFrame);
+      final base = containRect(_sourceSize, size);
       paintGrid(
         canvas,
-        dest,
-        area,
+        grid,
+        area.intersect(grid),
         settings.grid,
-        gridLevelAt(settings.gridLevel, view.zoom),
+        gridLevelAt(
+          settings.gridLevel,
+          base.isEmpty ? view.zoom : grid.width / base.width,
+        ),
       );
     }
 
@@ -394,6 +400,15 @@ void paintGrid(
   }
   canvas.restore();
 }
+
+/// Where a grid of [frame] (a fraction of each side of the picture) lands
+/// when the picture is drawn into [picture].
+Rect gridRectIn(Rect picture, Rect frame) => Rect.fromLTRB(
+  picture.left + frame.left * picture.width,
+  picture.top + frame.top * picture.height,
+  picture.left + frame.right * picture.width,
+  picture.top + frame.bottom * picture.height,
+);
 
 /// How deep the grid goes on screen: the chosen [level] at 1×, one depth
 /// more for every doubling of [zoom], so a cell on screen stays between one
