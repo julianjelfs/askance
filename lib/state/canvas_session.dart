@@ -92,6 +92,11 @@ class CanvasSession extends ChangeNotifier {
   /// tap on the palette swatch; null shows them all. View state like
   /// [peeking]: a study never records it.
   int? isolatedBand;
+
+  /// The picture mirrored top to bottom, so its proportions can be
+  /// judged as shapes rather than as the things they depict. View state like
+  /// [peeking]: a study never records it, and exports are never flipped.
+  bool flipped = false;
   bool chromeVisible = true;
   CanvasTool? openTool;
 
@@ -145,6 +150,7 @@ class CanvasSession extends ChangeNotifier {
     // Come back to the passage you were working on, at the zoom you left it.
     view = study.settings.view;
     isolatedBand = null;
+    flipped = false;
     openTool = null;
     chromeVisible = true;
     notifyListeners();
@@ -163,6 +169,7 @@ class CanvasSession extends ChangeNotifier {
     splitPosition = settings.splitPosition;
     view = const ViewTransform();
     isolatedBand = null;
+    flipped = false;
     imageBytes = null;
     final old = image;
     image = null;
@@ -185,6 +192,7 @@ class CanvasSession extends ChangeNotifier {
     splitPosition = settings.splitPosition;
     view = const ViewTransform();
     isolatedBand = null;
+    flipped = false;
     openTool = null;
     chromeVisible = true;
     notifyListeners();
@@ -442,6 +450,12 @@ class CanvasSession extends ChangeNotifier {
   /// Tapping a band shows it alone; tapping it again shows them all.
   void toggleIsolatedBand(int band) {
     isolatedBand = isolatedBand == band ? null : band;
+    notifyListeners();
+  }
+
+  void setFlipped(bool value) {
+    if (value == flipped) return;
+    flipped = value;
     notifyListeners();
   }
 

@@ -649,7 +649,7 @@ class ToneControl extends StatelessWidget {
 }
 
 /// The picture's qualities: how much detail it keeps, and its brightness
-/// and contrast. Every view shows the picture through them, PHOTO included,
+/// and contrast, and a flip to see it afresh. Every view shows the picture through them, PHOTO included,
 /// and the values are cut from it.
 class PictureControl extends StatelessWidget {
   const PictureControl({super.key, required this.session});
@@ -682,9 +682,25 @@ class PictureControl extends StatelessWidget {
           value: ContrastControl.readout(settings.contrast),
         ),
         ContrastControl(session: session),
+        SizedBox(height: 14 * s),
+        FlipControl(session: session),
       ],
     );
   }
+}
+
+/// Mirrors the picture top to bottom, so its shapes and proportions can be seen
+/// without knowing what they are.
+class FlipControl extends StatelessWidget {
+  const FlipControl({super.key, required this.session});
+  final CanvasSession session;
+
+  @override
+  Widget build(BuildContext context) => RuleCheckbox(
+    label: 'Flip vertically',
+    value: session.flipped,
+    onChanged: session.setFlipped,
+  );
 }
 
 /// EDGES only: how many values, darkest first, are blocked in under the

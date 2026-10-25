@@ -189,56 +189,67 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
           }
         }
 
-        return Listener(
-          onPointerSignal: _onScroll,
-          child: RawGestureDetector(
-            behavior: HitTestBehavior.opaque,
-            gestures: {
-              // Tap and double tap are timed here rather than left to a
-              // DoubleTapGestureRecognizer, because the scale recognizer wins
-              // the arena first and the double tap never fires. The single tap
-              // is held for the design's 300ms double-tap window so a second
-              // tap can claim it.
-              TapGestureRecognizer:
-                  GestureRecognizerFactoryWithHandlers<TapGestureRecognizer>(
-                    TapGestureRecognizer.new,
-                    (instance) => instance.onTapUp = _onTapUp,
-                  ),
-              LongPressGestureRecognizer: peekRecognizer(
-                onStart: () => session.setPeeking(true),
-                onEnd: () => session.setPeeking(false),
-              ),
-              ScaleGestureRecognizer:
-                  GestureRecognizerFactoryWithHandlers<ScaleGestureRecognizer>(
-                    ScaleGestureRecognizer.new,
-                    (instance) => instance
-                      ..onStart = _onScaleStart
-                      ..onUpdate = _onScaleUpdate,
-                  ),
-            },
-            child: RepaintBoundary(
-              child: ListenableBuilder(
-                listenable: Listenable.merge([session.blur, session.photoBlur]),
-                builder: (context, _) => CustomPaint(
-                  size: Size.infinite,
-                  painter: ValuePainter(
-                    shader: widget.shader,
-                    source: session.image!,
-                    blurred: session.blur.image,
-                    blurredView: session.blur.imageView,
-                    blurredSize: session.blur.imageOutputPx,
-                    photoBlurred: session.photoBlur.image,
-                    photoBlurredView: session.photoBlur.imageView,
-                    photoBlurredSize: session.photoBlur.imageOutputPx,
-                    settings: session.settings,
-                    view: session.view,
-                    devicePixelRatio: dpr,
-                    peeking: session.peeking,
-                    splitPosition: session.splitPosition,
-                    disposer: _disposer,
-                    drawGrid: widget.drawGrid,
-                    isolatedBand: session.isolatedBand,
-                    outline: true,
+        // Flipped outside the gestures, so every position they report is
+        // already in the picture's own, unflipped space: a pinch or a double
+        // tap still zooms on the passage under the fingers.
+        return Transform.flip(
+          flipY: session.flipped,
+          child: Listener(
+            onPointerSignal: _onScroll,
+            child: RawGestureDetector(
+              behavior: HitTestBehavior.opaque,
+              gestures: {
+                // Tap and double tap are timed here rather than left to a
+                // DoubleTapGestureRecognizer, because the scale recognizer wins
+                // the arena first and the double tap never fires. The single tap
+                // is held for the design's 300ms double-tap window so a second
+                // tap can claim it.
+                TapGestureRecognizer:
+                    GestureRecognizerFactoryWithHandlers<TapGestureRecognizer>(
+                      TapGestureRecognizer.new,
+                      (instance) => instance.onTapUp = _onTapUp,
+                    ),
+                LongPressGestureRecognizer: peekRecognizer(
+                  onStart: () => session.setPeeking(true),
+                  onEnd: () => session.setPeeking(false),
+                ),
+                ScaleGestureRecognizer:
+                    GestureRecognizerFactoryWithHandlers<
+                      ScaleGestureRecognizer
+                    >(
+                      ScaleGestureRecognizer.new,
+                      (instance) => instance
+                        ..onStart = _onScaleStart
+                        ..onUpdate = _onScaleUpdate,
+                    ),
+              },
+              child: RepaintBoundary(
+                child: ListenableBuilder(
+                  listenable: Listenable.merge([
+                    session.blur,
+                    session.photoBlur,
+                  ]),
+                  builder: (context, _) => CustomPaint(
+                    size: Size.infinite,
+                    painter: ValuePainter(
+                      shader: widget.shader,
+                      source: session.image!,
+                      blurred: session.blur.image,
+                      blurredView: session.blur.imageView,
+                      blurredSize: session.blur.imageOutputPx,
+                      photoBlurred: session.photoBlur.image,
+                      photoBlurredView: session.photoBlur.imageView,
+                      photoBlurredSize: session.photoBlur.imageOutputPx,
+                      settings: session.settings,
+                      view: session.view,
+                      devicePixelRatio: dpr,
+                      peeking: session.peeking,
+                      splitPosition: session.splitPosition,
+                      disposer: _disposer,
+                      drawGrid: widget.drawGrid,
+                      isolatedBand: session.isolatedBand,
+                      outline: true,
+                    ),
                   ),
                 ),
               ),
