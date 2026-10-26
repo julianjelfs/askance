@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -45,6 +46,53 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
   }
 
   @override
-  Widget build(BuildContext context) =>
-      isWideLayout(context) ? const DesktopScreen() : const CanvasScreen();
+  Widget build(BuildContext context) => StudyKeys(
+    session: _session,
+    child: isWideLayout(context) ? const DesktopScreen() : const CanvasScreen(),
+  );
+}
+
+/// The study's keyboard shortcuts: the up arrow flips the picture.
+///
+/// Heard from the keyboard directly rather than bound through focus: the
+/// name's text field takes focus by autofocus, which a focus node held here
+/// would refuse it. A focused text field keeps its arrow keys for the caret,
+/// and a screen opened over the study, the crop, keeps them too.
+class StudyKeys extends StatefulWidget {
+  const StudyKeys({super.key, required this.session, required this.child});
+
+  final CanvasSession session;
+  final Widget child;
+
+  @override
+  State<StudyKeys> createState() => _StudyKeysState();
+}
+
+class _StudyKeysState extends State<StudyKeys> {
+  @override
+  void initState() {
+    super.initState();
+    HardwareKeyboard.instance.addHandler(_onKey);
+  }
+
+  @override
+  void dispose() {
+    HardwareKeyboard.instance.removeHandler(_onKey);
+    super.dispose();
+  }
+
+  bool _onKey(KeyEvent event) {
+    if (event is! KeyDownEvent) return false;
+    if (event.logicalKey != LogicalKeyboardKey.arrowUp) return false;
+    if (ModalRoute.of(context)?.isCurrent == false) return false;
+    final focused = FocusManager.instance.primaryFocus?.context;
+    if (focused?.findAncestorWidgetOfExactType<EditableText>() != null) {
+      return false;
+    }
+    widget.session.setFlipped(!widget.session.flipped);
+    return true;
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

@@ -4,6 +4,7 @@ import 'package:askance/engine/engine.dart';
 import 'package:askance/model/study.dart';
 import 'package:askance/state/canvas_session.dart';
 import 'package:askance/ui/canvas/canvas_surface.dart';
+import 'package:askance/ui/study_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -74,5 +75,44 @@ void main() {
     final upright = await doubleTap(const Offset(100, 480), flipped: false);
     expect(flipped.zoom, greaterThan(1));
     expect(flipped, upright);
+  });
+
+  testWidgets('the up arrow flips the picture, except while a text field '
+      'has the keys', (tester) async {
+    final session = CanvasSession();
+    addTearDown(session.dispose);
+    final renaming = ValueNotifier(false);
+    addTearDown(renaming.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StudyKeys(
+          session: session,
+          child: Material(
+            child: ValueListenableBuilder(
+              valueListenable: renaming,
+              builder: (context, on, _) =>
+                  on ? const TextField(autofocus: true) : const SizedBox(),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    expect(session.flipped, isTrue);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    expect(session.flipped, isFalse);
+
+    renaming.value = true;
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    expect(session.flipped, isFalse, reason: 'the caret has the arrow');
+
+    // Renaming ends by swapping the field back out; the shortcut returns.
+    renaming.value = false;
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    expect(session.flipped, isTrue);
   });
 }
