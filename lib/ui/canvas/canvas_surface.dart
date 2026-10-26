@@ -193,6 +193,7 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
         // already in the picture's own, unflipped space: a pinch or a double
         // tap still zooms on the passage under the fingers.
         return Transform.flip(
+          flipX: session.flipped,
           flipY: session.flipped,
           child: Listener(
             onPointerSignal: _onScroll,

@@ -70,9 +70,10 @@ void main() {
       return view;
     }
 
-    // Near the top of the screen is near the bottom of the flipped picture.
+    // Near the top left of the screen is near the bottom right of the
+    // picture turned upside down.
     final flipped = await doubleTap(const Offset(100, 120), flipped: true);
-    final upright = await doubleTap(const Offset(100, 480), flipped: false);
+    final upright = await doubleTap(const Offset(300, 480), flipped: false);
     expect(flipped.zoom, greaterThan(1));
     expect(flipped, upright);
   });

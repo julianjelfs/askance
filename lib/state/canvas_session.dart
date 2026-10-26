@@ -93,8 +93,9 @@ class CanvasSession extends ChangeNotifier {
   /// [peeking]: a study never records it.
   int? isolatedBand;
 
-  /// The picture mirrored top to bottom, so its proportions can be
-  /// judged as shapes rather than as the things they depict. View state like
+  /// The picture turned upside down, as a painter turns the paper, so its
+  /// proportions can be judged as shapes rather than as the things they
+  /// depict. View state like
   /// [peeking]: a study never records it, and exports are never flipped.
   bool flipped = false;
   bool chromeVisible = true;

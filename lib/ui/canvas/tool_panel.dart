@@ -649,7 +649,7 @@ class ToneControl extends StatelessWidget {
 }
 
 /// The picture's qualities: how much detail it keeps, and its brightness
-/// and contrast, and a flip to see it afresh. Every view shows the picture through them, PHOTO included,
+/// and contrast, and a turn upside down to see it afresh. Every view shows the picture through them, PHOTO included,
 /// and the values are cut from it.
 class PictureControl extends StatelessWidget {
   const PictureControl({super.key, required this.session});
@@ -689,15 +689,15 @@ class PictureControl extends StatelessWidget {
   }
 }
 
-/// Mirrors the picture top to bottom, so its shapes and proportions can be seen
-/// without knowing what they are.
+/// Turns the picture upside down, as a painter turns the paper, so its shapes
+/// and proportions can be seen without knowing what they are.
 class FlipControl extends StatelessWidget {
   const FlipControl({super.key, required this.session});
   final CanvasSession session;
 
   @override
   Widget build(BuildContext context) => RuleCheckbox(
-    label: 'Flip vertically',
+    label: 'Turn upside down',
     value: session.flipped,
     onChanged: session.setFlipped,
   );
