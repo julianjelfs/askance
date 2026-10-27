@@ -1,7 +1,10 @@
 import 'dart:ui' show Color, Offset, Rect;
 
+import 'package:flutter/foundation.dart' show listEquals;
+
 import '../engine/crop.dart';
 import '../engine/engine.dart';
+import '../engine/lines.dart';
 import '../engine/random_ramp.dart';
 import '../engine/tone.dart';
 import '../engine/value_scale.dart';
@@ -51,6 +54,7 @@ class StudySettings {
     this.crop = kWholeImage,
     this.gridFrame = kWholeImage,
     this.tone = const PhotoTone(),
+    this.lines = const [],
   });
 
   final int steps;
@@ -130,6 +134,10 @@ class StudySettings {
   /// How PHOTO draws the photograph.
   final PhotoTone tone;
 
+  /// Lines ruled over the picture. Part of the board, like the grid: shown
+  /// and exported with it, and hidden while it is off.
+  final List<BoardLine> lines;
+
   /// Whether PHOTO's blurred photograph needs a pass of its own. Smooth's
   /// pass is already the photograph blurred by the detail; ROUGH and BLOCK
   /// shape theirs further.
@@ -199,6 +207,7 @@ class StudySettings {
     Rect? crop,
     Rect? gridFrame,
     PhotoTone? tone,
+    List<BoardLine>? lines,
   }) => StudySettings(
     steps: steps ?? this.steps,
     scale: scale ?? this.scale,
@@ -218,6 +227,7 @@ class StudySettings {
     crop: crop ?? this.crop,
     gridFrame: gridFrame ?? this.gridFrame,
     tone: tone ?? this.tone,
+    lines: lines ?? this.lines,
   );
 
   Map<String, Object?> toJson() => {
@@ -241,6 +251,7 @@ class StudySettings {
     'crop': cropToJson(crop),
     'gridFrame': cropToJson(gridFrame),
     'tone': tone.toJson(),
+    'lines': [for (final line in lines) line.toJson()],
   };
 
   /// Tolerant by design: a manifest written by an older build, or one that has
@@ -293,6 +304,11 @@ class StudySettings {
     // Stored and checked the same way as the crop: a rect inside the picture.
     gridFrame: cropFromJson(json['gridFrame']),
     tone: PhotoTone.fromJson(json['tone']),
+    // A damaged line costs that line, not the rest.
+    lines: [
+      if (json['lines'] case final List<Object?> lines)
+        for (final line in lines) ?BoardLine.fromJson(line),
+    ],
   );
 
   @override
@@ -315,7 +331,8 @@ class StudySettings {
       other.view == view &&
       other.crop == crop &&
       other.gridFrame == gridFrame &&
-      other.tone == tone;
+      other.tone == tone &&
+      listEquals(other.lines, lines);
 
   @override
   int get hashCode => Object.hash(
@@ -337,6 +354,7 @@ class StudySettings {
     crop,
     gridFrame,
     tone,
+    Object.hashAll(lines),
   );
 }
 

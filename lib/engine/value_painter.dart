@@ -8,6 +8,7 @@ import '../theme.dart';
 import 'crop.dart';
 import 'deferred_disposer.dart';
 import 'engine.dart';
+import 'lines.dart';
 import 'value_scale.dart';
 
 /// Paints the study: the quantised value map, the untouched photograph, the
@@ -154,6 +155,15 @@ class ValuePainter extends CustomPainter {
           settings.gridLevel,
           base.isEmpty ? view.zoom : grid.width / base.width,
         ),
+      );
+      // Over the grid, and with it: ruled lines are part of the board.
+      paintLines(
+        canvas,
+        settings.lines,
+        settings.crop,
+        dest,
+        area,
+        paint: boardLinePaint,
       );
     }
 
@@ -400,6 +410,14 @@ void paintGrid(
   }
   canvas.restore();
 }
+
+/// Ruled lines: the accent at full strength and a little heavier than the
+/// grid's rules, so a line reads as drawn on the board rather than as part of
+/// its division.
+final Paint boardLinePaint = Paint()
+  ..color = AskanceColors.accent
+  ..strokeWidth = 2
+  ..strokeCap = StrokeCap.round;
 
 /// Where a grid of [frame] (a fraction of each side of the picture) lands
 /// when the picture is drawn into [picture].

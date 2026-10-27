@@ -763,6 +763,63 @@ class GridControl extends StatelessWidget {
   }
 }
 
+/// Ruling straight lines over the picture. Desktop only: see
+/// [CanvasSurface.editLines]. The lines go with the grid, so with the grid
+/// off there is nothing here to do.
+class LinesControl extends StatelessWidget {
+  const LinesControl({super.key, required this.session});
+  final CanvasSession session;
+
+  @override
+  Widget build(BuildContext context) {
+    final on = session.settings.grid != GridMode.off;
+    final drawing = session.drawingLines;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: ActionButton(
+                label: drawing ? 'Done' : 'Draw lines',
+                solid: drawing,
+                height: 38,
+                fontSize: 13.5,
+                centred: true,
+                enabled: on,
+                onPressed: () => session.setDrawingLines(!drawing),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: ActionButton(
+                label: 'Clear lines',
+                solid: false,
+                height: 38,
+                fontSize: 13.5,
+                centred: true,
+                enabled: on && session.settings.lines.isNotEmpty,
+                onPressed: session.clearLines,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          !on
+              ? 'Lines show with the grid. Turn it on to draw them.'
+              : drawing
+              ? 'Click two points to draw a line. Drag an end to move it. '
+                    'Click a line, then press Delete to remove it.'
+              : 'Straight lines over the picture, saved with the study and '
+                    'exported with the grid.',
+          style: AskanceText.caption(12.5),
+        ),
+      ],
+    );
+  }
+}
+
 /// What the study is cropped to, in words.
 String cropSummary(CanvasSession session) {
   final image = session.image;

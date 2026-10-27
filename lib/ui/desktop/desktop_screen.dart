@@ -175,6 +175,7 @@ class _Stage extends ConsumerWidget {
                       // The desktop chrome is a fixed rail; there is nothing to
                       // dismiss, so a tap should not hide it.
                       allowChromeToggle: false,
+                      editLines: true,
                     ),
                   ),
                   if (session.settings.mode == ViewMode.split &&
@@ -365,6 +366,13 @@ class _RailState extends ConsumerState<_Rail> {
                     null,
                     BoardControl(session: session, onEditCrop: widget.onCrop),
                     showLabel: false,
+                  ),
+                  _section(
+                    'Lines',
+                    session.settings.lines.isEmpty
+                        ? null
+                        : '${session.settings.lines.length}',
+                    LinesControl(session: session),
                   ),
                 ],
               ),

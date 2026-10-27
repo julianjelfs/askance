@@ -9,6 +9,7 @@ import 'package:flutter/scheduler.dart';
 import '../engine/crop.dart';
 import '../engine/engine.dart';
 import '../engine/blur_pass.dart';
+import '../engine/lines.dart';
 import '../engine/value_scale.dart';
 import '../model/study.dart';
 
@@ -101,6 +102,14 @@ class CanvasSession extends ChangeNotifier {
   bool chromeVisible = true;
   CanvasTool? openTool;
 
+  /// Whether a click on the picture rules lines rather than doing what it
+  /// usually does. View state like [peeking], and with it [lineStart], the
+  /// first end of a line still being ruled, and [selectedLine], the one a
+  /// delete would remove.
+  bool drawingLines = false;
+  Offset? lineStart;
+  int? selectedLine;
+
   /// Live split position during a drag. Written back into [settings] when the
   /// drag ends, so the study only records settled values.
   double splitPosition = 0.5;
@@ -152,6 +161,7 @@ class CanvasSession extends ChangeNotifier {
     view = study.settings.view;
     isolatedBand = null;
     flipped = false;
+    _stopDrawingLines();
     openTool = null;
     chromeVisible = true;
     notifyListeners();
@@ -171,6 +181,7 @@ class CanvasSession extends ChangeNotifier {
     view = const ViewTransform();
     isolatedBand = null;
     flipped = false;
+    _stopDrawingLines();
     imageBytes = null;
     final old = image;
     image = null;
@@ -194,6 +205,7 @@ class CanvasSession extends ChangeNotifier {
     view = const ViewTransform();
     isolatedBand = null;
     flipped = false;
+    _stopDrawingLines();
     openTool = null;
     chromeVisible = true;
     notifyListeners();
@@ -219,6 +231,9 @@ class CanvasSession extends ChangeNotifier {
     splitPosition = incoming.splitPosition;
     view = incoming.view;
     isolatedBand = null;
+    lineStart = null;
+    selectedLine = null;
+    if (incoming.grid == GridMode.off) drawingLines = false;
     notifyListeners();
   }
 
@@ -356,6 +371,8 @@ class CanvasSession extends ChangeNotifier {
   void setGrid(GridMode grid) {
     if (grid == settings.grid) return;
     settings = settings.copyWith(grid: grid);
+    // The lines go with the grid, and ruling ones nobody can see is no use.
+    if (grid == GridMode.off) _stopDrawingLines();
     _persistSoon();
     notifyListeners();
   }
@@ -419,6 +436,91 @@ class CanvasSession extends ChangeNotifier {
     if (crop == settings.crop) return;
     settings = settings.copyWith(crop: crop, gridFrame: kWholeImage);
     view = const ViewTransform();
+    _persistSoon();
+    notifyListeners();
+  }
+
+  // --- lines ----------------------------------------------------------------
+
+  void setDrawingLines(bool value) {
+    if (value == drawingLines) return;
+    if (value) {
+      drawingLines = true;
+    } else {
+      _stopDrawingLines();
+    }
+    notifyListeners();
+  }
+
+  void _stopDrawingLines() {
+    drawingLines = false;
+    lineStart = null;
+    selectedLine = null;
+  }
+
+  /// A click while ruling lines, at [point] on the photograph as [BoardLine]
+  /// measures it. The first click of a line places its start; the second
+  /// rules it. A second click on the first does nothing but forget it.
+  void placeLineEnd(Offset point) {
+    final start = lineStart;
+    selectedLine = null;
+    if (start == null) {
+      lineStart = point;
+    } else {
+      lineStart = null;
+      if (point != start) {
+        settings = settings.copyWith(
+          lines: [...settings.lines, BoardLine(start, point)],
+        );
+        _persistSoon();
+      }
+    }
+    notifyListeners();
+  }
+
+  /// Moves one end, 0 or 1, of line [index] to [point] on the photograph.
+  void moveLineEnd(int index, int end, Offset point) {
+    final lines = [...settings.lines];
+    final next = lines[index].withEnd(end, point);
+    if (next == lines[index]) return;
+    lines[index] = next;
+    settings = settings.copyWith(lines: lines);
+    _persistSoon();
+    notifyListeners();
+  }
+
+  void selectLine(int? index) {
+    if (index == selectedLine) return;
+    selectedLine = index;
+    notifyListeners();
+  }
+
+  /// Escape: forgets a half-ruled line or a selection, in that order.
+  /// Returns whether there was either.
+  bool cancelLine() {
+    if (lineStart == null && selectedLine == null) return false;
+    lineStart = null;
+    selectedLine = null;
+    notifyListeners();
+    return true;
+  }
+
+  /// Removes the selected line. Returns whether there was one.
+  bool deleteSelectedLine() {
+    final index = selectedLine;
+    if (index == null) return false;
+    settings = settings.copyWith(lines: [...settings.lines]..removeAt(index));
+    selectedLine = null;
+    _persistSoon();
+    notifyListeners();
+    return true;
+  }
+
+  void clearLines() {
+    if (settings.lines.isEmpty && lineStart == null) return;
+    settings = settings.copyWith(lines: const []);
+    lineStart = null;
+    selectedLine = null;
     _persistSoon();
     notifyListeners();
   }

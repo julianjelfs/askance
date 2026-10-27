@@ -52,7 +52,9 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
   );
 }
 
-/// The study's keyboard shortcuts: the up arrow flips the picture.
+/// The study's keyboard shortcuts: the up arrow flips the picture, and while
+/// lines are being ruled, Delete or Backspace removes the selected one and
+/// Escape lets go of a half-ruled line or a selection, then stops ruling.
 ///
 /// Heard from the keyboard directly rather than bound through focus: the
 /// name's text field takes focus by autofocus, which a focus node held here
@@ -83,14 +85,27 @@ class _StudyKeysState extends State<StudyKeys> {
 
   bool _onKey(KeyEvent event) {
     if (event is! KeyDownEvent) return false;
-    if (event.logicalKey != LogicalKeyboardKey.arrowUp) return false;
     if (ModalRoute.of(context)?.isCurrent == false) return false;
     final focused = FocusManager.instance.primaryFocus?.context;
     if (focused?.findAncestorWidgetOfExactType<EditableText>() != null) {
       return false;
     }
-    widget.session.setFlipped(!widget.session.flipped);
-    return true;
+    final session = widget.session;
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.arrowUp) {
+      session.setFlipped(!session.flipped);
+      return true;
+    }
+    if (!session.drawingLines) return false;
+    if (key == LogicalKeyboardKey.delete ||
+        key == LogicalKeyboardKey.backspace) {
+      return session.deleteSelectedLine();
+    }
+    if (key == LogicalKeyboardKey.escape) {
+      if (!session.cancelLine()) session.setDrawingLines(false);
+      return true;
+    }
+    return false;
   }
 
   @override
