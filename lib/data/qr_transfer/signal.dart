@@ -51,6 +51,30 @@ class QrSignal {
     return (token: token, keyB64: key, payload: 'askance1:$token:$key');
   }
 
+  /// The link a phone opens to send the laptop a photo of the sketch:
+  /// [base], the address of the web app, with the room in its fragment.
+  ///
+  /// The fragment, never the query: a browser does not send it to the
+  /// server, so the key stays out of every request log and page count.
+  static String sketchLink(Uri base, String token, String keyB64) => Uri(
+    scheme: base.scheme,
+    host: base.host,
+    port: base.hasPort ? base.port : null,
+    path: base.path.isEmpty ? '/' : base.path,
+    fragment: '$_sketchPrefix$token.$keyB64',
+  ).toString();
+
+  static const _sketchPrefix = 'sketch=';
+
+  /// The room in a link made by [sketchLink]; null for anything else.
+  static ({String token, String keyB64})? parseSketchLink(String text) {
+    final fragment = Uri.tryParse(text.trim())?.fragment ?? '';
+    if (!fragment.startsWith(_sketchPrefix)) return null;
+    final parts = fragment.substring(_sketchPrefix.length).split('.');
+    if (parts.length != 2 || parts.any((p) => p.isEmpty)) return null;
+    return (token: parts[0], keyB64: parts[1]);
+  }
+
   /// Parses a scanned QR payload; null if it is not ours.
   static ({String token, String keyB64})? parse(String payload) {
     final parts = payload.split(':');

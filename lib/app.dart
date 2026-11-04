@@ -6,6 +6,7 @@ import 'theme.dart';
 import 'ui/layout.dart';
 import 'ui/onboarding/onboarding_screen.dart';
 import 'ui/shelf/shelf_screen.dart';
+import 'ui/sketch_link/send_sketch_screen.dart';
 
 class AskanceApp extends StatelessWidget {
   const AskanceApp({super.key});
@@ -50,6 +51,14 @@ class _Root extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Opened from a laptop's code: the phone is here to send a sketch, not
+    // to tour the app or browse its own shelf.
+    if (ref.watch(launchSketchRoomProvider) case final room?) {
+      return SendSketchScreen(
+        room: room,
+        onLeave: () => ref.read(launchSketchRoomProvider.notifier).state = null,
+      );
+    }
     final seen = ref.watch(onboardingSeenProvider);
 
     return switch (seen) {

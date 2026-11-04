@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../state/canvas_session.dart';
 import '../state/providers.dart';
+import '../state/sketch_link.dart';
 import 'canvas/canvas_screen.dart';
 import 'desktop/desktop_screen.dart';
 import 'fullscreen/fullscreen_stub.dart'
@@ -27,11 +28,13 @@ class StudyScreen extends ConsumerStatefulWidget {
 class _StudyScreenState extends ConsumerState<StudyScreen> {
   // Captured here because ref may not be touched from dispose.
   late final CanvasSession _session;
+  late final SketchLink _sketchLink;
 
   @override
   void initState() {
     super.initState();
     _session = ref.read(sessionProvider);
+    _sketchLink = ref.read(sketchLinkProvider);
   }
 
   @override
@@ -41,6 +44,8 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
     // Disposal happens after the pop transition has finished, so the clear
     // cannot pull the image out from under the return flight.
     _session.flushPersist();
+    // A phone still connected would send its next photo to no study.
+    _sketchLink.close();
     _session.clear();
     super.dispose();
   }

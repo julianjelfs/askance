@@ -7,12 +7,14 @@ import 'dart:async' show unawaited;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../analytics/analytics.dart';
 import '../../build_stamp.dart';
+import '../../data/qr_transfer/signal.dart';
 import '../../data/qr_transfer/still_decode.dart';
 import '../pick_image.dart';
 import '../../data/qr_transfer/transfer.dart';
 import '../../model/study.dart';
 import '../../state/providers.dart';
 import '../../theme.dart';
+import '../sketch_link/send_sketch_screen.dart';
 import '../study_screen.dart';
 import '../widgets/controls.dart';
 import '../widgets/glyphs.dart';
@@ -56,7 +58,9 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
 
   Future<void> _onDetect(BarcodeCapture capture) async {
     final payload = capture.barcodes.firstOrNull?.rawValue;
-    if (payload == null || !payload.startsWith('askance1:')) return;
+    if (payload == null) return;
+    if (_openedSketchLink(payload)) return;
+    if (!payload.startsWith('askance1:')) return;
     await _begin(payload);
   }
 
@@ -70,6 +74,7 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
     setState(() => _stage = 'Reading the code…');
     final payload = await decodeQrFromPhoto(picked.bytes);
     if (!mounted) return;
+    if (payload != null && _openedSketchLink(payload)) return;
     if (payload == null || !payload.startsWith('askance1:')) {
       setState(() {
         _failed = true;
@@ -79,6 +84,26 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
     }
     await _begin(payload);
   }
+
+  /// A laptop's code for sending it a sketch, scanned from inside the app
+  /// rather than with the phone's own camera: it leads to the same place.
+  bool _openedSketchLink(String payload) {
+    final room = QrSignal.parseSketchLink(payload);
+    if (room == null || _opening) return room != null;
+    _opening = true;
+    unawaited(_scanner.stop());
+    Navigator.of(context).pushReplacement(
+      NoTransitionRoute(
+        builder: (context) => SendSketchScreen(
+          room: room,
+          onLeave: () => Navigator.of(context).maybePop(),
+        ),
+      ),
+    );
+    return true;
+  }
+
+  bool _opening = false;
 
   Future<void> _begin(String payload) async {
     if (_receiver != null) return;

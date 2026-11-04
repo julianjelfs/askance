@@ -51,6 +51,30 @@ Future<RTCSessionDescription> _gathered(RTCPeerConnection pc) async {
   return (await pc.getLocalDescription())!;
 }
 
+/// Sends [header] as text, then [bytes] in chunks the data channel can
+/// carry. The header names the byte count, so the far side knows when it
+/// has the lot.
+Future<void> _sendChunked(
+  RTCDataChannel channel,
+  Map<String, Object?> header,
+  Uint8List bytes,
+  void Function(double fraction) onFraction,
+) async {
+  await channel.send(RTCDataChannelMessage(jsonEncode(header)));
+  for (var offset = 0; offset < bytes.length; offset += _chunkSize) {
+    final end = (offset + _chunkSize).clamp(0, bytes.length);
+    await channel.send(
+      RTCDataChannelMessage.fromBinary(bytes.sublist(offset, end)),
+    );
+    onFraction(end / bytes.length);
+    // Crude backpressure: SCTP buffers are finite and flutter_webrtc does
+    // not surface bufferedAmount everywhere, so breathe every half MB.
+    if (offset ~/ _chunkSize % 32 == 31) {
+      await Future<void>.delayed(const Duration(milliseconds: 40));
+    }
+  }
+}
+
 /// The sharing side: builds the offer, waits to be scanned, sends the study.
 class QrSender {
   QrSender({required this.onProgress});
@@ -120,23 +144,12 @@ class QrSender {
     };
 
     onProgress('Sending…', 0);
-    await channel.send(
-      RTCDataChannelMessage(
-        jsonEncode({'bytes': imageBytes.length, 'settings': settingsJson}),
-      ),
+    await _sendChunked(
+      channel,
+      {'bytes': imageBytes.length, 'settings': settingsJson},
+      imageBytes,
+      (fraction) => onProgress('Sending…', fraction),
     );
-    for (var offset = 0; offset < imageBytes.length; offset += _chunkSize) {
-      final end = (offset + _chunkSize).clamp(0, imageBytes.length);
-      await channel.send(
-        RTCDataChannelMessage.fromBinary(imageBytes.sublist(offset, end)),
-      );
-      onProgress('Sending…', end / imageBytes.length);
-      // Crude backpressure: SCTP buffers are finite and flutter_webrtc does
-      // not surface bufferedAmount everywhere, so breathe every half MB.
-      if (offset ~/ _chunkSize % 32 == 31) {
-        await Future<void>.delayed(const Duration(milliseconds: 40));
-      }
-    }
 
     await acked.future.timeout(const Duration(minutes: 2));
     signal.clearRetained();
@@ -239,4 +252,255 @@ class QrReceiver {
     _pc?.close();
     _signal?.dispose();
   }
+}
+
+/// Puts photographs back together from a data channel: a text header
+/// naming the byte count, then binary chunks until there are that many.
+/// Any number of photographs, one after another, down the same channel.
+class PhotoAssembler {
+  PhotoAssembler({required this.onPhoto, this.onFraction});
+
+  final void Function(Uint8List bytes) onPhoto;
+  final void Function(double fraction)? onFraction;
+
+  int _expected = 0;
+  BytesBuilder _chunks = BytesBuilder(copy: false);
+
+  /// A header for the next photograph. A header arriving partway through
+  /// one drops the rest of it: the sender gave up on it.
+  void header(String text) {
+    final decoded = jsonDecode(text);
+    if (decoded is! Map || decoded['bytes'] is! int) return;
+    _expected = decoded['bytes'] as int;
+    _chunks = BytesBuilder(copy: false);
+  }
+
+  void chunk(Uint8List bytes) {
+    if (_expected <= 0) return;
+    _chunks.add(bytes);
+    onFraction?.call((_chunks.length / _expected).clamp(0.0, 1.0));
+    if (_chunks.length >= _expected) {
+      final expected = _expected;
+      final photo = _chunks.takeBytes();
+      _expected = 0;
+      onPhoto(
+        photo.length == expected
+            ? photo
+            : Uint8List.sublistView(photo, 0, expected),
+      );
+    }
+  }
+}
+
+/// The laptop's side of sending a sketch: offers a room, waits for the
+/// phone to open the link, then takes every photograph the phone sends
+/// until either side goes. The roles of the study transfer, reversed: the
+/// side showing the code receives.
+class SketchHost {
+  SketchHost({
+    required this.onConnected,
+    required this.onFraction,
+    required this.onPhoto,
+    required this.onClosed,
+  });
+
+  final void Function() onConnected;
+  final void Function(double fraction) onFraction;
+  final void Function(Uint8List bytes) onPhoto;
+
+  /// The phone went, or the connection did. Not called after [dispose].
+  final void Function() onClosed;
+
+  RTCPeerConnection? _pc;
+  QrSignal? _signal;
+  bool _disposed = false;
+
+  /// Calls [onRoomReady] with the room once the offer is up for the phone
+  /// to find, then waits for it. Completes once the phone is connected;
+  /// photographs arrive through [onPhoto] after that.
+  Future<void> open({
+    required void Function(String token, String keyB64) onRoomReady,
+  }) async {
+    final room = QrSignal.newRoom();
+    final signal = _signal = await QrSignal.connect(
+      token: room.token,
+      keyB64: room.keyB64,
+    );
+    final pc = _pc = await createPeerConnection(_iceConfig);
+    final channel = await pc.createDataChannel(
+      'sketch',
+      RTCDataChannelInit()..ordered = true,
+    );
+    final assembler = PhotoAssembler(
+      onFraction: onFraction,
+      onPhoto: (bytes) {
+        channel.send(RTCDataChannelMessage(jsonEncode({'ok': true})));
+        onPhoto(bytes);
+      },
+    );
+    channel.onMessage = (message) => message.isBinary
+        ? assembler.chunk(message.binary)
+        : assembler.header(message.text);
+
+    await pc.setLocalDescription(await pc.createOffer());
+    final offer = await _gathered(pc);
+    await signal.publish({
+      'role': 'offer',
+      'sdp': offer.sdp,
+      'type': offer.type,
+    }, retain: true);
+    onRoomReady(room.token, room.keyB64);
+
+    // Long enough to find the phone, unlock it and point it at the screen.
+    final answer = await signal.waitFor(
+      'answer',
+      timeout: const Duration(minutes: 10),
+    );
+    await pc.setRemoteDescription(
+      RTCSessionDescription(
+        answer['sdp']! as String,
+        answer['type']! as String,
+      ),
+    );
+    await _opened(channel).timeout(const Duration(seconds: 30));
+
+    // One phone per code: nobody else can find the room now, and the
+    // broker has nothing more to carry.
+    signal.clearRetained();
+    signal.dispose();
+    _signal = null;
+
+    channel.onDataChannelState = (state) {
+      if (state == RTCDataChannelState.RTCDataChannelClosed) _close();
+    };
+    pc.onConnectionState = (state) {
+      // Not on disconnected: that one often recovers by itself, as a phone
+      // locks and wakes.
+      if (state == RTCPeerConnectionState.RTCPeerConnectionStateFailed ||
+          state == RTCPeerConnectionState.RTCPeerConnectionStateClosed) {
+        _close();
+      }
+    };
+    onConnected();
+  }
+
+  void _close() {
+    if (_disposed) return;
+    dispose();
+    onClosed();
+  }
+
+  void dispose() {
+    if (_disposed) return;
+    _disposed = true;
+    _pc?.close();
+    _signal?.dispose();
+  }
+}
+
+/// The phone's side of sending a sketch: joins the room in the link it was
+/// opened with, then sends photographs one at a time.
+class SketchGuest {
+  SketchGuest({required this.onClosed});
+
+  /// The laptop went, or the connection did. Not called after [dispose].
+  final void Function() onClosed;
+
+  RTCPeerConnection? _pc;
+  QrSignal? _signal;
+  RTCDataChannel? _channel;
+  Completer<void>? _ack;
+  bool _disposed = false;
+
+  Future<void> join({required String token, required String keyB64}) async {
+    final signal = _signal = await QrSignal.connect(
+      token: token,
+      keyB64: keyB64,
+    );
+    final offerFuture = signal.waitFor('offer');
+    final pc = _pc = await createPeerConnection(_iceConfig);
+    final channel = Completer<RTCDataChannel>();
+    pc.onDataChannel = (dc) {
+      dc.onMessage = (message) {
+        if (!message.isBinary && !(_ack?.isCompleted ?? true)) {
+          _ack!.complete();
+        }
+      };
+      if (!channel.isCompleted) channel.complete(dc);
+    };
+
+    final offer = await offerFuture;
+    await pc.setRemoteDescription(
+      RTCSessionDescription(offer['sdp']! as String, offer['type']! as String),
+    );
+    await pc.setLocalDescription(await pc.createAnswer());
+    final answer = await _gathered(pc);
+    await signal.publish({
+      'role': 'answer',
+      'sdp': answer.sdp,
+      'type': answer.type,
+    });
+
+    final dc = _channel = await channel.future.timeout(
+      const Duration(seconds: 30),
+    );
+    await _opened(dc).timeout(const Duration(seconds: 30));
+    signal.dispose();
+    _signal = null;
+
+    dc.onDataChannelState = (state) {
+      if (state == RTCDataChannelState.RTCDataChannelClosed) _close();
+    };
+    pc.onConnectionState = (state) {
+      // Not on disconnected: that one often recovers by itself, as a phone
+      // locks and wakes.
+      if (state == RTCPeerConnectionState.RTCPeerConnectionStateFailed ||
+          state == RTCPeerConnectionState.RTCPeerConnectionStateClosed) {
+        _close();
+      }
+    };
+  }
+
+  /// Sends one photograph and waits for the laptop to say it has it.
+  Future<void> send(
+    Uint8List bytes, {
+    required void Function(double fraction) onFraction,
+  }) async {
+    final channel = _channel;
+    if (channel == null) throw StateError('not connected');
+    final ack = _ack = Completer<void>();
+    await _sendChunked(channel, {'bytes': bytes.length}, bytes, onFraction);
+    await ack.future.timeout(const Duration(minutes: 2));
+  }
+
+  void _close() {
+    if (_disposed) return;
+    dispose();
+    onClosed();
+  }
+
+  void dispose() {
+    if (_disposed) return;
+    _disposed = true;
+    _channel?.close();
+    _pc?.close();
+    _signal?.dispose();
+  }
+}
+
+/// Completes once [channel] is open, at once if it already is.
+Future<void> _opened(RTCDataChannel channel) {
+  final open = Completer<void>();
+  if (channel.state == RTCDataChannelState.RTCDataChannelOpen) {
+    open.complete();
+    return open.future;
+  }
+  final previous = channel.onDataChannelState;
+  channel.onDataChannelState = (state) {
+    previous?.call(state);
+    if (state == RTCDataChannelState.RTCDataChannelOpen && !open.isCompleted) {
+      open.complete();
+    }
+  };
+  return open.future;
 }

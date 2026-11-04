@@ -8,6 +8,7 @@ import '../data/study_repository.dart';
 import '../engine/engine.dart';
 import '../model/study.dart';
 import 'canvas_session.dart';
+import 'sketch_link.dart';
 
 final repositoryProvider = Provider<StudyRepository>(
   (ref) => createStudyRepository(),
@@ -24,6 +25,21 @@ final sessionProvider = Provider<CanvasSession>((ref) {
   ref.onDispose(session.dispose);
   return session;
 });
+
+/// The laptop end of sending a photo of the sketch from a phone. Each
+/// photograph that arrives is laid over whichever study is open.
+final sketchLinkProvider = ChangeNotifierProvider<SketchLink>(
+  (ref) => SketchLink(
+    (bytes) => ref
+        .read(studiesProvider.notifier)
+        .addSketch(ref.read(sessionProvider), bytes),
+  ),
+);
+
+/// The room in the link this page was opened with, when a phone opened a
+/// laptop's code to send it a sketch. Set once at launch.
+final launchSketchRoomProvider =
+    StateProvider<({String token, String keyB64})?>((ref) => null);
 
 final onboardingSeenProvider = AsyncNotifierProvider<OnboardingNotifier, bool>(
   OnboardingNotifier.new,

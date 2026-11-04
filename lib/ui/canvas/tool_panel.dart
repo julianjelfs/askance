@@ -8,8 +8,10 @@ import '../../engine/value_scale.dart';
 import '../../model/study.dart';
 import '../../state/canvas_session.dart';
 import '../../state/providers.dart';
+import '../../state/sketch_link.dart';
 import '../../theme.dart';
 import '../pick_image.dart';
+import '../sketch_link/sketch_link_dialog.dart';
 import '../widgets/controls.dart';
 
 /// The control groups. Shared verbatim between the phone's tool panel and the
@@ -872,6 +874,11 @@ class _SketchControlState extends ConsumerState<SketchControl> {
     final s = DesignScale.of(context);
     final session = widget.session;
     final sketch = session.settings.sketch;
+    final link = ref.watch(sketchLinkProvider);
+    // A phone sends the photo to a laptop, not to itself.
+    final fromPhone = !canTakePhoto;
+    final phoneConnected = fromPhone && link.connected;
+    void sendFromPhone() => showSketchLinkDialog(context, link);
 
     Widget button(
       String label,
@@ -897,29 +904,69 @@ class _SketchControlState extends ConsumerState<SketchControl> {
       ],
     );
 
-    final failure = _failed
+    final failure = _failed || link.photoFailed
         ? 'That photo could not be opened here. Try a JPEG or PNG.'
         : null;
+
+    /// The connected phone: what it is doing, and the way to let it go.
+    Widget phone({required bool hasSketch}) => Padding(
+      padding: EdgeInsets.only(top: 12 * s),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              link.stage == SketchLinkStage.receiving
+                  ? 'Receiving from your phone… '
+                        '${(link.fraction * 100).round()}%'
+                  : hasSketch
+                  ? 'Your phone is connected. Take another photo there to '
+                        'replace this one.'
+                  : 'Your phone is connected. Take the photo there.',
+              style: AskanceText.caption(12.5).by(s),
+            ),
+          ),
+          SizedBox(width: 8 * s),
+          ActionButton(
+            label: 'Disconnect',
+            solid: false,
+            height: 32,
+            fontSize: 12.5,
+            onPressed: link.close,
+          ),
+        ],
+      ),
+    );
 
     if (sketch == null) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (canTakePhoto)
-            row([
-              button('Take a photo', () => _add(fromCamera: true), solid: true),
-              button('Choose a photo', () => _add(fromCamera: false)),
-            ])
-          else
-            button('Add a photo of your sketch', () => _add(fromCamera: false)),
-          SizedBox(height: 8 * s),
-          Text(
-            failure ??
-                'Photograph the sketch you are making from this study, '
-                    'lay it over the picture, and fade between the two to '
-                    'check where it has drifted.',
-            style: AskanceText.caption(12.5).by(s),
-          ),
+          if (phoneConnected)
+            phone(hasSketch: false)
+          else ...[
+            if (fromPhone) ...[
+              // Stacked: side by side, the rail cuts the labels short.
+              button('Send from your phone', sendFromPhone, solid: true),
+              SizedBox(height: 8 * s),
+              button('Choose a file', () => _add(fromCamera: false)),
+            ] else
+              row([
+                button(
+                  'Take a photo',
+                  () => _add(fromCamera: true),
+                  solid: true,
+                ),
+                button('Choose a photo', () => _add(fromCamera: false)),
+              ]),
+            SizedBox(height: 8 * s),
+            Text(
+              failure ??
+                  'Photograph the sketch you are making from this study, '
+                      'lay it over the picture, and fade between the two to '
+                      'check where it has drifted.',
+              style: AskanceText.caption(12.5).by(s),
+            ),
+          ],
         ],
       );
     }
@@ -964,6 +1011,12 @@ class _SketchControlState extends ConsumerState<SketchControl> {
                   : 'Hold the picture to see it without the sketch.'),
           style: AskanceText.caption(12.5).by(s),
         ),
+        if (phoneConnected)
+          phone(hasSketch: true)
+        else if (fromPhone) ...[
+          SizedBox(height: 10 * s),
+          button('Send a new photo from your phone', sendFromPhone),
+        ],
       ],
     );
   }

@@ -1,10 +1,10 @@
 import 'package:flutter/widgets.dart';
-import 'package:qr/qr.dart';
 
 import '../../data/qr_transfer/transfer.dart';
 import '../../state/canvas_session.dart';
 import '../../theme.dart';
 import '../widgets/glyphs.dart';
+import '../widgets/qr_code.dart';
 
 /// The share sheet's QR face: swaps in for the sheet's usual content and runs
 /// the whole exchange while it is showing — broker, scan, WebRTC handshake,
@@ -110,20 +110,7 @@ class _QrSharePanelState extends State<QrSharePanel> {
             child: Center(child: Text('…', style: AskanceText.title(22))),
           )
         else
-          Center(
-            // White quiet zone around the code, as the spec asks for.
-            child: Container(
-              decoration: BoxDecoration(
-                color: AskanceColors.paper,
-                borderRadius: BorderRadius.circular(AskanceRadius.card * s),
-              ),
-              padding: EdgeInsets.all(12 * s),
-              child: CustomPaint(
-                size: Size.square(252 * s),
-                painter: _QrPainter(payload),
-              ),
-            ),
-          ),
+          Center(child: QrCodeCard(payload, size: 252 * s)),
         SizedBox(height: 14 * s),
         Text(
           _fraction != null && _fraction! > 0 && _fraction! < 1
@@ -143,37 +130,4 @@ class _QrSharePanelState extends State<QrSharePanel> {
       ],
     );
   }
-}
-
-class _QrPainter extends CustomPainter {
-  _QrPainter(String payload)
-    : _qr = QrImage(
-        QrCode.fromData(
-          data: payload,
-          errorCorrectLevel: QrErrorCorrectLevel.M,
-        ),
-      );
-
-  final QrImage _qr;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = const Color(0xFF000000);
-    final cell = size.width / _qr.moduleCount;
-    for (var y = 0; y < _qr.moduleCount; y++) {
-      for (var x = 0; x < _qr.moduleCount; x++) {
-        if (_qr.isDark(y, x)) {
-          // A hair of overlap so antialiasing cannot open seams between
-          // modules.
-          canvas.drawRect(
-            Rect.fromLTWH(x * cell, y * cell, cell + 0.5, cell + 0.5),
-            paint,
-          );
-        }
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _QrPainter old) => old._qr != _qr;
 }
