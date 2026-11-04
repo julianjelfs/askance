@@ -10,6 +10,7 @@ import '../engine/crop.dart';
 import '../engine/engine.dart';
 import '../engine/blur_pass.dart';
 import '../engine/lines.dart';
+import '../engine/sketch.dart';
 import '../engine/value_scale.dart';
 import '../model/study.dart';
 
@@ -34,16 +35,19 @@ enum CanvasTool {
   tone,
 
   /// How many values EDGES blocks in under its lines.
-  fill;
+  fill,
+
+  /// A photograph of the drawing, laid over the picture to check it.
+  sketch;
 
   /// The tools on the tool bar while [mode] is showing. The view selector
   /// picks how to look and the bar holds what adjusts that view, so it never
   /// offers a control that would change nothing on screen: values, shapes
   /// and scale are all lost on the photograph, colour is lost on everything
-  /// else, and fill only means something under the edges. The picture is
-  /// in every view.
+  /// else, and fill only means something under the edges. The picture and
+  /// the drawing laid over it are in every view.
   static List<CanvasTool> barFor(ViewMode mode) => switch (mode) {
-    ViewMode.photo => const [picture, tone, grid],
+    ViewMode.photo => const [picture, tone, grid, sketch],
     ViewMode.skeleton => [
       steps,
       picture,
@@ -51,8 +55,9 @@ enum CanvasTool {
       if (kShowTint) scale,
       fill,
       grid,
+      sketch,
     ],
-    _ => [steps, picture, shapes, if (kShowTint) scale, grid],
+    _ => [steps, picture, shapes, if (kShowTint) scale, grid, sketch],
   };
 }
 
@@ -110,6 +115,16 @@ class CanvasSession extends ChangeNotifier {
   Offset? lineStart;
   int? selectedLine;
 
+  /// The photograph of the drawing, decoded for the screen. Where it lies is
+  /// [StudySettings.sketch]; this is only its pixels, read back from storage
+  /// when the study opens.
+  ui.Image? sketchImage;
+
+  /// Whether gestures on the picture move the drawing rather than the view.
+  /// View state like [drawingLines], and like it, a mode of its own: the two
+  /// never run at once.
+  bool aligningSketch = false;
+
   /// Live split position during a drag. Written back into [settings] when the
   /// drag ends, so the study only records settled values.
   double splitPosition = 0.5;
@@ -162,6 +177,7 @@ class CanvasSession extends ChangeNotifier {
     isolatedBand = null;
     flipped = false;
     _stopDrawingLines();
+    _dropSketchImage();
     openTool = null;
     chromeVisible = true;
     notifyListeners();
@@ -182,17 +198,20 @@ class CanvasSession extends ChangeNotifier {
     isolatedBand = null;
     flipped = false;
     _stopDrawingLines();
+    _dropSketchImage();
     imageBytes = null;
     final old = image;
     image = null;
-    if (old != null) {
-      // The stage may still be rasterising the frame that shows it.
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        SchedulerBinding.instance.addPostFrameCallback((_) => old.dispose());
-        SchedulerBinding.instance.scheduleFrame();
-      });
-    }
+    if (old != null) _disposeAfterFrame(old);
     notifyListeners();
+  }
+
+  /// The stage may still be rasterising the frame that shows [old].
+  static void _disposeAfterFrame(ui.Image old) {
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      SchedulerBinding.instance.addPostFrameCallback((_) => old.dispose());
+      SchedulerBinding.instance.scheduleFrame();
+    });
   }
 
   void startFreshStudy() {
@@ -206,6 +225,7 @@ class CanvasSession extends ChangeNotifier {
     isolatedBand = null;
     flipped = false;
     _stopDrawingLines();
+    _dropSketchImage();
     openTool = null;
     chromeVisible = true;
     notifyListeners();
@@ -226,8 +246,11 @@ class CanvasSession extends ChangeNotifier {
 
   /// Adopts settings that arrived over the QR transfer, wholesale — including
   /// the view, so the phone lands on the passage the sender was looking at.
+  ///
+  /// Less the drawing laid over it: that photograph stayed behind on the
+  /// sending device, so here its key names nothing.
   void applyTransferredSettings(StudySettings incoming) {
-    settings = incoming;
+    settings = incoming.copyWith(removeSketch: true);
     splitPosition = incoming.splitPosition;
     view = incoming.view;
     isolatedBand = null;
@@ -446,6 +469,7 @@ class CanvasSession extends ChangeNotifier {
     if (value == drawingLines) return;
     if (value) {
       drawingLines = true;
+      aligningSketch = false;
     } else {
       _stopDrawingLines();
     }
@@ -523,6 +547,99 @@ class CanvasSession extends ChangeNotifier {
     selectedLine = null;
     _persistSoon();
     notifyListeners();
+  }
+
+  // --- the drawing laid over the picture ----------------------------------
+
+  Size? get photoSize => image == null
+      ? null
+      : Size(image!.width.toDouble(), image!.height.toDouble());
+
+  /// Lays a newly added photograph of the drawing over the picture, fitted
+  /// to the crop, and starts lining it up. Returns the key of the one it
+  /// replaces, which nothing names any more.
+  String? addSketch(ui.Image decoded, String key) {
+    final photo = photoSize;
+    if (photo == null) {
+      decoded.dispose();
+      return null;
+    }
+    final previous = settings.sketch;
+    final placed = fittedSketch(
+      imageKey: key,
+      photo: photo,
+      sketch: Size(decoded.width.toDouble(), decoded.height.toDouble()),
+      crop: settings.crop,
+    );
+    settings = settings.copyWith(
+      // A replacement keeps the fade it was being looked through at.
+      sketch: placed.copyWith(opacity: previous?.opacity),
+    );
+    _dropSketchImage();
+    sketchImage = decoded;
+    setAligningSketch(true);
+    _persistSoon();
+    notifyListeners();
+    return previous?.imageKey;
+  }
+
+  /// The pixels for the study's drawing, read back after it opened. Taken
+  /// only if they are still the drawing it has: the study may have been
+  /// swapped or the drawing replaced while they loaded.
+  void loadSketchImage(String key, ui.Image decoded) {
+    if (settings.sketch?.imageKey != key) {
+      decoded.dispose();
+      return;
+    }
+    _dropSketchImage();
+    sketchImage = decoded;
+    notifyListeners();
+  }
+
+  void moveSketch(SketchOverlay next) {
+    if (next == settings.sketch) return;
+    settings = settings.copyWith(sketch: next);
+    _persistSoon();
+    notifyListeners();
+  }
+
+  void setSketchOpacity(double value) {
+    final sketch = settings.sketch;
+    if (sketch == null) return;
+    moveSketch(sketch.copyWith(opacity: value.clamp(0.0, 1.0)));
+  }
+
+  /// Takes the drawing away. Returns the key of its photograph, which
+  /// nothing names any more.
+  String? removeSketch() {
+    final sketch = settings.sketch;
+    if (sketch == null) return null;
+    settings = settings.copyWith(removeSketch: true);
+    _dropSketchImage();
+    _persistSoon();
+    notifyListeners();
+    return sketch.imageKey;
+  }
+
+  /// Lining up takes the gestures, so it shuts whatever else wanted them:
+  /// ruling lines, and on the phone the sheet over the picture.
+  void setAligningSketch(bool value) {
+    if (value && settings.sketch == null) return;
+    if (value == aligningSketch) return;
+    aligningSketch = value;
+    if (value) {
+      _stopDrawingLines();
+      openTool = null;
+      chromeVisible = true;
+    }
+    notifyListeners();
+  }
+
+  void _dropSketchImage() {
+    aligningSketch = false;
+    final old = sketchImage;
+    sketchImage = null;
+    if (old != null) _disposeAfterFrame(old);
   }
 
   void rename(String value) {
@@ -684,6 +801,7 @@ class CanvasSession extends ChangeNotifier {
     photoBlur.dispose();
     _persistDebounce?.cancel();
     image?.dispose();
+    sketchImage?.dispose();
     super.dispose();
   }
 }

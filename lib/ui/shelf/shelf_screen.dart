@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/services.dart' show rootBundle;
@@ -664,6 +665,9 @@ Future<void> openStudy(BuildContext context, WidgetRef ref, Study study) async {
   session.openStudy(study);
   // resetView belongs to a fresh pick; here it would wipe the restored zoom.
   session.loadImage(image, bytes, key: study.imageKey, resetView: false);
+  // Not waited for: the study opens on its picture, and the drawing laid
+  // over it arrives a moment later.
+  unawaited(ref.read(studiesProvider.notifier).loadSketch(session));
 
   if (!context.mounted) return;
   final media = MediaQuery.of(context);

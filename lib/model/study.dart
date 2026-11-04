@@ -6,6 +6,7 @@ import '../engine/crop.dart';
 import '../engine/engine.dart';
 import '../engine/lines.dart';
 import '../engine/random_ramp.dart';
+import '../engine/sketch.dart';
 import '../engine/tone.dart';
 import '../engine/value_scale.dart';
 
@@ -55,6 +56,7 @@ class StudySettings {
     this.gridFrame = kWholeImage,
     this.tone = const PhotoTone(),
     this.lines = const [],
+    this.sketch,
   });
 
   final int steps;
@@ -138,6 +140,10 @@ class StudySettings {
   /// and exported with it, and hidden while it is off.
   final List<BoardLine> lines;
 
+  /// A photograph of the drawing, laid over the picture to check it against
+  /// the reference. Null until one is added.
+  final SketchOverlay? sketch;
+
   /// Whether PHOTO's blurred photograph needs a pass of its own. Smooth's
   /// pass is already the photograph blurred by the detail; ROUGH and BLOCK
   /// shape theirs further.
@@ -208,6 +214,8 @@ class StudySettings {
     Rect? gridFrame,
     PhotoTone? tone,
     List<BoardLine>? lines,
+    SketchOverlay? sketch,
+    bool removeSketch = false,
   }) => StudySettings(
     steps: steps ?? this.steps,
     scale: scale ?? this.scale,
@@ -228,6 +236,7 @@ class StudySettings {
     gridFrame: gridFrame ?? this.gridFrame,
     tone: tone ?? this.tone,
     lines: lines ?? this.lines,
+    sketch: removeSketch ? null : sketch ?? this.sketch,
   );
 
   Map<String, Object?> toJson() => {
@@ -252,6 +261,7 @@ class StudySettings {
     'gridFrame': cropToJson(gridFrame),
     'tone': tone.toJson(),
     'lines': [for (final line in lines) line.toJson()],
+    if (sketch case final sketch?) 'sketch': sketch.toJson(),
   };
 
   /// Tolerant by design: a manifest written by an older build, or one that has
@@ -309,6 +319,8 @@ class StudySettings {
       if (json['lines'] case final List<Object?> lines)
         for (final line in lines) ?BoardLine.fromJson(line),
     ],
+    // A damaged sketch costs the sketch, not the study.
+    sketch: SketchOverlay.fromJson(json['sketch']),
   );
 
   @override
@@ -332,7 +344,8 @@ class StudySettings {
       other.crop == crop &&
       other.gridFrame == gridFrame &&
       other.tone == tone &&
-      listEquals(other.lines, lines);
+      listEquals(other.lines, lines) &&
+      other.sketch == sketch;
 
   @override
   int get hashCode => Object.hash(
@@ -355,6 +368,7 @@ class StudySettings {
     gridFrame,
     tone,
     Object.hashAll(lines),
+    sketch,
   );
 }
 

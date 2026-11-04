@@ -374,6 +374,7 @@ class _RailState extends ConsumerState<_Rail> {
                         : '${session.settings.lines.length}',
                     LinesControl(session: session),
                   ),
+                  _section('Sketch', null, SketchControl(session: session)),
                 ],
               ),
             ),

@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../engine/blocks.dart';
 import '../../engine/crop.dart';
@@ -6,7 +7,9 @@ import '../../engine/engine.dart';
 import '../../engine/value_scale.dart';
 import '../../model/study.dart';
 import '../../state/canvas_session.dart';
+import '../../state/providers.dart';
 import '../../theme.dart';
+import '../pick_image.dart';
 import '../widgets/controls.dart';
 
 /// The control groups. Shared verbatim between the phone's tool panel and the
@@ -820,6 +823,152 @@ class LinesControl extends StatelessWidget {
   }
 }
 
+/// A photograph of the drawing made from the study, laid over the picture
+/// and faded against it, so its key points can be checked against the
+/// reference. Moved, turned and scaled into place by hand, nothing more.
+class SketchControl extends ConsumerStatefulWidget {
+  const SketchControl({super.key, required this.session});
+  final CanvasSession session;
+
+  @override
+  ConsumerState<SketchControl> createState() => _SketchControlState();
+}
+
+class _SketchControlState extends ConsumerState<SketchControl> {
+  bool _busy = false;
+  bool _failed = false;
+
+  /// A mouse and a keyboard, where the wheel scales and shift turns.
+  static bool get _pointer => !canTakePhoto;
+
+  Future<void> _add({required bool fromCamera}) async {
+    if (_busy) return;
+    final picked = fromCamera ? await takePhoto() : await pickFromLibrary();
+    if (picked == null || !mounted) return;
+    setState(() {
+      _busy = true;
+      _failed = false;
+    });
+    var failed = false;
+    try {
+      await ref
+          .read(studiesProvider.notifier)
+          .addSketch(widget.session, picked.bytes, extension: picked.extension);
+    } on Exception {
+      // Most likely a format this platform cannot decode, a browser handed
+      // an iPhone's HEIC.
+      failed = true;
+    }
+    if (mounted) {
+      setState(() {
+        _busy = false;
+        _failed = failed;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = DesignScale.of(context);
+    final session = widget.session;
+    final sketch = session.settings.sketch;
+
+    Widget button(
+      String label,
+      VoidCallback onPressed, {
+      bool solid = false,
+      bool enabled = true,
+    }) => ActionButton(
+      label: label,
+      solid: solid,
+      height: 38,
+      fontSize: 13.5,
+      centred: true,
+      enabled: enabled && !_busy,
+      onPressed: onPressed,
+    );
+
+    Widget row(List<Widget> buttons) => Row(
+      children: [
+        for (var i = 0; i < buttons.length; i++) ...[
+          if (i > 0) SizedBox(width: 8 * s),
+          Expanded(child: buttons[i]),
+        ],
+      ],
+    );
+
+    final failure = _failed
+        ? 'That photo could not be opened here. Try a JPEG or PNG.'
+        : null;
+
+    if (sketch == null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (canTakePhoto)
+            row([
+              button('Take a photo', () => _add(fromCamera: true), solid: true),
+              button('Choose a photo', () => _add(fromCamera: false)),
+            ])
+          else
+            button('Add a photo of your sketch', () => _add(fromCamera: false)),
+          SizedBox(height: 8 * s),
+          Text(
+            failure ??
+                'Photograph the sketch you are making from this study, '
+                    'lay it over the picture, and fade between the two to '
+                    'check where it has drifted.',
+            style: AskanceText.caption(12.5).by(s),
+          ),
+        ],
+      );
+    }
+
+    final aligning = session.aligningSketch;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ControlLabelRow(
+          label: 'Opacity',
+          value: '${(sketch.opacity * 100).round()}%',
+        ),
+        RuleSlider(value: sketch.opacity, onChanged: session.setSketchOpacity),
+        const SliderEnds('Picture', 'Sketch'),
+        SizedBox(height: 12 * s),
+        row([
+          button(
+            aligning ? 'Done' : 'Line up',
+            () => session.setAligningSketch(!aligning),
+            solid: aligning,
+            enabled: session.sketchImage != null,
+          ),
+          button('Replace', () => _add(fromCamera: canTakePhoto)),
+          button(
+            'Remove',
+            () => ref.read(studiesProvider.notifier).removeSketch(session),
+          ),
+        ]),
+        SizedBox(height: 8 * s),
+        Text(
+          failure ??
+              (session.sketchImage == null
+                  ? 'The photo of this sketch is missing. Replace it or '
+                        'remove it.'
+                  : aligning
+                  ? (_pointer
+                        ? 'Drag to move the sketch. Scroll to scale it, '
+                              'and hold shift while scrolling to turn it. '
+                              'On a trackpad, pinch and twist.'
+                        : 'Drag to move the sketch. Pinch to scale it and '
+                              'twist to turn it.')
+                  : 'Hold the picture to see it without the sketch.'),
+          style: AskanceText.caption(12.5).by(s),
+        ),
+      ],
+    );
+  }
+}
+
 /// What the study is cropped to, in words.
 String cropSummary(CanvasSession session) {
   final image = session.image;
@@ -946,6 +1095,7 @@ class ToolPanel extends StatelessWidget {
           BoardControl(session: session, onEditCrop: onEditCrop),
         ],
         CanvasTool.tone => [ToneControl(session: session)],
+        CanvasTool.sketch => [SketchControl(session: session)],
         CanvasTool.fill => [
           const ControlLabelRow(label: 'Blocked in under the lines'),
           FillControl(session: session),

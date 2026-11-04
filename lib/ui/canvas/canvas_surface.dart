@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 
 import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart' show HardwareKeyboard;
 import 'package:flutter/widgets.dart';
 
 import '../../engine/deferred_disposer.dart';
@@ -8,6 +10,7 @@ import 'screen_awake.dart';
 import '../../engine/crop.dart';
 import '../../engine/engine.dart';
 import '../../engine/lines.dart';
+import '../../engine/sketch.dart';
 import '../../engine/value_painter.dart';
 import '../../model/study.dart';
 import '../../state/canvas_session.dart';
@@ -83,6 +86,10 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
   /// The mouse over the picture while lines are being ruled.
   Offset? _hover;
 
+  /// The drawing as a gesture lining it up found it, which every update of
+  /// that gesture is measured from.
+  SketchOverlay? _sketchStart;
+
   @override
   void dispose() {
     ScreenAwake.release();
@@ -104,6 +111,9 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
       widget.session.drawingLines &&
       widget.session.settings.grid != GridMode.off;
 
+  bool get _aligning =>
+      widget.session.aligningSketch && widget.session.settings.sketch != null;
+
   Rect get _picture => widget.session.view.destination(_sourceSize, _size);
   Rect get _area => widget.session.view.visible(_sourceSize, _size);
 
@@ -111,6 +121,10 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
     _gestureStart = widget.session.view;
     _focalStart = details.localFocalPoint;
     _draggingEnd = null;
+    if (_aligning) {
+      setState(() => _sketchStart = widget.session.settings.sketch);
+      return;
+    }
     if (_editing && details.pointerCount == 1 && !_size.isEmpty) {
       final session = widget.session;
       final crop = session.settings.crop;
@@ -130,12 +144,31 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
   }
 
   void _onScaleEnd(ScaleEndDetails details) {
+    if (_sketchStart != null) setState(() => _sketchStart = null);
     if (_draggingEnd == null) return;
     setState(() => _draggingEnd = null);
   }
 
   void _onScaleUpdate(ScaleUpdateDetails details) {
     final session = widget.session;
+    if (_sketchStart case final start?) {
+      // Anywhere on the picture takes hold of the drawing, not only the
+      // drawing itself: shrunk small or pushed aside, it would otherwise be
+      // hard to find again.
+      if (_size.isEmpty) return;
+      session.moveSketch(
+        movedSketch(
+          start,
+          focalStart: _focalStart,
+          focal: details.localFocalPoint,
+          scale: details.scale,
+          rotation: details.rotation,
+          crop: session.settings.crop,
+          picture: _picture,
+        ),
+      );
+      return;
+    }
     if (_draggingEnd case final dragging?) {
       // Held inside the picture as it shows: an end dragged off it would be
       // out of reach.
@@ -187,6 +220,8 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
 
   void _onTapUp(TapUpDetails details) {
     final position = details.localPosition;
+    // Lining up, a tap would only hide the controls that end it.
+    if (_aligning) return;
     if (_editing) {
       _onLineClick(position);
       return;
@@ -235,6 +270,11 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
   }
 
   MouseCursor get _cursor {
+    if (_aligning) {
+      return _sketchStart != null
+          ? SystemMouseCursors.grabbing
+          : SystemMouseCursors.grab;
+    }
     if (!_editing) return MouseCursor.defer;
     if (_draggingEnd != null) return SystemMouseCursors.grabbing;
     final hover = _hover;
@@ -253,7 +293,15 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
     return SystemMouseCursors.precise;
   }
 
+  /// How far the drawing turns for each pixel the wheel reports: a notch of
+  /// a mouse wheel is about six degrees.
+  static const double _turnPerScrollPx = 0.001;
+
   void _onScroll(PointerSignalEvent event) {
+    if (_aligning) {
+      _onSketchScroll(event);
+      return;
+    }
     if (event is! PointerScrollEvent) return;
     final session = widget.session;
     final factor = scrollZoomFactor(event.scrollDelta.dy);
@@ -265,6 +313,39 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
         _size,
       ),
     );
+  }
+
+  /// Lining up: the wheel scales the drawing about the pointer, and with
+  /// shift held, turns it. A browser's trackpad pinch arrives as a scale.
+  void _onSketchScroll(PointerSignalEvent event) {
+    final session = widget.session;
+    final start = session.settings.sketch;
+    if (start == null || _size.isEmpty) return;
+    final at = event.localPosition;
+    SketchOverlay moved({double scale = 1, double rotation = 0}) => movedSketch(
+      start,
+      focalStart: at,
+      focal: at,
+      scale: scale,
+      rotation: rotation,
+      crop: session.settings.crop,
+      picture: _picture,
+    );
+    switch (event) {
+      case PointerScaleEvent(:final scale):
+        session.moveSketch(moved(scale: scale));
+      case PointerScrollEvent(:final scrollDelta):
+        // Browsers and macOS turn a shifted wheel sideways on its way here,
+        // so a scroll that is only sideways is a turn too, with or without
+        // the key seen.
+        final sideways = scrollDelta.dy == 0 && scrollDelta.dx != 0;
+        if (sideways || HardwareKeyboard.instance.isShiftPressed) {
+          final delta = sideways ? scrollDelta.dx : scrollDelta.dy;
+          session.moveSketch(moved(rotation: delta * _turnPerScrollPx));
+        } else {
+          session.moveSketch(moved(scale: scrollZoomFactor(scrollDelta.dy)));
+        }
+    }
   }
 
   @override
@@ -338,10 +419,13 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
                         TapGestureRecognizer.new,
                         (instance) => instance.onTapUp = _onTapUp,
                       ),
-                  LongPressGestureRecognizer: peekRecognizer(
-                    onStart: () => session.setPeeking(true),
-                    onEnd: () => session.setPeeking(false),
-                  ),
+                  // A finger held still while lining up is fine-tuning, not
+                  // asking to peek.
+                  if (!_aligning)
+                    LongPressGestureRecognizer: peekRecognizer(
+                      onStart: () => session.setPeeking(true),
+                      onEnd: () => session.setPeeking(false),
+                    ),
                   ScaleGestureRecognizer:
                       GestureRecognizerFactoryWithHandlers<
                         ScaleGestureRecognizer
@@ -386,6 +470,23 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
                         ),
                       ),
                     ),
+                    // A peek is at the photograph alone, so it lifts the
+                    // drawing off too: holding the picture flicks between
+                    // the two.
+                    if ((session.sketchImage, session.settings.sketch) case (
+                      final image?,
+                      final sketch?,
+                    ) when !session.peeking)
+                      CustomPaint(
+                        painter: _SketchPainter(
+                          image: image,
+                          sketch: sketch,
+                          crop: session.settings.crop,
+                          picture: _picture,
+                          visible: _area,
+                          outline: _aligning,
+                        ),
+                      ),
                     // Its own layer, so following the mouse repaints the
                     // handles and not the picture under them.
                     if (_editing)
@@ -409,6 +510,51 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
       },
     );
   }
+}
+
+/// The photograph of the drawing over the picture, ruled round its edge
+/// while it is being lined up.
+class _SketchPainter extends CustomPainter {
+  _SketchPainter({
+    required this.image,
+    required this.sketch,
+    required this.crop,
+    required this.picture,
+    required this.visible,
+    required this.outline,
+  });
+
+  final ui.Image image;
+  final SketchOverlay sketch;
+  final Rect crop;
+  final Rect picture;
+  final Rect visible;
+  final bool outline;
+
+  @override
+  void paint(Canvas canvas, Size size) => paintSketch(
+    canvas,
+    image,
+    sketch,
+    crop,
+    picture,
+    visible,
+    outline: outline
+        ? (Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.5
+            ..color = AskanceColors.accent)
+        : null,
+  );
+
+  @override
+  bool shouldRepaint(_SketchPainter old) =>
+      old.image != image ||
+      old.sketch != sketch ||
+      old.crop != crop ||
+      old.picture != picture ||
+      old.visible != visible ||
+      old.outline != outline;
 }
 
 /// What only shows while lines are being ruled: a handle on every end, the

@@ -52,8 +52,8 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
   );
 }
 
-/// The study's keyboard shortcuts: the up arrow flips the picture, and while
-/// lines are being ruled, Delete or Backspace removes the selected one and
+/// The study's keyboard shortcuts: the up arrow flips the picture, Escape
+/// stops lining up a sketch, and while lines are being ruled, Delete or Backspace removes the selected one and
 /// Escape lets go of a half-ruled line or a selection, then stops ruling.
 ///
 /// Heard from the keyboard directly rather than bound through focus: the
@@ -94,6 +94,10 @@ class _StudyKeysState extends State<StudyKeys> {
     final key = event.logicalKey;
     if (key == LogicalKeyboardKey.arrowUp) {
       session.setFlipped(!session.flipped);
+      return true;
+    }
+    if (session.aligningSketch && key == LogicalKeyboardKey.escape) {
+      session.setAligningSketch(false);
       return true;
     }
     if (!session.drawingLines) return false;

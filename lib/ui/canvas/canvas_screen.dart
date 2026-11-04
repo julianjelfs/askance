@@ -140,6 +140,27 @@ class _CanvasBodyState extends ConsumerState<_CanvasBody>
           CanvasSurface(session: session, shader: shader, freezeBlur: frozen),
         if (session.settings.mode == ViewMode.split && !session.peeking)
           SplitHandle(session: session),
+        // Lining up closes the sheet the controls are on, so the way out
+        // floats over the picture instead.
+        if (session.aligningSketch)
+          Positioned(
+            top: 12 * s,
+            left: 0,
+            right: 0,
+            child: Center(
+              // A button stretches across a bounded width and wraps its
+              // label in an unbounded one; this one floats as a pill.
+              child: UnconstrainedBox(
+                constrainedAxis: Axis.vertical,
+                child: ActionButton(
+                  label: 'Done lining up',
+                  height: 40,
+                  fontSize: 14,
+                  onPressed: () => session.setAligningSketch(false),
+                ),
+              ),
+            ),
+          ),
       ],
     );
 
@@ -526,6 +547,7 @@ class _ToolBar extends StatelessWidget {
       CanvasTool.grid => (Glyph.board, 'Board'),
       CanvasTool.tone => (Glyph.mono, 'Colour'),
       CanvasTool.fill => (Glyph.fill, 'Fill'),
+      CanvasTool.sketch => (Glyph.overlay, 'Sketch'),
     };
 
     return Container(

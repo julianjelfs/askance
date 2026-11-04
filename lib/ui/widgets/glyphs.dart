@@ -28,6 +28,7 @@ enum Glyph {
   fill,
   dice,
   mono,
+  overlay,
 }
 
 class GlyphIcon extends StatelessWidget {
@@ -96,6 +97,8 @@ class _GlyphPainter extends CustomPainter {
         _dice(canvas, size);
       case Glyph.mono:
         _mono(canvas, size);
+      case Glyph.overlay:
+        _overlay(canvas, size);
     }
   }
 
@@ -254,6 +257,26 @@ class _GlyphPainter extends CustomPainter {
     );
     canvas.drawArc(circle, math.pi / 2, math.pi, true, Paint()..color = color);
     canvas.drawOval(circle, _line(u));
+  }
+
+  /// Two sheets, one laid over the other and turned a little off square: a
+  /// drawing over its reference.
+  void _overlay(Canvas canvas, Size size) {
+    final u = size.shortestSide;
+    final p = _line(u);
+    canvas.drawRect(Rect.fromLTRB(u * 0.14, u * 0.14, u * 0.62, u * 0.7), p);
+    canvas.save();
+    canvas.translate(u * 0.6, u * 0.56);
+    canvas.rotate(0.18);
+    canvas.drawRect(
+      Rect.fromCenter(center: Offset.zero, width: u * 0.48, height: u * 0.56),
+      Paint()..color = color.withValues(alpha: color.a * 0.25),
+    );
+    canvas.drawRect(
+      Rect.fromCenter(center: Offset.zero, width: u * 0.48, height: u * 0.56),
+      p,
+    );
+    canvas.restore();
   }
 
   /// A die showing three: another deal of colours.

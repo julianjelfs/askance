@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
@@ -120,12 +121,95 @@ class StudiesNotifier extends AsyncNotifier<List<Study>> {
     if (victim != null && !next.any((s) => s.imageKey == victim.imageKey)) {
       await repo.deleteImage(victim.imageKey);
     }
+    // A drawing's photograph belongs to the one study it was laid over.
+    if (victim?.settings.sketch case final sketch?) {
+      await repo.deleteImage(sketch.imageKey);
+    }
     state = AsyncData(next);
   }
 
   Future<Uint8List?> imageBytes(Study study) =>
       ref.read(repositoryProvider).readImage(study.imageKey);
+
+  /// Copies a photograph of the drawing into storage and lays it over the
+  /// study open in [session], in place of any drawing already there. Throws
+  /// if the bytes are not an image this platform can decode.
+  Future<void> addSketch(
+    CanvasSession session,
+    Uint8List bytes, {
+    String extension = 'jpg',
+  }) async {
+    final studyId = session.studyId;
+    final image = await decodeSketch(bytes);
+    final repo = ref.read(repositoryProvider);
+    final key = await repo.putImage(bytes, extension: extension);
+    // Another study opened while the photograph was being stored: this one
+    // was never laid over anything.
+    if (session.studyId != studyId || !session.hasImage) {
+      image.dispose();
+      await repo.deleteImage(key);
+      return;
+    }
+    final replaced = session.addSketch(image, key);
+    if (replaced != null) await _forgetSketch(session, replaced);
+  }
+
+  /// Takes the drawing off the study open in [session], and its photograph
+  /// out of storage.
+  Future<void> removeSketch(CanvasSession session) async {
+    final key = session.removeSketch();
+    if (key != null) await _forgetSketch(session, key);
+  }
+
+  /// Written to the shelf first, so the manifest never names a photograph
+  /// that has gone.
+  Future<void> _forgetSketch(CanvasSession session, String key) async {
+    if (session.studyId case final id?) {
+      await updateSettings(id, session.settled, session.name);
+    }
+    await ref.read(repositoryProvider).deleteImage(key);
+  }
+
+  /// Reads back the photograph of the drawing for the study just opened in
+  /// [session]. A photograph that has gone leaves the study without one.
+  Future<void> loadSketch(CanvasSession session) async {
+    final key = session.settings.sketch?.imageKey;
+    if (key == null) return;
+    final bytes = await ref.read(repositoryProvider).readImage(key);
+    if (bytes == null) return;
+    try {
+      session.loadSketchImage(key, await decodeSketch(bytes));
+    } on Exception {
+      // Stored but no longer decodable here: the study opens without it.
+    }
+  }
 }
+
+/// Decodes a photograph of the drawing for the screen, its long side held
+/// to [kSketchMaxSide]: a phone's twelve megapixels would cost the GPU four
+/// times the memory and show nothing more at the size it is drawn.
+Future<ui.Image> decodeSketch(Uint8List bytes) async {
+  final buffer = await ui.ImmutableBuffer.fromUint8List(bytes);
+  final codec = await ui.instantiateImageCodecWithSize(
+    buffer,
+    getTargetSize: (width, height) {
+      final long = math.max(width, height);
+      if (long <= kSketchMaxSide) {
+        return ui.TargetImageSize(width: width, height: height);
+      }
+      final k = kSketchMaxSide / long;
+      return ui.TargetImageSize(
+        width: (width * k).round(),
+        height: (height * k).round(),
+      );
+    },
+  );
+  final frame = await codec.getNextFrame();
+  codec.dispose();
+  return frame.image;
+}
+
+const int kSketchMaxSide = 2400;
 
 /// Decodes image bytes into a GPU image.
 Future<ui.Image> decodeImage(Uint8List bytes) async {
