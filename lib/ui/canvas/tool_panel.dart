@@ -1014,6 +1014,13 @@ class _SketchControlState extends ConsumerState<SketchControl> {
             () => _straighten(!sketch.straighten),
             enabled: session.sketchImage != null,
           ),
+        ] else if (session.sketchImage != null) ...[
+          SizedBox(height: 8 * s),
+          Text(
+            'No sketchbook page stood out in this photo, so it is shown '
+            'whole. A darker surface around the page helps.',
+            style: AskanceText.caption(12.5).by(s),
+          ),
         ],
         SizedBox(height: 8 * s),
         Text(

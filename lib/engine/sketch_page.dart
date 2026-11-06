@@ -310,8 +310,9 @@ List<_Line> _houghLines(_Edges edges, {int count = 24}) {
 
 /// [quad] with each side moved out to the farthest line, within [reach]
 /// at either end, along which the light steps up into it for at least a
-/// quarter of its length, spread along it; then to whichever line within
-/// three pixels of that the light rises across most steeply.
+/// quarter of its length, spread along it, and about as steeply as across
+/// the side itself; then to whichever line within three pixels of that the
+/// light rises across most steeply.
 List<Offset> _pushOut(List<Offset> quad, _Edges edges, double reach) {
   final centre = (quad[0] + quad[1] + quad[2] + quad[3]) / 4;
   final sides = <_Line>[];
@@ -329,12 +330,30 @@ List<Offset> _pushOut(List<Offset> quad, _Edges edges, double reach) {
       spread: spread,
     );
 
+    double rise(int d0, int d1) => _riseAlong(
+      a + out * d0.toDouble(),
+      b + out * d1.toDouble(),
+      -out,
+      edges,
+    );
+    // Texture beyond the paper, the grain of a table or the sheen of
+    // leather, can face the right way here and there; only a step about as
+    // steep as the side's own, at its steepest, is another edge of paper.
+    var own = 0.0;
+    for (var e0 = -3; e0 <= 3; e0++) {
+      for (var e1 = -3; e1 <= 3; e1++) {
+        own = math.max(own, rise(e0, e1));
+      }
+    }
+    final steep = own * 0.8;
+
     var best = (0, 0);
     var bestOut = 0;
     for (var d0 = 0; d0 <= limit; d0++) {
       for (var d1 = 0; d1 <= limit; d1++) {
         if (d0 + d1 <= bestOut) continue;
         if (share(d0, d1, spread: true) < 0.25) continue;
+        if (rise(d0, d1) < steep) continue;
         best = (d0, d1);
         bestOut = d0 + d1;
       }
@@ -345,12 +364,7 @@ List<Offset> _pushOut(List<Offset> quad, _Edges edges, double reach) {
     var top = double.negativeInfinity;
     for (var e0 = d0 - 3; e0 <= d0 + 3; e0++) {
       for (var e1 = d1 - 3; e1 <= d1 + 3; e1++) {
-        final s = _riseAlong(
-          a + out * e0.toDouble(),
-          b + out * e1.toDouble(),
-          -out,
-          edges,
-        );
+        final s = rise(e0, e1);
         if (s > top) {
           top = s;
           best = (e0, e1);

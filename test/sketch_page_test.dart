@@ -153,6 +153,45 @@ Future<ui.Image> _onCarpet() async {
   return image;
 }
 
+/// The same page laid on black leather: dark enough that its sheen, taken
+/// as a ratio, flickers as steeply as the edge of the paper does.
+Future<ui.Image> _onLeather() async {
+  final recorder = ui.PictureRecorder();
+  final canvas = Canvas(recorder)
+    ..drawColor(const Color(0xFF1E1E1E), BlendMode.src);
+  final random = math.Random(11);
+  for (var i = 0; i < 9000; i++) {
+    final g = 0x14 + random.nextInt(0x30);
+    canvas.drawRect(
+      Rect.fromLTWH(
+        random.nextDouble() * _carpetSize.width,
+        random.nextDouble() * _carpetSize.height,
+        2 + random.nextDouble() * 4,
+        2 + random.nextDouble() * 4,
+      ),
+      Paint()..color = Color.fromARGB(255, g, g, g),
+    );
+  }
+  canvas
+    ..drawRect(_carpetPage, Paint()..color = const Color(0xFFD8D6D2))
+    ..drawRect(
+      Rect.fromLTRB(
+        _carpetPage.left + 50,
+        _carpetPage.top + 14,
+        _carpetPage.right - 18,
+        _carpetPage.bottom - 14,
+      ),
+      Paint()..color = const Color(0xFF4A4A4A),
+    );
+  final picture = recorder.endRecording();
+  final image = await picture.toImage(
+    _carpetSize.width.round(),
+    _carpetSize.height.round(),
+  );
+  picture.dispose();
+  return image;
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -199,6 +238,27 @@ void main() {
       'though charcoal darker than both covers most of it and a shadow '
       'leaves part of it darker than the surface in the light', () async {
     final photo = await _onCarpet();
+    addTearDown(photo.dispose);
+    final page = await findPage(photo);
+    expect(page, isNotNull);
+    final want = [
+      _carpetPage.topLeft,
+      _carpetPage.topRight,
+      _carpetPage.bottomRight,
+      _carpetPage.bottomLeft,
+    ];
+    for (var i = 0; i < 4; i++) {
+      final got = Offset(
+        page![i].dx * _carpetSize.width,
+        page[i].dy * _carpetSize.height,
+      );
+      expect((got - want[i]).distance, lessThan(12), reason: 'corner $i');
+    }
+  });
+
+  test('a page on a dark, grainy surface is cropped to the paper, not '
+      'pushed out onto the grain', () async {
+    final photo = await _onLeather();
     addTearDown(photo.dispose);
     final page = await findPage(photo);
     expect(page, isNotNull);
