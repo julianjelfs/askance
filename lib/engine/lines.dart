@@ -123,11 +123,26 @@ void paintLines(
   canvas.save();
   canvas.clipRect(visible);
   for (final line in lines) {
-    canvas.drawLine(
-      lineToScreen(line.a, crop, picture),
-      lineToScreen(line.b, crop, picture),
-      paint,
-    );
+    final a = lineToScreen(line.a, crop, picture);
+    final b = lineToScreen(line.b, crop, picture);
+    canvas.drawLine(a, b, paint);
+    paintMidTick(canvas, a, b, paint);
   }
   canvas.restore();
+}
+
+/// Half the length, in logical pixels, of the tick across the middle of a
+/// ruled line.
+const double kMidTickReach = 5;
+
+/// A short tick square across the middle of the line from [a] to [b] on
+/// screen, so a halfway point can be read off it when judging proportions.
+/// Left off a line too short for the tick to read as a mark on it.
+void paintMidTick(Canvas canvas, Offset a, Offset b, Paint paint) {
+  final along = b - a;
+  final length = along.distance;
+  if (length < kMidTickReach * 4) return;
+  final across = Offset(-along.dy / length, along.dx / length) * kMidTickReach;
+  final mid = (a + b) / 2;
+  canvas.drawLine(mid - across, mid + across, paint);
 }

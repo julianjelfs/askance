@@ -12,7 +12,6 @@ import '../../engine/engine.dart';
 import '../../engine/lines.dart';
 import '../../engine/sketch.dart';
 import '../../engine/value_painter.dart';
-import '../../model/study.dart';
 import '../../state/canvas_session.dart';
 import '../../theme.dart';
 import '../widgets/controls.dart';
@@ -106,10 +105,7 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
     );
   }
 
-  bool get _editing =>
-      widget.editLines &&
-      widget.session.drawingLines &&
-      widget.session.settings.grid != GridMode.off;
+  bool get _editing => widget.editLines && widget.session.drawingLines;
 
   bool get _aligning =>
       widget.session.aligningSketch && widget.session.settings.sketch != null;
@@ -618,14 +614,12 @@ class _LineEditPainter extends CustomPainter {
     if (start case final first?) {
       final from = lineToScreen(first, crop, picture);
       if (hover case final to?) {
-        canvas.drawLine(
-          from,
-          to,
-          Paint()
-            ..color = AskanceColors.accent.withValues(alpha: 0.6)
-            ..strokeWidth = 2
-            ..strokeCap = StrokeCap.round,
-        );
+        final rubber = Paint()
+          ..color = AskanceColors.accent.withValues(alpha: 0.6)
+          ..strokeWidth = 2
+          ..strokeCap = StrokeCap.round;
+        canvas.drawLine(from, to, rubber);
+        paintMidTick(canvas, from, to, rubber);
       }
       handle(from, filled: true);
     }

@@ -73,19 +73,24 @@ void main() {
     expect(session.settings.lines, const [BoardLine(point, point)]);
   });
 
-  test('lines are exported with the grid and hidden without it', () async {
-    final recorder = ui.PictureRecorder();
-    Canvas(recorder).drawColor(const Color(0xFF808080), BlendMode.src);
-    final picture = recorder.endRecording();
-    final source = await picture.toImage(200, 300);
-    picture.dispose();
-    addTearDown(source.dispose);
-    final shader = await ValueShader.load();
+  group('exported', () {
+    late ui.Image source;
+    late ValueShader shader;
 
-    /// The pixel a fifth of the way across, on a line ruled straight across
-    /// the photograph three tenths of the way down, clear of every grid
-    /// rule at level 1.
-    Future<Color> onTheLine(GridMode grid) async {
+    setUpAll(() async {
+      final recorder = ui.PictureRecorder();
+      Canvas(recorder).drawColor(const Color(0xFF808080), BlendMode.src);
+      final picture = recorder.endRecording();
+      source = await picture.toImage(200, 300);
+      picture.dispose();
+      shader = await ValueShader.load();
+    });
+    tearDownAll(() => source.dispose());
+
+    /// The grey photograph exported with a line ruled straight across it
+    /// three tenths of the way down, as a lookup of the colour at a
+    /// fraction of each side plus [dy] pixels down.
+    Future<Color Function(double x, {int dy})> export(GridMode grid) async {
       final png = await renderExport(
         shader: shader,
         source: source,
@@ -104,24 +109,48 @@ void main() {
       final bytes = (await image.toByteData(
         format: ui.ImageByteFormat.rawRgba,
       ))!.buffer.asUint8List();
-      final i =
-          ((image.height * 0.3).round() * image.width +
-              (image.width * 0.2).round()) *
-          4;
+      final width = image.width;
+      final y = (image.height * 0.3).round();
       image.dispose();
       codec.dispose();
-      return Color.fromARGB(bytes[i + 3], bytes[i], bytes[i + 1], bytes[i + 2]);
+      return (double x, {int dy = 0}) {
+        final i = ((y + dy) * width + (width * x).round()) * 4;
+        return Color.fromARGB(
+          bytes[i + 3],
+          bytes[i],
+          bytes[i + 1],
+          bytes[i + 2],
+        );
+      };
     }
 
-    final on = await onTheLine(GridMode.lines);
-    expect((on.r * 255).round(), greaterThan(200), reason: 'ruled in accent');
-    expect((on.b * 255).round(), lessThan(80));
-    final off = await onTheLine(GridMode.off);
-    expect((off.r * 255).round(), (off.b * 255).round(), reason: 'grey');
+    void expectAccent(Color c, String reason) {
+      expect((c.r * 255).round(), greaterThan(200), reason: reason);
+      expect((c.b * 255).round(), lessThan(80), reason: reason);
+    }
+
+    void expectGrey(Color c, String reason) =>
+        expect((c.r * 255).round(), (c.b * 255).round(), reason: reason);
+
+    // A fifth of the way across is clear of every grid rule at level 1.
+    test('lines are exported whether or not the grid is on', () async {
+      expectAccent((await export(GridMode.lines))(0.2), 'with the grid');
+      expectAccent((await export(GridMode.off))(0.2), 'without it');
+    });
+
+    test(
+      'a ruled line carries a tick across its middle and nowhere else',
+      () async {
+        final at = await export(GridMode.off);
+        expectAccent(at(0.5, dy: 3), 'the tick, just below the line');
+        expectAccent(at(0.5, dy: -3), 'the tick, just above the line');
+        expectGrey(at(0.2, dy: 3), 'beside the line away from its middle');
+      },
+    );
   });
 
-  testWidgets('on the desktop, two clicks rule a line and dragging an end '
-      'moves it', (tester) async {
+  testWidgets('on the desktop, with the grid off, two clicks rule a line and '
+      'dragging an end moves it', (tester) async {
     tester.view.physicalSize = const Size(400, 600);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -140,7 +169,7 @@ void main() {
     });
     final session = CanvasSession()
       ..image = image
-      ..settings = const StudySettings(grid: GridMode.lines)
+      ..settings = const StudySettings(grid: GridMode.off)
       ..drawingLines = true;
 
     await tester.pumpWidget(

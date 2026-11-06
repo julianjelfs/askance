@@ -156,7 +156,10 @@ class ValuePainter extends CustomPainter {
           base.isEmpty ? view.zoom : grid.width / base.width,
         ),
       );
-      // Over the grid, and with it: ruled lines are part of the board.
+    }
+    if (drawGrid) {
+      // Over the grid but not tied to it: ruled lines show whether or not
+      // the picture is divided.
       paintLines(
         canvas,
         settings.lines,

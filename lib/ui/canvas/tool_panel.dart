@@ -769,15 +769,13 @@ class GridControl extends StatelessWidget {
 }
 
 /// Ruling straight lines over the picture. Desktop only: see
-/// [CanvasSurface.editLines]. The lines go with the grid, so with the grid
-/// off there is nothing here to do.
+/// [CanvasSurface.editLines].
 class LinesControl extends StatelessWidget {
   const LinesControl({super.key, required this.session});
   final CanvasSession session;
 
   @override
   Widget build(BuildContext context) {
-    final on = session.settings.grid != GridMode.off;
     final drawing = session.drawingLines;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -791,7 +789,6 @@ class LinesControl extends StatelessWidget {
                 height: 38,
                 fontSize: 13.5,
                 centred: true,
-                enabled: on,
                 onPressed: () => session.setDrawingLines(!drawing),
               ),
             ),
@@ -803,7 +800,7 @@ class LinesControl extends StatelessWidget {
                 height: 38,
                 fontSize: 13.5,
                 centred: true,
-                enabled: on && session.settings.lines.isNotEmpty,
+                enabled: session.settings.lines.isNotEmpty,
                 onPressed: session.clearLines,
               ),
             ),
@@ -811,13 +808,11 @@ class LinesControl extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          !on
-              ? 'Lines show with the grid. Turn it on to draw them.'
-              : drawing
+          drawing
               ? 'Click two points to draw a line. Drag an end to move it. '
                     'Click a line, then press Delete to remove it.'
-              : 'Straight lines over the picture, saved with the study and '
-                    'exported with the grid.',
+              : 'Straight lines over the picture, saved and exported with '
+                    'the study. A tick marks the middle of each.',
           style: AskanceText.caption(12.5),
         ),
       ],

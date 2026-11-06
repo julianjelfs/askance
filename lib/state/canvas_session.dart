@@ -256,7 +256,6 @@ class CanvasSession extends ChangeNotifier {
     isolatedBand = null;
     lineStart = null;
     selectedLine = null;
-    if (incoming.grid == GridMode.off) drawingLines = false;
     notifyListeners();
   }
 
@@ -394,8 +393,6 @@ class CanvasSession extends ChangeNotifier {
   void setGrid(GridMode grid) {
     if (grid == settings.grid) return;
     settings = settings.copyWith(grid: grid);
-    // The lines go with the grid, and ruling ones nobody can see is no use.
-    if (grid == GridMode.off) _stopDrawingLines();
     _persistSoon();
     notifyListeners();
   }
