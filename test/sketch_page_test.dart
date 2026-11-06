@@ -93,6 +93,66 @@ Future<Color> _pixel(ui.Image image, double x, double y) async {
   return Color.fromARGB(b[i + 3], b[i], b[i + 1], b[i + 2]);
 }
 
+/// A sketchbook page shot from above on a mid-grey carpet, as a phone sees
+/// it: paper only a little lighter than the carpet, charcoal darker than
+/// both covering most of the page up to thin margins, the photographer's
+/// shadow over the lower left, and the phone's across the bottom edge.
+const _carpetSize = Size(576, 1024);
+const _carpetPage = Rect.fromLTRB(44, 162, 536, 874);
+
+Future<ui.Image> _onCarpet() async {
+  final recorder = ui.PictureRecorder();
+  final canvas = Canvas(recorder)
+    ..drawColor(const Color(0xFF8E8C88), BlendMode.src);
+  // The carpet's weave: specks a little lighter and darker than it.
+  final random = math.Random(7);
+  for (var i = 0; i < 6000; i++) {
+    final g = 0x8E + random.nextInt(41) - 20;
+    canvas.drawRect(
+      Rect.fromLTWH(
+        random.nextDouble() * _carpetSize.width,
+        random.nextDouble() * _carpetSize.height,
+        3,
+        3,
+      ),
+      Paint()..color = Color.fromARGB(255, g, g - 2, g - 6),
+    );
+  }
+  canvas
+    ..drawRect(_carpetPage, Paint()..color = const Color(0xFFD8D6D2))
+    // Charcoal nearly to the edges of the paper.
+    ..drawRect(
+      Rect.fromLTRB(
+        _carpetPage.left + 50,
+        _carpetPage.top + 14,
+        _carpetPage.right - 18,
+        _carpetPage.bottom - 14,
+      ),
+      Paint()..color = const Color(0xFF4A4A4A),
+    );
+  // A shadow over the lower left, of page and carpet alike, deep enough
+  // that the paper in it is darker than the carpet in the light.
+  canvas
+    ..drawRect(
+      Rect.fromLTWH(0, 600, 330, 424),
+      Paint()
+        ..color = const Color(0xFF8C8C8C)
+        ..blendMode = BlendMode.multiply,
+    )
+    // And the phone's own, hard and dark, across the bottom edge.
+    ..drawOval(
+      Rect.fromLTWH(160, _carpetPage.bottom - 40, 110, 260),
+      Paint()..color = const Color(0xFF2A2A2A),
+    );
+  final picture = recorder.endRecording();
+  final image = await picture.toImage(
+    _carpetSize.width.round(),
+    _carpetSize.height.round(),
+  );
+  picture.dispose();
+  return image;
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -123,15 +183,38 @@ void main() {
     addTearDown(straight.dispose);
 
     // Read off its sides alone, foreshortened, the page would come out
-    // about an eighth too wide.
+    // about an eighth too wide. The lens here is 8% off the one assumed,
+    // which at this steep a slant costs nearly 2% of its own.
     expect(
       straight.width / straight.height,
-      closeTo(1 / math.sqrt2, 0.02 / math.sqrt2),
+      closeTo(1 / math.sqrt2, 0.03 / math.sqrt2),
     );
     final patch = await _pixel(straight, 0.25, 0.25);
     final paper = await _pixel(straight, 0.75, 0.5);
     expect((patch.r * 255).round(), lessThan(80), reason: 'the dark patch');
     expect((paper.r * 255).round(), greaterThan(200), reason: 'the paper');
+  });
+
+  test('a page only a little lighter than the surface it lies on is found, '
+      'though charcoal darker than both covers most of it and a shadow '
+      'leaves part of it darker than the surface in the light', () async {
+    final photo = await _onCarpet();
+    addTearDown(photo.dispose);
+    final page = await findPage(photo);
+    expect(page, isNotNull);
+    final want = [
+      _carpetPage.topLeft,
+      _carpetPage.topRight,
+      _carpetPage.bottomRight,
+      _carpetPage.bottomLeft,
+    ];
+    for (var i = 0; i < 4; i++) {
+      final got = Offset(
+        page![i].dx * _carpetSize.width,
+        page[i].dy * _carpetSize.height,
+      );
+      expect((got - want[i]).distance, lessThan(12), reason: 'corner $i');
+    }
   });
 
   test('without a page that stands out, or with one filling the photo, '

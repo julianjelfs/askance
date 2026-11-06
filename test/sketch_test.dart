@@ -268,6 +268,41 @@ void main() {
       expect(session.sketchImage!.height, 500);
     });
 
+    test('straightening again looks for the page afresh, so corners found '
+        'wrongly before are put right', () async {
+      await keptStudy();
+      final session = container.read(sessionProvider);
+      final notifier = container.read(studiesProvider.notifier);
+      await notifier.addSketch(session, await _pagePng(const Size(300, 420)));
+      final kept = session.settings.sketch!;
+      session.moveSketch(
+        SketchOverlay(
+          imageKey: kept.imageKey,
+          center: kept.center,
+          width: kept.width,
+          page: const [
+            Offset(0, 0),
+            Offset(1, 0),
+            Offset(0.9, 0.86),
+            Offset(0.08, 0.85),
+          ],
+          straighten: false,
+        ),
+      );
+
+      await notifier.straightenSketch(session, true);
+      final page = session.settings.sketch!.page!;
+      const want = [
+        Offset(0.25, 0.08),
+        Offset(0.75, 0.08),
+        Offset(0.75, 0.92),
+        Offset(0.25, 0.92),
+      ];
+      for (var i = 0; i < 4; i++) {
+        expect((page[i] - want[i]).distance, lessThan(0.01), reason: '$i');
+      }
+    });
+
     test('deleting the study deletes its sketch photo', () async {
       final id = await keptStudy();
       final session = container.read(sessionProvider);

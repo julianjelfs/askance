@@ -179,7 +179,7 @@ class StudiesNotifier extends AsyncNotifier<List<Study>> {
     if (replaced != null) await _forgetSketch(session, replaced);
   }
 
-  /// Shows the drawing in [session] squared up to the page found in its
+  /// Shows the drawing in [session] squared up to the page in its
   /// photograph, or as the whole photograph.
   Future<void> straightenSketch(CanvasSession session, bool straighten) async {
     final sketch = session.settings.sketch;
@@ -187,11 +187,17 @@ class StudiesNotifier extends AsyncNotifier<List<Study>> {
     if (sketch.straighten == straighten) return;
     final bytes = await ref.read(repositoryProvider).readImage(sketch.imageKey);
     if (bytes == null) return;
-    final image = await sketchPixels(
-      bytes,
-      sketch.copyWith(straighten: straighten),
-    );
-    session.restraightenSketch(sketch.imageKey, image, straighten);
+    final photo = await decodeSketch(bytes);
+    if (!straighten) {
+      session.restraightenSketch(sketch.imageKey, photo, straighten);
+      return;
+    }
+    // Looked for afresh, so a page found wrongly when the photo came in is
+    // found again as well as the finding now can.
+    final page = await findPage(photo) ?? sketch.page!;
+    final image = await straightenPage(photo, page, maxSide: kSketchMaxSide);
+    photo.dispose();
+    session.restraightenSketch(sketch.imageKey, image, straighten, page: page);
   }
 
   /// Takes the drawing off the study open in [session], and its photograph

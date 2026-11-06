@@ -5,9 +5,9 @@ import 'dart:ui';
 /// Finding the sketchbook page in a photograph of the drawing, and squaring
 /// it up, so the drawing arrives straight and cropped to its page.
 ///
-/// The page is taken to be the paper: lighter than whatever it lies on. A
-/// photograph without that contrast, or one the page already fills, is left
-/// as it is.
+/// The page is taken to be the paper: lighter than whatever it lies on, and
+/// bounded by four straight edges. A photograph without them, or one the
+/// page runs out of, is left as it is.
 
 /// The long side, in pixels, the photograph is shrunk to before the page is
 /// looked for. Plenty to place the corners within a fraction of a percent.
@@ -40,130 +40,495 @@ Future<List<Offset>?> findPage(Image photo) async {
 }
 
 /// [findPage] on raw RGBA pixels.
+///
+/// The page is found by its edges, not by how light it is: a shadow across
+/// it can leave the paper in it darker than the lit table beside it, and
+/// charcoal is darker than both, so no one level of brightness picks out
+/// the paper. What a shadow leaves alone is the step at the edge of the
+/// paper as a ratio, so brightness is taken as a logarithm, and the page is
+/// the four straight lines along which it steps up the most, from outside
+/// to in.
 List<Offset>? findPageInPixels(Uint8List rgba, int width, int height) {
   final n = width * height;
-  if (n < 64) return null;
+  if (width < 16 || height < 16) return null;
 
-  // Luminance, softened so grain and paper texture do not speckle the split.
-  final raw = Uint8List(n);
-  for (var i = 0; i < n; i++) {
-    raw[i] =
-        (rgba[i * 4] * 77 + rgba[i * 4 + 1] * 150 + rgba[i * 4 + 2] * 29) >> 8;
+  final logOf = Float32List(256);
+  for (var i = 0; i < 256; i++) {
+    logOf[i] = math.log(i + 8);
   }
-  final grey = _boxBlur(raw, width, height);
-
-  // Paper from not-paper, split where the two are told apart best.
-  final split = _otsu(grey);
-  if (split == null) return null;
-  var bright = Uint8List(n);
+  var lum = Float32List(n);
   for (var i = 0; i < n; i++) {
-    bright[i] = grey[i] > split ? 1 : 0;
+    lum[i] =
+        logOf[(rgba[i * 4] * 77 +
+                rgba[i * 4 + 1] * 150 +
+                rgba[i * 4 + 2] * 29) >>
+            8];
   }
-  // Closed over the drawing, so a stroke run to the edge of the paper does
-  // not cut the page in two.
-  final r = math.max(2, (math.max(width, height) / 170).round());
-  bright = _erode(_dilate(bright, width, height, r), width, height, r);
+  // Softened so grain, paper texture and the weave of a carpet do not read
+  // as edges.
+  lum = _boxBlur(_boxBlur(lum, width, height), width, height);
+  final edges = _Edges(lum, width, height);
 
-  // Whatever dark reaches the border is what the page lies on. The rest is
-  // the page, the drawing on it, and anything else lying about.
-  final outside = Uint8List(n);
-  final stack = <int>[];
-  void seed(int i) {
-    if (bright[i] == 0 && outside[i] == 0) {
-      outside[i] = 1;
-      stack.add(i);
+  final lines = _houghLines(edges);
+  if (lines.length < 4) return null;
+
+  final size = math.min(width, height);
+  final margin = math.max(2.0, math.max(width, height) * 0.01);
+  List<_Line>? best;
+  var bestScore = 0.0;
+  // Opposite sides: lines near enough parallel, well apart, each on the
+  // light side of the other, facing each other across the page.
+  final middle = Offset(width / 2, height / 2);
+  final feet = [for (final l in lines) l.foot(middle)];
+  final pairs = <(int, int)>[];
+  for (var i = 0; i < lines.length; i++) {
+    for (var j = i + 1; j < lines.length; j++) {
+      if (math.cos(lines[i].theta - lines[j].theta) >
+          -math.cos(25 * math.pi / 180)) {
+        continue;
+      }
+      final across = lines[i].signedAt(feet[j]);
+      if (across < size * 0.2 || lines[j].signedAt(feet[i]) < size * 0.2) {
+        continue;
+      }
+      pairs.add((i, j));
     }
   }
-
-  for (var x = 0; x < width; x++) {
-    seed(x);
-    seed((height - 1) * width + x);
-  }
-  for (var y = 0; y < height; y++) {
-    seed(y * width);
-    seed(y * width + width - 1);
-  }
-  _flood(stack, width, height, (i) => bright[i] == 0 && outside[i] == 0, (i) {
-    outside[i] = 1;
-  });
-
-  // The page is the biggest piece of what is left.
-  final label = Int32List(n);
-  var best = 0;
-  var bestArea = 0;
-  var next = 0;
-  for (var i = 0; i < n; i++) {
-    if (outside[i] == 1 || label[i] != 0) continue;
-    final id = ++next;
-    label[i] = id;
-    var area = 0;
-    stack.add(i);
-    _flood(stack, width, height, (j) => outside[j] == 0 && label[j] == 0, (j) {
-      label[j] = id;
-    }, onVisit: () => area++);
-    if (area > bestArea) {
-      bestArea = area;
-      best = id;
+  for (var p = 0; p < pairs.length; p++) {
+    for (var q = p + 1; q < pairs.length; q++) {
+      final (a, b) = pairs[p];
+      final (c, d) = pairs[q];
+      final turn = _angleBetween(lines[a], lines[c]);
+      if (turn < 60) continue;
+      final corners = [
+        lines[a].meet(lines[c]),
+        lines[a].meet(lines[d]),
+        lines[b].meet(lines[d]),
+        lines[b].meet(lines[c]),
+      ];
+      if (corners.any((c) => c == null)) continue;
+      final quad = corners.cast<Offset>();
+      if (!_fits(quad, width, height, margin) || !_convex(quad)) continue;
+      final area = _area(quad).abs();
+      if (area < n * 0.1) continue;
+      final support = _support(quad, edges);
+      if (support == null) continue;
+      // Of pages backed about as well by their edges, the bigger: the
+      // paper rather than a box drawn on it.
+      final score = support + 0.15 * area / n;
+      if (score > bestScore) {
+        bestScore = score;
+        // Its sides in turn, each running from the corner before.
+        best = [lines[a], lines[d], lines[b], lines[c]];
+      }
     }
   }
-  if (best == 0 || bestArea < n * 0.1) return null;
+  if (best == null) return null;
 
-  // Its outline, from the extremes of each row and column, and its area
-  // with any holes in it filled.
-  final rowMin = Int32List(height)..fillRange(0, height, -1);
-  final rowMax = Int32List(height);
-  final colMin = Int32List(width)..fillRange(0, width, -1);
-  final colMax = Int32List(width);
-  for (var y = 0; y < height; y++) {
-    for (var x = 0; x < width; x++) {
-      if (label[y * width + x] != best) continue;
-      if (rowMin[y] < 0) rowMin[y] = x;
-      rowMax[y] = x;
-      if (colMin[x] < 0) colMin[x] = y;
-      colMax[x] = y;
-    }
+  // The edge of the paper is the outermost of the straight edges that face
+  // in: one just inside it and along it is on the paper, the holes of a
+  // spiral binding, a border drawn round the drawing, or tape. Such an edge
+  // can outvote the paper's own, half hidden as that may be behind the
+  // binding, so each side is pushed out to the farthest line near it that
+  // still shows along a good share of its length.
+  final found = _pushOut(_corners(best), edges, size * 0.12);
+  if (!_fits(found, width, height, margin) || !_convex(found)) return null;
+
+  final refined = _refine(found, edges);
+  if (!_fits(refined, width, height, margin) || !_convex(refined)) {
+    return null;
   }
-  final edge = <Offset>[];
-  var filled = 0.0;
-  for (var y = 0; y < height; y++) {
-    if (rowMin[y] < 0) continue;
-    edge
-      ..add(Offset(rowMin[y].toDouble(), y + 0.5))
-      ..add(Offset(rowMax[y] + 1.0, y + 0.5));
-    filled += rowMax[y] - rowMin[y] + 1;
-  }
-  for (var x = 0; x < width; x++) {
-    if (colMin[x] < 0) continue;
-    edge
-      ..add(Offset(x + 0.5, colMin[x].toDouble()))
-      ..add(Offset(x + 0.5, colMax[x] + 1.0));
-  }
-
-  final hull = _hull(edge);
-  if (hull.length < 4) return null;
-  final rough = _fourCorners(hull);
-  final tolerance = math.max(3.0, math.max(width, height) * 0.02);
-  final corners = _fitSides(rough, edge, tolerance);
-  if (!_convex(corners)) return null;
-
-  // A page is a quadrilateral: a shape that fills too little of its four
-  // corners is something else.
-  final area = _area(corners).abs();
-  if (area < n * 0.1 || filled / area < 0.85) return null;
-
-  final ordered = _clockwiseFromTopLeft(corners);
-  final page = [
-    for (final c in ordered)
-      Offset((c.dx / width).clamp(0.0, 1.0), (c.dy / height).clamp(0.0, 1.0)),
+  return [
+    for (final c in _clockwiseFromTopLeft(refined))
+      Offset(c.dx / width, c.dy / height),
   ];
-  // Already the whole photograph: nothing to straighten.
-  const whole = [Offset(0, 0), Offset(1, 0), Offset(1, 1), Offset(0, 1)];
-  var fills = true;
-  for (var i = 0; i < 4; i++) {
-    final d = page[i] - whole[i];
-    if (d.dx.abs() > 0.02 || d.dy.abs() > 0.02) fills = false;
+}
+
+/// How steeply, in log brightness per pixel, the light has to change for
+/// the change to count as an edge.
+const double _kEdge = 0.05;
+
+/// Within how much, as the cosine of the angle, the light has to rise
+/// straight into the page for an edge to count as one of its sides.
+const double _kFacing = 0.9;
+
+/// The gradient of log brightness at each pixel.
+class _Edges {
+  _Edges(Float32List lum, this.width, this.height)
+    : gx = Float32List(width * height),
+      gy = Float32List(width * height),
+      mag = Float32List(width * height) {
+    for (var y = 1; y < height - 1; y++) {
+      for (var x = 1; x < width - 1; x++) {
+        final i = y * width + x;
+        final tl = lum[i - width - 1],
+            t = lum[i - width],
+            tr = lum[i - width + 1];
+        final l = lum[i - 1], r = lum[i + 1];
+        final bl = lum[i + width - 1],
+            b = lum[i + width],
+            br = lum[i + width + 1];
+        final dx = ((tr + 2 * r + br) - (tl + 2 * l + bl)) / 8;
+        final dy = ((bl + 2 * b + br) - (tl + 2 * t + tr)) / 8;
+        gx[i] = dx;
+        gy[i] = dy;
+        mag[i] = math.sqrt(dx * dx + dy * dy);
+      }
+    }
   }
-  return fills ? null : page;
+
+  final int width;
+  final int height;
+  final Float32List gx;
+  final Float32List gy;
+  final Float32List mag;
+
+  /// Whether the light rises steeply toward [inward] at or within two
+  /// pixels across of the pixel holding [p].
+  bool facing(Offset p, Offset inward) {
+    for (var k = -2; k <= 2; k++) {
+      final q = p + inward * k.toDouble();
+      final x = q.dx.floor(), y = q.dy.floor();
+      if (x < 1 || y < 1 || x >= width - 1 || y >= height - 1) continue;
+      final i = y * width + x;
+      final m = mag[i];
+      if (m < _kEdge) continue;
+      if ((gx[i] * inward.dx + gy[i] * inward.dy) / m > _kFacing) return true;
+    }
+    return false;
+  }
+}
+
+/// A straight line: the points p with p . (cos theta, sin theta) = rho.
+class _Line {
+  _Line(this.theta, this.rho) : c = math.cos(theta), s = math.sin(theta);
+
+  /// The line through [a] and [b].
+  factory _Line.through(Offset a, Offset b) {
+    final theta = math.atan2(b.dx - a.dx, -(b.dy - a.dy));
+    return _Line(theta, a.dx * math.cos(theta) + a.dy * math.sin(theta));
+  }
+  final double theta;
+  final double rho;
+  final double c;
+  final double s;
+
+  /// Positive on the side the normal points to: for an edge, the light
+  /// side.
+  double signedAt(Offset p) => p.dx * c + p.dy * s - rho;
+
+  /// The point on the line nearest [p].
+  Offset foot(Offset p) => p - Offset(c, s) * signedAt(p);
+  double distanceTo(Offset p) => signedAt(p).abs();
+
+  Offset? meet(_Line o) {
+    final det = c * o.s - s * o.c;
+    if (det.abs() < 1e-6) return null;
+    return Offset((rho * o.s - s * o.rho) / det, (c * o.rho - rho * o.c) / det);
+  }
+}
+
+/// The angle between two lines, in degrees, 0 to 90.
+double _angleBetween(_Line a, _Line b) {
+  var d = ((a.theta - b.theta) * 180 / math.pi).abs() % 180;
+  if (d > 90) d = 180 - d;
+  return d;
+}
+
+/// The strongest straight edges in [edges], at most [count], by a Hough
+/// transform: each edge pixel votes for the lines through it running
+/// across its gradient. Its vote grows with its steepness only up to a
+/// point, so the hard edges of a dark drawing do not drown out the gentler
+/// step from table to paper.
+List<_Line> _houghLines(_Edges edges, {int count = 24}) {
+  final width = edges.width, height = edges.height;
+  // Oriented: a line is kept apart from one it overlies where the light
+  // steps the other way, as the edge of a page from the edge of a drawing
+  // just inside it.
+  const bins = 360;
+  final reach = math.sqrt(width * width + height * height).ceil();
+  final span = 2 * reach + 1;
+  final acc = Float32List(bins * span);
+  final cos = Float64List(bins), sin = Float64List(bins);
+  for (var t = 0; t < bins; t++) {
+    cos[t] = math.cos(t * 2 * math.pi / bins);
+    sin[t] = math.sin(t * 2 * math.pi / bins);
+  }
+  for (var y = 1; y < height - 1; y++) {
+    for (var x = 1; x < width - 1; x++) {
+      final i = y * width + x;
+      final m = edges.mag[i];
+      if (m < _kEdge) continue;
+      final at = math.atan2(edges.gy[i], edges.gx[i]) * bins / (2 * math.pi);
+      final centre = at.round();
+      final vote = math.min(m, _kEdge * 3);
+      for (var d = -2; d <= 2; d++) {
+        final t = (centre + d) % bins;
+        final rho = (x + 0.5) * cos[t] + (y + 0.5) * sin[t];
+        acc[t * span + rho.round() + reach] += vote;
+      }
+    }
+  }
+
+  final lines = <_Line>[];
+  var top = 0.0;
+  while (lines.length < count) {
+    var at = -1;
+    var most = 0.0;
+    for (var i = 0; i < acc.length; i++) {
+      if (acc[i] > most) {
+        most = acc[i];
+        at = i;
+      }
+    }
+    if (at < 0) break;
+    if (lines.isEmpty) top = most;
+    if (most < top * 0.08) break;
+    final t = at ~/ span;
+    final r = at % span - reach;
+    final line = _Line(t * 2 * math.pi / bins, r.toDouble());
+    // A long edge also gathers votes a few degrees either side of itself,
+    // pivoting about its middle: those are the same edge again.
+    final foot = line.foot(Offset(width / 2, height / 2));
+    final again = lines.any(
+      (l) =>
+          math.cos(l.theta - line.theta) > math.cos(8 * math.pi / 180) &&
+          l.distanceTo(foot) < 3,
+    );
+    if (!again) lines.add(line);
+    // The same line, near enough, is not found twice.
+    for (var dt = -4; dt <= 4; dt++) {
+      final tt = (t + dt + bins) % bins;
+      for (var dr = -4; dr <= 4; dr++) {
+        final k = r + dr + reach;
+        if (k >= 0 && k < span) acc[tt * span + k] = 0;
+      }
+    }
+  }
+  return lines;
+}
+
+/// [quad] with each side moved out to the farthest line, within [reach]
+/// at either end, along which the light steps up into it for at least a
+/// quarter of its length, spread along it; then to whichever line within
+/// three pixels of that the light rises across most steeply.
+List<Offset> _pushOut(List<Offset> quad, _Edges edges, double reach) {
+  final centre = (quad[0] + quad[1] + quad[2] + quad[3]) / 4;
+  final sides = <_Line>[];
+  final limit = reach.floor();
+  for (var i = 0; i < 4; i++) {
+    final a = quad[i], b = quad[(i + 1) % 4];
+    final along = b - a;
+    var out = Offset(-along.dy, along.dx) / along.distance;
+    if ((centre - a).dx * out.dx + (centre - a).dy * out.dy > 0) out = -out;
+    double share(int d0, int d1, {bool spread = false}) => _shareAlong(
+      a + out * d0.toDouble(),
+      b + out * d1.toDouble(),
+      -out,
+      edges,
+      spread: spread,
+    );
+
+    var best = (0, 0);
+    var bestOut = 0;
+    for (var d0 = 0; d0 <= limit; d0++) {
+      for (var d1 = 0; d1 <= limit; d1++) {
+        if (d0 + d1 <= bestOut) continue;
+        if (share(d0, d1, spread: true) < 0.25) continue;
+        best = (d0, d1);
+        bestOut = d0 + d1;
+      }
+    }
+    // Settled on the steepest of the lines about it, which runs down the
+    // middle of the blurred step rather than along its outer fringe.
+    var (d0, d1) = best;
+    var top = double.negativeInfinity;
+    for (var e0 = d0 - 3; e0 <= d0 + 3; e0++) {
+      for (var e1 = d1 - 3; e1 <= d1 + 3; e1++) {
+        final s = _riseAlong(
+          a + out * e0.toDouble(),
+          b + out * e1.toDouble(),
+          -out,
+          edges,
+        );
+        if (s > top) {
+          top = s;
+          best = (e0, e1);
+        }
+      }
+    }
+    (d0, d1) = best;
+    sides.add(_Line.through(a + out * d0.toDouble(), b + out * d1.toDouble()));
+  }
+  return _corners(sides);
+}
+
+/// How steeply, summed along the line from [a] to [b] away from its ends,
+/// the light rises toward [inward] on the line itself.
+double _riseAlong(Offset a, Offset b, Offset inward, _Edges edges) {
+  final along = b - a;
+  final steps = along.distance.floor();
+  if (steps < 1) return 0;
+  var rise = 0.0;
+  for (var k = (steps * 0.05).ceil(); k <= steps * 0.95; k++) {
+    final p = a + along * (k / steps);
+    final x = p.dx.floor(), y = p.dy.floor();
+    if (x < 1 || y < 1 || x >= edges.width - 1 || y >= edges.height - 1) {
+      continue;
+    }
+    final i = y * edges.width + x;
+    rise += math.max(0, edges.gx[i] * inward.dx + edges.gy[i] * inward.dy);
+  }
+  return rise / steps;
+}
+
+/// The share of the line from [a] to [b], away from its ends, along which
+/// the light steps up toward [inward]. With [spread], nothing unless each
+/// third of it shows the step for some of its length: a line that only
+/// crosses an edge, pivoting off it at one end, is not that edge.
+double _shareAlong(
+  Offset a,
+  Offset b,
+  Offset inward,
+  _Edges edges, {
+  bool spread = false,
+}) {
+  final along = b - a;
+  final steps = along.distance.floor();
+  if (steps < 1) return 0;
+  final hit = [0, 0, 0], seen = [0, 0, 0];
+  for (var k = (steps * 0.05).ceil(); k <= steps * 0.95; k++) {
+    final third = math.min(2, k * 3 ~/ steps);
+    seen[third]++;
+    if (edges.facing(a + along * (k / steps), inward)) hit[third]++;
+  }
+  final total = seen[0] + seen[1] + seen[2];
+  if (total == 0) return 0;
+  if (spread) {
+    for (var t = 0; t < 3; t++) {
+      if (seen[t] == 0 || hit[t] / seen[t] < 0.15) return 0;
+    }
+  }
+  return (hit[0] + hit[1] + hit[2]) / total;
+}
+
+/// Whether [quad] lies within the photograph, clear of its edges by
+/// [margin]: a page running out of it has not all its corners there to be
+/// squared up by.
+bool _fits(List<Offset> quad, int width, int height, double margin) =>
+    quad.every(
+      (c) =>
+          c.dx >= margin &&
+          c.dy >= margin &&
+          c.dx <= width - margin &&
+          c.dy <= height - margin,
+    );
+
+/// The share of [quad]'s outline along which the light steps up into it,
+/// or null if any side has too little of that to be an edge of a page.
+/// Away from the corners, where paper is often rounded or dog-eared.
+double? _support(List<Offset> quad, _Edges edges) {
+  var total = 0.0;
+  for (var i = 0; i < 4; i++) {
+    final share = _sideShare(quad[i], quad[(i + 1) % 4], quad, edges);
+    // A side can be hidden for much of its length, behind the binding or
+    // lost in a shadow, so long as the page as a whole is plainly there.
+    if (share == null || share < 0.15) return null;
+    total += share;
+  }
+  return total / 4 < 0.5 ? null : total / 4;
+}
+
+/// The share of the side of [quad] from [a] to [b] along which the light
+/// steps up into [quad].
+double? _sideShare(Offset a, Offset b, List<Offset> quad, _Edges edges) {
+  final centre = (quad[0] + quad[1] + quad[2] + quad[3]) / 4;
+  final along = b - a;
+  final length = along.distance;
+  if (length < 1) return null;
+  var inward = Offset(-along.dy, along.dx) / length;
+  if ((centre - a).dx * inward.dx + (centre - a).dy * inward.dy < 0) {
+    inward = -inward;
+  }
+  return _shareAlong(a, b, inward, edges);
+}
+
+/// The corners of the quadrilateral with [sides] in turn, each corner
+/// where a side meets the one before it.
+List<Offset> _corners(List<_Line> sides) => [
+  for (var i = 0; i < 4; i++)
+    sides[(i + 3) % 4].meet(sides[i]) ?? const Offset(-1, -1),
+];
+
+/// [quad] with each side fitted to the edge pixels along it, weighted by
+/// steepness, and its corners put back where the fitted sides meet.
+List<Offset> _refine(List<Offset> quad, _Edges edges) {
+  final width = edges.width;
+  final centre = (quad[0] + quad[1] + quad[2] + quad[3]) / 4;
+  final sides = <_Line>[];
+  for (var i = 0; i < 4; i++) {
+    final a = quad[i], b = quad[(i + 1) % 4];
+    final along = b - a;
+    final length = along.distance;
+    final dir = along / length;
+    var inward = Offset(-dir.dy, dir.dx);
+    if ((centre - a).dx * inward.dx + (centre - a).dy * inward.dy < 0) {
+      inward = -inward;
+    }
+    var w = 0.0, sx = 0.0, sy = 0.0;
+    final points = <(Offset, double)>[];
+    for (var k = (length * 0.05).ceil(); k <= length * 0.95; k++) {
+      final on = a + dir * k.toDouble();
+      for (var d = -3; d <= 3; d++) {
+        final p = on + inward * d.toDouble();
+        final x = p.dx.floor(), y = p.dy.floor();
+        if (x < 1 || y < 1 || x >= width - 1 || y >= edges.height - 1) {
+          continue;
+        }
+        final j = y * width + x;
+        final m = edges.mag[j];
+        if (m < _kEdge) continue;
+        if ((edges.gx[j] * inward.dx + edges.gy[j] * inward.dy) / m <
+            _kFacing) {
+          continue;
+        }
+        final c = Offset(x + 0.5, y + 0.5);
+        points.add((c, m));
+        w += m;
+        sx += c.dx * m;
+        sy += c.dy * m;
+      }
+    }
+    final normal = Offset(-dir.dy, dir.dx);
+    if (points.length < 10) {
+      sides.add(
+        _Line(
+          math.atan2(normal.dy, normal.dx),
+          a.dx * normal.dx + a.dy * normal.dy,
+        ),
+      );
+      continue;
+    }
+    final cx = sx / w, cy = sy / w;
+    var sxx = 0.0, syy = 0.0, sxy = 0.0;
+    for (final (p, m) in points) {
+      final dx = p.dx - cx, dy = p.dy - cy;
+      sxx += m * dx * dx;
+      syy += m * dy * dy;
+      sxy += m * dx * dy;
+    }
+    // The fitted line runs along the principal direction; its normal is
+    // square to that.
+    final angle = 0.5 * math.atan2(2 * sxy, sxx - syy) + math.pi / 2;
+    sides.add(_Line(angle, cx * math.cos(angle) + cy * math.sin(angle)));
+  }
+  final refined = <Offset>[];
+  for (var i = 0; i < 4; i++) {
+    final at = sides[(i + 3) % 4].meet(sides[i]);
+    // Sides that will not meet near the corner they came from leave it.
+    refined.add(at == null || (at - quad[i]).distance > 10 ? quad[i] : at);
+  }
+  return refined;
 }
 
 /// A phone's main camera, about 26mm in 35mm terms: its focal length as a
@@ -303,11 +668,11 @@ List<double> _cross(List<double> a, List<double> b) => [
 double _dot(List<double> a, List<double> b) =>
     a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 
-Uint8List _boxBlur(Uint8List src, int width, int height) {
-  final out = Uint8List(src.length);
+Float32List _boxBlur(Float32List src, int width, int height) {
+  final out = Float32List(src.length);
   for (var y = 0; y < height; y++) {
     for (var x = 0; x < width; x++) {
-      var sum = 0;
+      var sum = 0.0;
       var count = 0;
       for (var dy = -1; dy <= 1; dy++) {
         final yy = y + dy;
@@ -319,232 +684,14 @@ Uint8List _boxBlur(Uint8List src, int width, int height) {
           count++;
         }
       }
-      out[y * width + x] = sum ~/ count;
+      out[y * width + x] = sum / count;
     }
   }
   return out;
-}
-
-/// The level that best splits [grey] in two, or null when the two halves
-/// are too alike to be paper and what it lies on.
-int? _otsu(Uint8List grey) {
-  final hist = List<int>.filled(256, 0);
-  for (final g in grey) {
-    hist[g]++;
-  }
-  final total = grey.length;
-  var sum = 0.0;
-  for (var i = 0; i < 256; i++) {
-    sum += i * hist[i];
-  }
-  var sumB = 0.0;
-  var wB = 0;
-  var best = -1.0;
-  int? split;
-  var gap = 0.0;
-  for (var i = 0; i < 256; i++) {
-    wB += hist[i];
-    if (wB == 0) continue;
-    final wF = total - wB;
-    if (wF == 0) break;
-    sumB += i * hist[i];
-    final mB = sumB / wB;
-    final mF = (sum - sumB) / wF;
-    final between = wB.toDouble() * wF * (mB - mF) * (mB - mF);
-    if (between > best) {
-      best = between;
-      split = i;
-      gap = mF - mB;
-    }
-  }
-  return gap < 40 ? null : split;
-}
-
-Uint8List _dilate(Uint8List m, int width, int height, int r) =>
-    _morph(m, width, height, r, 1);
-
-Uint8List _erode(Uint8List m, int width, int height, int r) =>
-    _morph(m, width, height, r, 0);
-
-/// Grows the [hit] value of [m] by [r] pixels each way, a square at a time:
-/// across, then down.
-Uint8List _morph(Uint8List m, int width, int height, int r, int hit) {
-  final across = Uint8List(m.length);
-  for (var y = 0; y < height; y++) {
-    final row = y * width;
-    var last = -r - 1;
-    // The nearest [hit] at or right of x, found scanning back.
-    final ahead = Int32List(width);
-    var near = width + r + 1;
-    for (var x = width - 1; x >= 0; x--) {
-      if (m[row + x] == hit) near = x;
-      ahead[x] = near;
-    }
-    for (var x = 0; x < width; x++) {
-      if (m[row + x] == hit) last = x;
-      across[row + x] = (x - last <= r || ahead[x] - x <= r) ? hit : 1 - hit;
-    }
-  }
-  final out = Uint8List(m.length);
-  final ahead = Int32List(height);
-  for (var x = 0; x < width; x++) {
-    var near = height + r + 1;
-    for (var y = height - 1; y >= 0; y--) {
-      if (across[y * width + x] == hit) near = y;
-      ahead[y] = near;
-    }
-    var last = -r - 1;
-    for (var y = 0; y < height; y++) {
-      if (across[y * width + x] == hit) last = y;
-      out[y * width + x] = (y - last <= r || ahead[y] - y <= r) ? hit : 1 - hit;
-    }
-  }
-  return out;
-}
-
-/// Spreads from the pixels on [stack] to their four neighbours that
-/// [takes], marking each with [mark].
-void _flood(
-  List<int> stack,
-  int width,
-  int height,
-  bool Function(int) takes,
-  void Function(int) mark, {
-  void Function()? onVisit,
-}) {
-  while (stack.isNotEmpty) {
-    final i = stack.removeLast();
-    onVisit?.call();
-    final x = i % width;
-    void visit(int j) {
-      if (takes(j)) {
-        mark(j);
-        stack.add(j);
-      }
-    }
-
-    if (x > 0) visit(i - 1);
-    if (x < width - 1) visit(i + 1);
-    if (i >= width) visit(i - width);
-    if (i < width * (height - 1)) visit(i + width);
-  }
 }
 
 double _turn(Offset o, Offset a, Offset b) =>
     (a.dx - o.dx) * (b.dy - o.dy) - (a.dy - o.dy) * (b.dx - o.dx);
-
-List<Offset> _hull(List<Offset> points) {
-  final p = [
-    ...points,
-  ]..sort((a, b) => a.dx != b.dx ? a.dx.compareTo(b.dx) : a.dy.compareTo(b.dy));
-  if (p.length < 3) return p;
-  final lower = <Offset>[];
-  for (final q in p) {
-    while (lower.length >= 2 &&
-        _turn(lower[lower.length - 2], lower.last, q) <= 0) {
-      lower.removeLast();
-    }
-    lower.add(q);
-  }
-  final upper = <Offset>[];
-  for (final q in p.reversed) {
-    while (upper.length >= 2 &&
-        _turn(upper[upper.length - 2], upper.last, q) <= 0) {
-      upper.removeLast();
-    }
-    upper.add(q);
-  }
-  return [...lower..removeLast(), ...upper..removeLast()];
-}
-
-/// The convex [hull] cut down to four corners, dropping each time the
-/// corner whose loss costs least area.
-List<Offset> _fourCorners(List<Offset> hull) {
-  final p = [...hull];
-  while (p.length > 4) {
-    var drop = 0;
-    var least = double.infinity;
-    for (var i = 0; i < p.length; i++) {
-      final cost = _turn(
-        p[(i - 1 + p.length) % p.length],
-        p[i],
-        p[(i + 1) % p.length],
-      ).abs();
-      if (cost < least) {
-        least = cost;
-        drop = i;
-      }
-    }
-    p.removeAt(drop);
-  }
-  return p;
-}
-
-/// The four sides of [rough] fitted to the outline [edge] near them, away
-/// from the corners where paper is often rounded or dog-eared, and the
-/// corners put back where the fitted sides meet.
-List<Offset> _fitSides(
-  List<Offset> rough,
-  List<Offset> edge,
-  double tolerance,
-) {
-  final lines = <(Offset, Offset)>[];
-  for (var i = 0; i < 4; i++) {
-    final a = rough[i];
-    final b = rough[(i + 1) % 4];
-    final length = (b - a).distance;
-    final dir = (b - a) / length;
-    final normal = Offset(-dir.dy, dir.dx);
-    final near = <Offset>[];
-    for (final p in edge) {
-      final d = p - a;
-      final t = (d.dx * dir.dx + d.dy * dir.dy) / length;
-      final off = (d.dx * normal.dx + d.dy * normal.dy).abs();
-      if (t > 0.1 && t < 0.9 && off < tolerance) near.add(p);
-    }
-    if (near.length < 6) {
-      lines.add((a, dir));
-      continue;
-    }
-    var cx = 0.0, cy = 0.0;
-    for (final p in near) {
-      cx += p.dx;
-      cy += p.dy;
-    }
-    cx /= near.length;
-    cy /= near.length;
-    var sxx = 0.0, syy = 0.0, sxy = 0.0;
-    for (final p in near) {
-      final dx = p.dx - cx, dy = p.dy - cy;
-      sxx += dx * dx;
-      syy += dy * dy;
-      sxy += dx * dy;
-    }
-    final angle = 0.5 * math.atan2(2 * sxy, sxx - syy);
-    lines.add((Offset(cx, cy), Offset(math.cos(angle), math.sin(angle))));
-  }
-  return [
-    for (var i = 0; i < 4; i++)
-      _meet(lines[(i + 3) % 4], lines[i], rough[i], tolerance * 3),
-  ];
-}
-
-/// Where lines [a] and [b] cross, or [fallback] if they do not cross near
-/// it.
-Offset _meet(
-  (Offset, Offset) a,
-  (Offset, Offset) b,
-  Offset fallback,
-  double reach,
-) {
-  final (p, r) = a;
-  final (q, s) = b;
-  final denom = r.dx * s.dy - r.dy * s.dx;
-  if (denom.abs() < 1e-9) return fallback;
-  final t = ((q.dx - p.dx) * s.dy - (q.dy - p.dy) * s.dx) / denom;
-  final at = p + r * t;
-  return (at - fallback).distance > reach ? fallback : at;
-}
 
 double _area(List<Offset> p) {
   var a = 0.0;

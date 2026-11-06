@@ -596,12 +596,18 @@ class CanvasSession extends ChangeNotifier {
   }
 
   /// The drawing's pixels again, squared up to its page or as the whole
-  /// photograph as [straighten] says. Its shape changes with them, so it is
-  /// fitted to the crop afresh and lined up again.
-  void restraightenSketch(String key, ui.Image decoded, bool straighten) {
+  /// photograph as [straighten] says, with [page] in place of the one it
+  /// had if given. Its shape changes with them, so it is fitted to the crop
+  /// afresh and lined up again.
+  void restraightenSketch(
+    String key,
+    ui.Image decoded,
+    bool straighten, {
+    List<Offset>? page,
+  }) {
     final sketch = settings.sketch;
     final photo = photoSize;
-    if (sketch?.imageKey != key || photo == null) {
+    if (sketch == null || sketch.imageKey != key || photo == null) {
       decoded.dispose();
       return;
     }
@@ -610,7 +616,7 @@ class CanvasSession extends ChangeNotifier {
       photo: photo,
       sketch: Size(decoded.width.toDouble(), decoded.height.toDouble()),
       crop: settings.crop,
-      page: sketch!.page,
+      page: page ?? sketch.page,
       straighten: straighten,
     );
     settings = settings.copyWith(
