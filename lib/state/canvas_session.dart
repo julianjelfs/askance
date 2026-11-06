@@ -553,9 +553,10 @@ class CanvasSession extends ChangeNotifier {
       : Size(image!.width.toDouble(), image!.height.toDouble());
 
   /// Lays a newly added photograph of the drawing over the picture, fitted
-  /// to the crop, and starts lining it up. Returns the key of the one it
+  /// to the crop, and starts lining it up. [decoded] is already squared up
+  /// to [page], when a page was found in it. Returns the key of the one it
   /// replaces, which nothing names any more.
-  String? addSketch(ui.Image decoded, String key) {
+  String? addSketch(ui.Image decoded, String key, {List<Offset>? page}) {
     final photo = photoSize;
     if (photo == null) {
       decoded.dispose();
@@ -567,6 +568,7 @@ class CanvasSession extends ChangeNotifier {
       photo: photo,
       sketch: Size(decoded.width.toDouble(), decoded.height.toDouble()),
       crop: settings.crop,
+      page: page,
     );
     settings = settings.copyWith(
       // A replacement keeps the fade it was being looked through at.
@@ -590,6 +592,34 @@ class CanvasSession extends ChangeNotifier {
     }
     _dropSketchImage();
     sketchImage = decoded;
+    notifyListeners();
+  }
+
+  /// The drawing's pixels again, squared up to its page or as the whole
+  /// photograph as [straighten] says. Its shape changes with them, so it is
+  /// fitted to the crop afresh and lined up again.
+  void restraightenSketch(String key, ui.Image decoded, bool straighten) {
+    final sketch = settings.sketch;
+    final photo = photoSize;
+    if (sketch?.imageKey != key || photo == null) {
+      decoded.dispose();
+      return;
+    }
+    final placed = fittedSketch(
+      imageKey: key,
+      photo: photo,
+      sketch: Size(decoded.width.toDouble(), decoded.height.toDouble()),
+      crop: settings.crop,
+      page: sketch!.page,
+      straighten: straighten,
+    );
+    settings = settings.copyWith(
+      sketch: placed.copyWith(opacity: sketch.opacity),
+    );
+    _dropSketchImage();
+    sketchImage = decoded;
+    setAligningSketch(true);
+    _persistSoon();
     notifyListeners();
   }
 

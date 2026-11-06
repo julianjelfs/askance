@@ -55,6 +55,28 @@ Future<ui.Image> _image(int width, int height) async {
   return image;
 }
 
+/// A white page [page] pixels wide and high on a dark table, as a PNG.
+Future<Uint8List> _pagePng(Size page) async {
+  const size = Size(600, 500);
+  final recorder = ui.PictureRecorder();
+  Canvas(recorder)
+    ..drawColor(const Color(0xFF333333), BlendMode.src)
+    ..drawRect(
+      Rect.fromCenter(
+        center: size.center(Offset.zero),
+        width: page.width,
+        height: page.height,
+      ),
+      Paint()..color = const Color(0xFFF4F4F0),
+    );
+  final picture = recorder.endRecording();
+  final image = await picture.toImage(600, 500);
+  picture.dispose();
+  final data = await image.toByteData(format: ui.ImageByteFormat.png);
+  image.dispose();
+  return data!.buffer.asUint8List();
+}
+
 Future<Uint8List> _png(int width, int height) async {
   final image = await _image(width, height);
   final data = await image.toByteData(format: ui.ImageByteFormat.png);
@@ -78,6 +100,36 @@ void main() {
     test('its placement and opacity round-trip through JSON', () {
       const settings = StudySettings(sketch: placed);
       expect(StudySettings.fromJson(settings.toJson()), settings);
+    });
+
+    test('the page found in its photo, and whether it is straightened, '
+        'round-trip through JSON', () {
+      final settings = StudySettings(
+        sketch: SketchOverlay(
+          imageKey: placed.imageKey,
+          center: placed.center,
+          width: placed.width,
+          page: const [
+            Offset(0.1, 0.1),
+            Offset(0.9, 0.12),
+            Offset(0.88, 0.9),
+            Offset(0.12, 0.85),
+          ],
+          straighten: false,
+        ),
+      );
+      expect(StudySettings.fromJson(settings.toJson()), settings);
+    });
+
+    test('a damaged page costs the straightening, not the sketch', () {
+      final json = const StudySettings(sketch: placed).toJson();
+      (json['sketch'] as Map)['page'] = [
+        [0.1, 0.1],
+        'nonsense',
+      ];
+      final sketch = StudySettings.fromJson(json).sketch!;
+      expect(sketch.page, isNull);
+      expect(sketch.center, placed.center);
     });
 
     test('a damaged sketch costs the sketch, not the study', () {
@@ -192,6 +244,28 @@ void main() {
         storage.manifest.singleWhere((s) => s.id == id).settings.sketch,
         isNull,
       );
+    });
+
+    test('a photo of a page is stored as it came and shown squared up to '
+        'the page; the whole photo can be had back', () async {
+      await keptStudy();
+      final session = container.read(sessionProvider);
+      final notifier = container.read(studiesProvider.notifier);
+      final bytes = await _pagePng(const Size(300, 420));
+
+      await notifier.addSketch(session, bytes);
+      final sketch = session.settings.sketch!;
+      expect(storage.images[sketch.imageKey], same(bytes));
+      expect(sketch.page, isNotNull);
+      expect(
+        session.sketchImage!.width / session.sketchImage!.height,
+        closeTo(300 / 420, 0.02),
+      );
+
+      await notifier.straightenSketch(session, false);
+      expect(session.settings.sketch!.straighten, isFalse);
+      expect(session.sketchImage!.width, 600);
+      expect(session.sketchImage!.height, 500);
     });
 
     test('deleting the study deletes its sketch photo', () async {

@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/study_repository.dart';
 import '../engine/engine.dart';
+import '../engine/sketch.dart';
+import '../engine/sketch_page.dart';
 import '../model/study.dart';
 import 'canvas_session.dart';
 import 'sketch_link.dart';
@@ -156,7 +158,14 @@ class StudiesNotifier extends AsyncNotifier<List<Study>> {
     String extension = 'jpg',
   }) async {
     final studyId = session.studyId;
-    final image = await decodeSketch(bytes);
+    final photo = await decodeSketch(bytes);
+    // The photograph is stored as it came; only what is shown is squared
+    // up, so a page found wrongly can be undone.
+    final page = await findPage(photo);
+    final image = page == null
+        ? photo
+        : await straightenPage(photo, page, maxSide: kSketchMaxSide);
+    if (page != null) photo.dispose();
     final repo = ref.read(repositoryProvider);
     final key = await repo.putImage(bytes, extension: extension);
     // Another study opened while the photograph was being stored: this one
@@ -166,8 +175,23 @@ class StudiesNotifier extends AsyncNotifier<List<Study>> {
       await repo.deleteImage(key);
       return;
     }
-    final replaced = session.addSketch(image, key);
+    final replaced = session.addSketch(image, key, page: page);
     if (replaced != null) await _forgetSketch(session, replaced);
+  }
+
+  /// Shows the drawing in [session] squared up to the page found in its
+  /// photograph, or as the whole photograph.
+  Future<void> straightenSketch(CanvasSession session, bool straighten) async {
+    final sketch = session.settings.sketch;
+    if (sketch == null || sketch.page == null) return;
+    if (sketch.straighten == straighten) return;
+    final bytes = await ref.read(repositoryProvider).readImage(sketch.imageKey);
+    if (bytes == null) return;
+    final image = await sketchPixels(
+      bytes,
+      sketch.copyWith(straighten: straighten),
+    );
+    session.restraightenSketch(sketch.imageKey, image, straighten);
   }
 
   /// Takes the drawing off the study open in [session], and its photograph
@@ -194,7 +218,10 @@ class StudiesNotifier extends AsyncNotifier<List<Study>> {
     final bytes = await ref.read(repositoryProvider).readImage(key);
     if (bytes == null) return;
     try {
-      session.loadSketchImage(key, await decodeSketch(bytes));
+      session.loadSketchImage(
+        key,
+        await sketchPixels(bytes, session.settings.sketch!),
+      );
     } on Exception {
       // Stored but no longer decodable here: the study opens without it.
     }
@@ -226,6 +253,17 @@ Future<ui.Image> decodeSketch(Uint8List bytes) async {
 }
 
 const int kSketchMaxSide = 2400;
+
+/// The photograph of the drawing as [sketch] shows it: squared up to its
+/// page, if it has one and is straightened.
+Future<ui.Image> sketchPixels(Uint8List bytes, SketchOverlay sketch) async {
+  final photo = await decodeSketch(bytes);
+  final page = sketch.straightenedTo;
+  if (page == null) return photo;
+  final straight = await straightenPage(photo, page, maxSide: kSketchMaxSide);
+  photo.dispose();
+  return straight;
+}
 
 /// Decodes image bytes into a GPU image.
 Future<ui.Image> decodeImage(Uint8List bytes) async {

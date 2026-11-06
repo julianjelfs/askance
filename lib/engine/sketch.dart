@@ -22,6 +22,8 @@ class SketchOverlay {
     required this.width,
     this.rotation = 0,
     this.opacity = defaultOpacity,
+    this.page,
+    this.straighten = true,
   });
 
   /// Names the copy of the photograph in app storage, as [Study.imageKey]
@@ -33,6 +35,19 @@ class SketchOverlay {
   /// Clockwise on screen, in radians.
   final double rotation;
   final double opacity;
+
+  /// The corners of the sketchbook page found in the photograph, as
+  /// fractions of each side of it, clockwise from the top left; null when
+  /// none was found. Kept apart from the photograph, which is stored as it
+  /// came, so a page found wrongly costs nothing.
+  final List<Offset>? page;
+
+  /// Whether the drawing is shown squared up to [page] rather than as the
+  /// whole photograph. Means nothing without a page.
+  final bool straighten;
+
+  /// The page the drawing is cropped and squared up to, if it is.
+  List<Offset>? get straightenedTo => straighten ? page : null;
 
   static const double defaultOpacity = 0.5;
 
@@ -46,12 +61,15 @@ class SketchOverlay {
     double? width,
     double? rotation,
     double? opacity,
+    bool? straighten,
   }) => SketchOverlay(
     imageKey: imageKey,
     center: center ?? this.center,
     width: width ?? this.width,
     rotation: rotation ?? this.rotation,
     opacity: opacity ?? this.opacity,
+    page: page,
+    straighten: straighten ?? this.straighten,
   );
 
   Map<String, Object?> toJson() => {
@@ -60,6 +78,12 @@ class SketchOverlay {
     'width': width,
     'rotation': rotation,
     'opacity': opacity,
+    if (page case final page?) ...{
+      'page': [
+        for (final c in page) [c.dx, c.dy],
+      ],
+      'straighten': straighten,
+    },
   };
 
   /// Null for anything too damaged to place: no image, or no position.
@@ -85,7 +109,26 @@ class SketchOverlay {
       opacity: opacity is num && opacity.isFinite
           ? opacity.toDouble().clamp(0.0, 1.0)
           : defaultOpacity,
+      // A damaged page costs the straightening, not the drawing.
+      page: _pageFromJson(json['page']),
+      straighten: json['straighten'] != false,
     );
+  }
+
+  static List<Offset>? _pageFromJson(Object? json) {
+    if (json is! List || json.length != 4) return null;
+    final corners = <Offset>[];
+    for (final c in json) {
+      if (c is! List || c.length != 2) return null;
+      if (c.any((v) => v is! num || !v.isFinite)) return null;
+      corners.add(
+        Offset(
+          (c[0] as num).toDouble().clamp(0.0, 1.0),
+          (c[1] as num).toDouble().clamp(0.0, 1.0),
+        ),
+      );
+    }
+    return corners;
   }
 
   @override
@@ -95,10 +138,29 @@ class SketchOverlay {
       other.center == center &&
       other.width == width &&
       other.rotation == rotation &&
-      other.opacity == opacity;
+      other.opacity == opacity &&
+      _samePage(other.page, page) &&
+      other.straighten == straighten;
+
+  static bool _samePage(List<Offset>? a, List<Offset>? b) {
+    if (a == null || b == null) return a == b;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
 
   @override
-  int get hashCode => Object.hash(imageKey, center, width, rotation, opacity);
+  int get hashCode => Object.hash(
+    imageKey,
+    center,
+    width,
+    rotation,
+    opacity,
+    page == null ? null : Object.hashAll(page!),
+    straighten,
+  );
 }
 
 /// A drawing of [sketch]'s size laid square over the [crop] of a
@@ -110,6 +172,8 @@ SketchOverlay fittedSketch({
   required Size photo,
   required Size sketch,
   required Rect crop,
+  List<Offset>? page,
+  bool straighten = true,
 }) {
   final room = Size(crop.width * photo.width, crop.height * photo.height);
   final scale = math.min(
@@ -123,6 +187,8 @@ SketchOverlay fittedSketch({
       SketchOverlay.minWidth,
       SketchOverlay.maxWidth,
     ),
+    page: page,
+    straighten: straighten,
   );
 }
 

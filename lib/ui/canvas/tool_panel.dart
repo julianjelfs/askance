@@ -864,6 +864,18 @@ class _SketchControlState extends ConsumerState<SketchControl> {
     }
   }
 
+  Future<void> _straighten(bool straighten) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await ref
+          .read(studiesProvider.notifier)
+          .straightenSketch(widget.session, straighten);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = DesignScale.of(context);
@@ -958,7 +970,8 @@ class _SketchControlState extends ConsumerState<SketchControl> {
               failure ??
                   'Photograph the sketch you are making from this study, '
                       'lay it over the picture, and fade between the two to '
-                      'check where it has drifted.',
+                      'check where it has drifted. Shot on a darker surface, '
+                      'the page is straightened and cropped for you.',
               style: AskanceText.caption(12.5).by(s),
             ),
           ],
@@ -990,6 +1003,18 @@ class _SketchControlState extends ConsumerState<SketchControl> {
             () => ref.read(studiesProvider.notifier).removeSketch(session),
           ),
         ]),
+        // Only offered when a page was found: straightened is the default,
+        // and this is the way back if the page was found wrongly.
+        if (sketch.page != null) ...[
+          SizedBox(height: 8 * s),
+          button(
+            sketch.straighten
+                ? 'Use the whole photo'
+                : 'Straighten to the page',
+            () => _straighten(!sketch.straighten),
+            enabled: session.sketchImage != null,
+          ),
+        ],
         SizedBox(height: 8 * s),
         Text(
           failure ??
