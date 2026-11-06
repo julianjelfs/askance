@@ -619,7 +619,7 @@ class _LineEditPainter extends CustomPainter {
           ..strokeWidth = 2
           ..strokeCap = StrokeCap.round;
         canvas.drawLine(from, to, rubber);
-        paintMidTick(canvas, from, to, rubber);
+        paintTicks(canvas, from, to, rubber);
       }
       handle(from, filled: true);
     }

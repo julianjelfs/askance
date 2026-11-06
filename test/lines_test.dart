@@ -129,6 +129,14 @@ void main() {
       expect((c.b * 255).round(), lessThan(80), reason: reason);
     }
 
+    /// Tinted toward the accent: the thin quarter ticks are antialiased, so
+    /// a sampled pixel is a blend rather than the accent itself.
+    void expectTinted(Color c, String reason) => expect(
+      (c.r * 255).round() - (c.b * 255).round(),
+      greaterThan(60),
+      reason: reason,
+    );
+
     void expectGrey(Color c, String reason) =>
         expect((c.r * 255).round(), (c.b * 255).round(), reason: reason);
 
@@ -138,15 +146,15 @@ void main() {
       expectAccent((await export(GridMode.off))(0.2), 'without it');
     });
 
-    test(
-      'a ruled line carries a tick across its middle and nowhere else',
-      () async {
-        final at = await export(GridMode.off);
-        expectAccent(at(0.5, dy: 3), 'the tick, just below the line');
-        expectAccent(at(0.5, dy: -3), 'the tick, just above the line');
-        expectGrey(at(0.2, dy: 3), 'beside the line away from its middle');
-      },
-    );
+    test('a ruled line carries ticks across its middle and quarters and '
+        'nowhere else', () async {
+      final at = await export(GridMode.off);
+      expectAccent(at(0.5, dy: 3), 'the tick, just below the line');
+      expectAccent(at(0.5, dy: -3), 'the tick, just above the line');
+      expectTinted(at(0.25, dy: 3), 'the first quarter tick');
+      expectTinted(at(0.75, dy: -3), 'the last quarter tick');
+      expectGrey(at(0.2, dy: 3), 'beside the line away from its ticks');
+    });
   });
 
   testWidgets('on the desktop, with the grid off, two clicks rule a line and '
