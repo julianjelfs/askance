@@ -415,9 +415,10 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
                         TapGestureRecognizer.new,
                         (instance) => instance.onTapUp = _onTapUp,
                       ),
-                  // A finger held still while lining up is fine-tuning, not
-                  // asking to peek.
-                  if (!_aligning)
+                  // A finger held still while lining up a sketch, or a press
+                  // held on a line's end before dragging it, is fine-tuning,
+                  // not asking to peek.
+                  if (!_aligning && !_editing)
                     LongPressGestureRecognizer: peekRecognizer(
                       onStart: () => session.setPeeking(true),
                       onEnd: () => session.setPeeking(false),

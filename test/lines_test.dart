@@ -206,6 +206,20 @@ void main() {
     expect(session.settings.lines.single.b.dy, closeTo(0.75, 1e-9));
     expect(session.view, const ViewTransform(), reason: 'no pan');
 
+    // Pressed and held on an end before dragging it, the line stays in
+    // hand: drawing lines, a hold never peeks at the photograph.
+    final hold = await tester.startGesture(
+      const Offset(200, 450),
+      kind: PointerDeviceKind.mouse,
+    );
+    await tester.pump(const Duration(seconds: 1));
+    expect(session.peeking, isFalse);
+    await hold.moveBy(const Offset(0, -100));
+    await hold.up();
+    await tester.pump(const Duration(seconds: 1));
+    expect(session.peeking, isFalse);
+    expect(session.settings.lines.single.b.dy, closeTo(7 / 12, 1e-9));
+
     await tester.pumpWidget(const SizedBox());
     session.image = null;
     session.dispose();
