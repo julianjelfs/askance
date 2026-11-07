@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui';
 
 /// A straight line ruled over the picture, for a proportion or an alignment
@@ -56,6 +57,43 @@ Offset screenToLine(Offset screen, Rect crop, Rect picture) => Offset(
 /// How near, in logical pixels, a click has to be to an end or a line to
 /// take hold of it.
 const double kLineReach = 8;
+
+/// The angles, in radians, a line snaps to with shift held: every 15
+/// degrees, so level and plumb among them.
+const double kLineSnap = math.pi / 12;
+
+/// Where the end of a line from [from] towards [to] goes with shift held,
+/// in screen space: turned to the nearest multiple of [kLineSnap], as far
+/// along as [to] reaches in that direction, and pulled back along it to stay
+/// within [area]. The picture keeps its proportions on screen, so an angle
+/// here is the same angle on the photograph.
+Offset snappedLineEnd(Offset from, Offset to, Rect area) {
+  final d = to - from;
+  if (d == Offset.zero) return to;
+  final angle = (d.direction / kLineSnap).round() * kLineSnap;
+  final u = Offset(math.cos(angle), math.sin(angle));
+  var t = d.dx * u.dx + d.dy * u.dy;
+  if (area.contains(from)) {
+    double reach(double p, double v, double lo, double hi) => v > 1e-9
+        ? (hi - p) / v
+        : v < -1e-9
+        ? (lo - p) / v
+        : double.infinity;
+    t = math.min(
+      t,
+      math.min(
+        reach(from.dx, u.dx, area.left, area.right),
+        reach(from.dy, u.dy, area.top, area.bottom),
+      ),
+    );
+  }
+  // Level and plumb land exactly so, not a rounding off.
+  final along = Offset(
+    u.dx.abs() < 1e-9 ? 0 : u.dx * t,
+    u.dy.abs() < 1e-9 ? 0 : u.dy * t,
+  );
+  return from + along;
+}
 
 /// The end of one of [lines] nearest [screen] and within [kLineReach] of it,
 /// as the line's index and which end. Later lines win a tie, since they are

@@ -810,6 +810,7 @@ class LinesControl extends StatelessWidget {
         Text(
           drawing
               ? 'Click two points to draw a line. Drag an end to move it. '
+                    'Hold Shift to keep it level, plumb or at 15° steps. '
                     'Click a line, then press Delete to remove it.'
               : 'Straight lines over the picture, saved and exported with '
                     'the study. Ticks mark the middle and quarters of each.',

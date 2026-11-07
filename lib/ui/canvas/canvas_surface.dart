@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:ui' as ui;
 
 import 'package:flutter/gestures.dart';
-import 'package:flutter/services.dart' show HardwareKeyboard;
+import 'package:flutter/services.dart'
+    show HardwareKeyboard, KeyEvent, LogicalKeyboardKey;
 import 'package:flutter/widgets.dart';
 
 import '../../engine/deferred_disposer.dart';
@@ -64,7 +65,29 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
   void initState() {
     super.initState();
     ScreenAwake.acquire();
+    HardwareKeyboard.instance.addHandler(_onKey);
   }
+
+  /// Shift pressed or let go with the mouse still: the line being ruled
+  /// snaps, or lets go of the snap, without waiting for the mouse to move.
+  bool _onKey(KeyEvent event) {
+    final key = event.logicalKey;
+    if ((key == LogicalKeyboardKey.shiftLeft ||
+            key == LogicalKeyboardKey.shiftRight) &&
+        _editing &&
+        widget.session.lineStart != null &&
+        _hover != null) {
+      setState(() {});
+    }
+    return false;
+  }
+
+  /// Where the end of a line from [from], on screen, goes for the pointer at
+  /// [to]: with shift held it snaps to the nearest 15 degrees.
+  Offset _lineEnd(Offset from, Offset to) =>
+      HardwareKeyboard.instance.isShiftPressed
+      ? snappedLineEnd(from, to, _area)
+      : to;
 
   ViewTransform _gestureStart = const ViewTransform();
   Offset _focalStart = Offset.zero;
@@ -92,6 +115,7 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
   @override
   void dispose() {
     ScreenAwake.release();
+    HardwareKeyboard.instance.removeHandler(_onKey);
     _pendingTap?.cancel();
     _disposer.disposeAll();
     super.dispose();
@@ -174,10 +198,16 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
         at.dx.clamp(area.left, area.right),
         at.dy.clamp(area.top, area.bottom),
       );
+      final crop = session.settings.crop;
+      final other = lineToScreen(
+        session.settings.lines[dragging.line].end(1 - dragging.end),
+        crop,
+        _picture,
+      );
       session.moveLineEnd(
         dragging.line,
         dragging.end,
-        screenToLine(clamped, session.settings.crop, _picture),
+        screenToLine(_lineEnd(other, clamped), crop, _picture),
       );
       return;
     }
@@ -262,7 +292,14 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
       }
     }
     if (!_area.contains(position)) return;
-    session.placeLineEnd(screenToLine(position, crop, picture));
+    final end = switch (session.lineStart) {
+      final start? => _lineEnd(lineToScreen(start, crop, picture), position),
+      null => position,
+    };
+    // Snapped from a start since panned out of view, the end can land off
+    // the picture too.
+    if (!_area.inflate(0.5).contains(end)) return;
+    session.placeLineEnd(screenToLine(end, crop, picture));
   }
 
   MouseCursor get _cursor {
@@ -495,7 +532,17 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
                           visible: _area,
                           selected: session.selectedLine,
                           start: session.lineStart,
-                          hover: _hover,
+                          hover: switch ((session.lineStart, _hover)) {
+                            (final start?, final hover?) => _lineEnd(
+                              lineToScreen(
+                                start,
+                                session.settings.crop,
+                                _picture,
+                              ),
+                              hover,
+                            ),
+                            _ => _hover,
+                          },
                         ),
                       ),
                   ],

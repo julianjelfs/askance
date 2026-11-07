@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:askance/engine/engine.dart';
@@ -157,6 +158,34 @@ void main() {
     });
   });
 
+  group('with shift held, a line being ruled', () {
+    const area = Rect.fromLTWH(0, 0, 400, 300);
+    const from = Offset(100, 100);
+
+    test('a little off level or plumb, is ruled exactly level or plumb', () {
+      expect(
+        snappedLineEnd(from, const Offset(250, 108), area),
+        const Offset(250, 100),
+      );
+      expect(
+        snappedLineEnd(from, const Offset(94, 250), area),
+        const Offset(100, 250),
+      );
+    });
+
+    test('otherwise turns to the nearest 15 degrees', () {
+      final end = snappedLineEnd(from, const Offset(200, 160), area);
+      expect((end - from).direction, closeTo(math.pi / 6, 1e-9));
+    });
+
+    test('stops at the edge of the picture rather than turning to stay '
+        'on it', () {
+      final end = snappedLineEnd(from, const Offset(390, 350), area);
+      expect((end - from).direction, closeTo(math.pi / 4, 1e-9));
+      expect(end.dy, closeTo(area.bottom, 1e-9));
+    });
+  });
+
   testWidgets('on the desktop, with the grid off, two clicks rule a line and '
       'dragging an end moves it', (tester) async {
     tester.view.physicalSize = const Size(400, 600);
@@ -219,6 +248,18 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     expect(session.peeking, isFalse);
     expect(session.settings.lines.single.b.dy, closeTo(7 / 12, 1e-9));
+
+    // With shift held, a line clicked a little off plumb is ruled plumb.
+    session.selectLine(null);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.tapAt(const Offset(100, 300), kind: PointerDeviceKind.mouse);
+    await tester.tapAt(const Offset(112, 500), kind: PointerDeviceKind.mouse);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.pump();
+    expect(session.settings.lines, hasLength(2));
+    final plumb = session.settings.lines.last;
+    expect(plumb.b.dx, plumb.a.dx);
+    expect(plumb.b.dy, greaterThan(plumb.a.dy));
 
     await tester.pumpWidget(const SizedBox());
     session.image = null;
