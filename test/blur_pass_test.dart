@@ -2,6 +2,7 @@ import 'dart:ui' as ui;
 
 import 'package:askance/engine/blur_pass.dart';
 import 'package:askance/engine/engine.dart';
+import 'package:askance/engine/regions.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -21,6 +22,7 @@ void main() {
     int steps = 3,
     double bias = 0,
     double contrast = 0,
+    FamilySplit? split,
   }) async {
     rendered.add((smoothing, outputPx));
     return pixel.clone();

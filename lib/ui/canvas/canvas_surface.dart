@@ -494,6 +494,7 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
             steps: session.settings.steps,
             bias: session.settings.bias,
             contrast: session.settings.contrast,
+            split: session.settings.split,
           );
           if (session.settings.photoNeedsOwnPass) {
             session.photoBlur.request(

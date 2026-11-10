@@ -78,6 +78,7 @@ Future<Uint8List?> renderExport({
     steps: settings.steps,
     bias: settings.bias,
     contrast: settings.contrast,
+    split: settings.split,
   );
   final photoBlurred = settings.photoNeedsOwnPass
       ? await renderBlurredSource(

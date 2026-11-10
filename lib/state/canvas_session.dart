@@ -356,21 +356,73 @@ class CanvasSession extends ChangeNotifier {
   }
 
   /// Splits the picture into light and shadow families, or stops. Split
-  /// afresh, the line goes at the middle of the steps, the lower half shadow.
+  /// afresh, the lower half of the steps are shadow, and the line between
+  /// the families goes where the photograph's darks and lights part.
   void setFamilies(bool value) {
     if (value == (settings.shadowSteps != null)) return;
     settings = value
-        ? settings.copyWith(shadowSteps: settings.steps ~/ 2)
+        ? settings.copyWith(shadowSteps: math.max(1, settings.steps ~/ 2))
         : settings.copyWith(removeFamilies: true);
+    _persistSoon();
+    notifyListeners();
+    if (value) unawaited(findFamilyLine());
+  }
+
+  /// Puts the family line at Otsu's threshold for the whole photograph.
+  Future<void> findFamilyLine() async {
+    final source = image;
+    if (source == null) return;
+    final asked = settings;
+    final line = await otsuLine(
+      source,
+      asked.crop,
+      bias: asked.bias,
+      contrast: asked.contrast,
+    );
+    // Gone, or replaced by another picture, while the histogram was taken.
+    if (image != source || settings.shadowSteps == null) return;
+    setFamilyLine(line);
+  }
+
+  /// Where the line between the families falls, in toned lightness.
+  void setFamilyLine(double at) {
+    final next = at.clamp(StudySettings.minLine, StudySettings.maxLine);
+    if (next == settings.familyLine || settings.shadowSteps == null) return;
+    settings = settings.copyWith(familyLine: next);
     _persistSoon();
     notifyListeners();
   }
 
-  /// How many of the steps, darkest first, are shadow.
+  /// How many steps the shadow family has. With the line free, the light
+  /// family keeps its own and the steps grow or shrink; on a band boundary,
+  /// the line moves within the steps there are.
   void setShadowSteps(int count) {
-    final next = count.clamp(1, settings.steps - 1);
-    if (next == settings.shadowBands) return;
-    settings = settings.copyWith(shadowSteps: next);
+    final light = settings.steps - (settings.shadowBands ?? 0);
+    if (settings.familyLine != null) {
+      final next = count.clamp(1, StudySettings.maxSteps - light);
+      if (next == settings.shadowBands) return;
+      settings = settings.copyWith(shadowSteps: next, steps: next + light);
+      isolatedBand = null;
+    } else {
+      final next = count.clamp(1, settings.steps - 1);
+      if (next == settings.shadowBands) return;
+      settings = settings.copyWith(shadowSteps: next);
+    }
+    _persistSoon();
+    notifyListeners();
+  }
+
+  /// How many steps the light family has; the shadow keeps its own.
+  void setLightSteps(int count) {
+    final shadow = settings.shadowBands;
+    if (shadow == null) return;
+    setSteps(shadow + count.clamp(1, StudySettings.maxSteps - shadow));
+  }
+
+  /// Whether the palette leaves a value out between the families.
+  void setFamilyGap(bool value) {
+    if (value == settings.familyGap) return;
+    settings = settings.copyWith(familyGap: value);
     _persistSoon();
     notifyListeners();
   }
@@ -759,6 +811,7 @@ class CanvasSession extends ChangeNotifier {
         settings.steps,
         bias: settings.bias,
         contrast: settings.contrast,
+        split: settings.split,
       ),
       steps: settings.steps,
       shadowBands: settings.shadowBands,
@@ -926,6 +979,7 @@ class CanvasSession extends ChangeNotifier {
       steps: settings.steps,
       bias: settings.bias,
       contrast: settings.contrast,
+      split: settings.split,
     );
     if (settings.photoNeedsOwnPass) {
       photoBlur.request(

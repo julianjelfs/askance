@@ -36,12 +36,18 @@ uniform float uFill;
 // through too.
 uniform float uContrast;
 
-// Family outline only: how many bands, darkest first, are the shadow family,
-// and the colour the line between it and the light family is drawn in.
-// Everything off the line is left transparent, so the outline lies over
-// whatever is under it: the value map, the photograph, a drawing.
+// How many bands, darkest first, are the shadow family, and the colour the
+// family outline is drawn in. Everything off the outline is left
+// transparent, so it lies over whatever is under it: the value map, the
+// photograph, a drawing.
 uniform float uShadowSteps;
 uniform vec3 uOutline;
+
+// Where the line between the families falls, in toned lightness. Zero keeps
+// it on the band boundary uShadowSteps / uSteps, and the ladder even. Above
+// zero each family is banded on its own: the shadow's steps share 0..uLine,
+// the light's uLine..1.
+uniform float uLine;
 
 uniform sampler2D uSrc;
 
@@ -80,10 +86,18 @@ float bandAt(vec2 devPx) {
   vec3 c = texture(uSrc, devPx / uDevice).rgb;
   // Banded through the tone curve: uBias slides the whole ladder of
   // thresholds at once, uContrast spreads or squeezes it about the middle.
-  return clamp(
-    floor(tone(lstar(c) / 100.0) * uSteps),
+  float t = tone(lstar(c) / 100.0);
+  if (uLine <= 0.0) {
+    return clamp(floor(t * uSteps), 0.0, uSteps - 1.0);
+  }
+  if (t < uLine) {
+    return clamp(floor(t / uLine * uShadowSteps), 0.0, uShadowSteps - 1.0);
+  }
+  float light = uSteps - uShadowSteps;
+  return uShadowSteps + clamp(
+    floor((t - uLine) / (1.0 - uLine) * light),
     0.0,
-    uSteps - 1.0
+    light - 1.0
   );
 }
 

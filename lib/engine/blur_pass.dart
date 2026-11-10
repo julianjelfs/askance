@@ -7,6 +7,7 @@ import 'package:flutter/scheduler.dart';
 
 import 'crop.dart';
 import 'engine.dart';
+import 'regions.dart';
 
 /// What a blur render needs to know.
 @immutable
@@ -22,6 +23,7 @@ class _BlurRequest {
     required this.steps,
     required this.bias,
     required this.contrast,
+    required this.split,
     required this.key,
   });
 
@@ -35,6 +37,7 @@ class _BlurRequest {
   final int steps;
   final double bias;
   final double contrast;
+  final FamilySplit? split;
   final Object key;
 }
 
@@ -63,6 +66,7 @@ typedef BlurRenderer =
       int steps,
       double bias,
       double contrast,
+      FamilySplit? split,
     });
 
 /// Owns the blurred offscreen that the shader samples.
@@ -128,6 +132,7 @@ class BlurPass extends ChangeNotifier {
     int steps = 3,
     double bias = 0,
     double contrast = 0,
+    FamilySplit? split,
   }) {
     if (_disposed || outputPx.isEmpty) return;
     final key = blurKeyFor(
@@ -141,6 +146,7 @@ class BlurPass extends ChangeNotifier {
       steps: steps,
       bias: bias,
       contrast: contrast,
+      split: split,
     );
     if (key == _key || key == _queued?.key) return;
     _queued = _BlurRequest(
@@ -154,6 +160,7 @@ class BlurPass extends ChangeNotifier {
       steps: steps,
       bias: bias,
       contrast: contrast,
+      split: split,
       key: key,
     );
     if (_rendering) return;
@@ -192,6 +199,7 @@ class BlurPass extends ChangeNotifier {
             steps: request.steps,
             bias: request.bias,
             contrast: request.contrast,
+            split: request.split,
           );
         } catch (e) {
           // Whatever asked for this can ask again; a failed pass should not

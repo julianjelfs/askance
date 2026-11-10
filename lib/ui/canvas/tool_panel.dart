@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -21,7 +23,12 @@ import '../widgets/controls.dart';
 /// The Munsell value a band is painted at: L* / 10, which is what an artist's
 /// printed value scale is numbered in.
 String munsellLabel(StudySettings settings, int band) {
-  final lstar = bandCentreLstar(band, settings.steps, settings.bias);
+  final lstar = bandCentreLstar(
+    band,
+    settings.steps,
+    settings.bias,
+    split: settings.split,
+  );
   return 'V${(lstar / 10).round()}';
 }
 
@@ -1144,6 +1151,22 @@ class FamiliesControl extends StatelessWidget {
         null => null,
       };
 
+  /// Where the line falls, on the scale an artist's value finder is
+  /// numbered in: "V4.6". The toned lightness is L* / 100, so tenfold is the
+  /// Munsell value.
+  static String lineReadout(StudySettings settings) {
+    final shadow = settings.shadowBands ?? 1;
+    final at = settings.split?.at ?? shadow / settings.steps;
+    return 'V${(at * 10).toStringAsFixed(1)}';
+  }
+
+  Widget _stepperRow(double s, String label, Widget stepper) => Row(
+    children: [
+      Expanded(child: Text(label, style: AskanceText.label(14.5).by(s))),
+      stepper,
+    ],
+  );
+
   @override
   Widget build(BuildContext context) {
     final s = DesignScale.of(context);
@@ -1159,28 +1182,56 @@ class FamiliesControl extends StatelessWidget {
           onChanged: session.setFamilies,
         ),
         if (shadow != null) ...[
+          SizedBox(height: 14 * s),
+          ControlLabelRow(label: 'Line', value: lineReadout(settings)),
+          RuleSlider(
+            value: settings.split?.at ?? shadow / settings.steps,
+            onChanged: session.setFamilyLine,
+          ),
+          const SliderEnds('Less shadow', 'More shadow'),
+          SizedBox(height: 8 * s),
+          ActionButton(
+            label: 'Find the line',
+            height: 34,
+            fontSize: 13,
+            centred: true,
+            onPressed: () => unawaited(session.findFamilyLine()),
+          ),
+          SizedBox(height: 12 * s),
+          _stepperRow(
+            s,
+            'Shadow values',
+            RuleStepper(
+              value: shadow,
+              min: 1,
+              max: settings.familyLine != null
+                  ? StudySettings.maxSteps - (settings.steps - shadow)
+                  : settings.steps - 1,
+              onChanged: session.setShadowSteps,
+            ),
+          ),
+          SizedBox(height: 8 * s),
+          _stepperRow(
+            s,
+            'Light values',
+            RuleStepper(
+              value: settings.steps - shadow,
+              min: 1,
+              max: StudySettings.maxSteps - shadow,
+              onChanged: session.setLightSteps,
+            ),
+          ),
           SizedBox(height: 10 * s),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Shadow values',
-                  style: AskanceText.label(14.5).by(s),
-                ),
-              ),
-              RuleStepper(
-                value: shadow,
-                min: 1,
-                max: settings.steps - 1,
-                onChanged: session.setShadowSteps,
-              ),
-            ],
+          RuleCheckbox(
+            label: 'Leave a value out between them',
+            value: settings.familyGap,
+            onChanged: session.setFamilyGap,
           ),
           SizedBox(height: 6 * s),
           Text(
             'Shadows are tinted cool and lights warm, at the same values. '
-            'The line is the edge between them; keep every light above it '
-            'and every shadow below.',
+            'Each family is split into its own steps either side of the '
+            'line; keep every light above it and every shadow below.',
             style: AskanceText.caption(12.5).by(s),
           ),
         ],

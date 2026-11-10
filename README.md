@@ -40,12 +40,17 @@ device build — the engine leans on GPU round trips that WebGL makes expensive.
 - **Palette numbered in Munsell values.** Every colour the picture is painted
   in, labelled V1–V9 the way a printed value scale is; tap one to see where
   it falls on its own.
-- **Light and shadow.** Splits the steps at any band boundary into a
-  shadow family and a light family. Shadows are tinted cool and lights
-  warm at unchanged values, and an accent line marks the edge between
-  them in every view, over the photograph and a laid-over sketch too. A
-  dropper reads any point as its family, its step within that family and
-  its Munsell value: "Shadow · 2 of 2 · V3".
+- **Light and shadow.** Splits the picture into a shadow family and a
+  light family at a line of your choosing. The line starts at Otsu's
+  threshold for the whole photograph, the valley between its darks and
+  lights, and then moves only by hand. Each family is split into its own
+  number of steps either side of it, so no step straddles the line.
+  Shadows are tinted cool and lights warm at unchanged values, and an
+  accent line marks the edge between them in every view, over the
+  photograph and a laid-over sketch too. The palette can leave a value
+  out between the families, to push them apart. A dropper reads any
+  point as its family, its step within that family and its Munsell
+  value: "Shadow · 2 of 2 · V3".
 - **Bias.** Slides every threshold together, so a borderline passage can be
   pushed to one side of a boundary or the other — what an under- or
   over-exposed photograph needs.
@@ -86,6 +91,9 @@ told in comments in `lib/engine/` and `shaders/`, but the invariants are:
 3. **Quantise absolutely** (`shaders/askance.frag`). `floor((L*/100 + bias) ×
    steps)`, thresholds never derived from the histogram of what is on screen,
    so a pixel keeps its value whether it is in a wide view or a close-up.
+   With light and shadow families, the same holds for each family on its
+   own side of the line, and the line is set once from the whole
+   photograph, never from what is on screen.
 4. **Paint from a ramp solved for even L\*** (`value_scale.dart`). The grey
    ramp interpolates the graphite endpoints in linear light to hit each L\*
    target; sanity check: grey at 3 steps must give a middle band of sRGB

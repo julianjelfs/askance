@@ -1,9 +1,11 @@
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:askance/engine/deferred_disposer.dart';
 import 'package:askance/engine/engine.dart';
 import 'package:askance/engine/families.dart';
 import 'package:askance/engine/lstar.dart';
+import 'package:askance/engine/regions.dart';
 import 'package:askance/engine/value_painter.dart';
 import 'package:askance/engine/value_scale.dart';
 import 'package:askance/model/study.dart';
@@ -57,10 +59,19 @@ void main() {
   });
 
   test('families survive a saved study; an older one opens without', () {
-    const settings = StudySettings(steps: 5, shadowSteps: 2);
+    const settings = StudySettings(
+      steps: 5,
+      shadowSteps: 2,
+      familyLine: 0.42,
+      familyGap: true,
+    );
     expect(StudySettings.fromJson(settings.toJson()), settings);
-    final old = settings.toJson()..remove('shadowSteps');
+    final old = settings.toJson()
+      ..remove('shadowSteps')
+      ..remove('familyLine')
+      ..remove('familyGap');
     expect(StudySettings.fromJson(old).shadowSteps, isNull);
+    expect(StudySettings.fromJson(old).split, isNull);
     expect(
       StudySettings.fromJson(
         settings.toJson()..['shadowSteps'] = 0,
@@ -106,7 +117,8 @@ void main() {
     expect(await readPixel(image, const Offset(96, 16)), isNull);
   });
 
-  test('the outline runs along the families\' boundary and no other', () async {
+  /// The alpha along the middle row of the family outline over [stripes].
+  Future<List<int>> outlineRow(StudySettings settings) async {
     final shader = await ValueShader.load();
     final source = await stripes();
     const output = Size(96, 32);
@@ -118,7 +130,7 @@ void main() {
       source: source,
       // The source itself, unblurred, so the boundaries stay where drawn.
       blurred: source,
-      settings: const StudySettings(steps: 3, shadowSteps: 1),
+      settings: settings,
       view: view,
       devicePixelRatio: 1,
       disposer: disposer,
@@ -133,15 +145,114 @@ void main() {
     disposer.disposeAll();
     source.dispose();
 
-    int alphaAt(int x) => bytes[(16 * 96 + x) * 4 + 3];
+    return [for (var x = 0; x < 96; x++) bytes[(16 * 96 + x) * 4 + 3]];
+  }
+
+  test('the outline runs along the families\' boundary and no other', () async {
+    final alpha = await outlineRow(
+      const StudySettings(steps: 3, shadowSteps: 1),
+    );
     // Shadow is the first stripe alone: the line is at x = 32.
-    expect(alphaAt(31), 255);
-    expect(alphaAt(32), 255);
+    expect(alpha[31], 255);
+    expect(alpha[32], 255);
     // Two lights meet at x = 64, which is no line between families.
-    expect(alphaAt(63), 0);
-    expect(alphaAt(64), 0);
+    expect(alpha[63], 0);
+    expect(alpha[64], 0);
     // Away from any boundary, the outline leaves the picture alone.
-    expect(alphaAt(16), 0);
-    expect(alphaAt(48), 0);
+    expect(alpha[16], 0);
+    expect(alpha[48], 0);
+  });
+
+  test(
+    'a free line bands each family on its own, on the GPU and off it',
+    () async {
+      // The line above the middle stripe's 54 puts it in the shadow, which
+      // the even ladder of three has as the middle of three.
+      const settings = StudySettings(steps: 3, shadowSteps: 1, familyLine: 0.6);
+      final alpha = await outlineRow(settings);
+      expect(alpha[32], 0);
+      expect(alpha[64], 255);
+      final image = await stripes();
+      addTearDown(image.dispose);
+      final bands = [
+        for (final x in [10.0, 48.0, 90.0])
+          if (await readPixel(image, Offset(x, 16)) case (
+            final r,
+            final g,
+            final b,
+          ))
+            bandOfColour(
+              r,
+              g,
+              b,
+              3,
+              bias: 0,
+              contrast: 0,
+              split: settings.split,
+            ),
+      ];
+      // The light family's two steps share 0.6..1: 90 is the lighter.
+      expect(bands, [0, 0, 2]);
+    },
+  );
+
+  test('the band map follows a free line as the shader does', () {
+    // The shader's rule with a line, written out longhand.
+    int shaderBand(int r, int g, int b, int steps, FamilySplit split) {
+      final t = lstarOfSrgb8(r, g, b) / 100;
+      final (:shadow, :at) = split;
+      if (t < at) return (t / at * shadow).floor().clamp(0, shadow - 1);
+      final light = steps - shadow;
+      return shadow + ((t - at) / (1 - at) * light).floor().clamp(0, light - 1);
+    }
+
+    final rgba = Uint8List(256 * 4);
+    for (var v = 0; v < 256; v++) {
+      rgba.setAll(v * 4, [v, v, v, 255]);
+    }
+    for (final (steps, split) in [
+      (5, (shadow: 2, at: 0.31)),
+      (4, (shadow: 3, at: 0.62)),
+      (7, (shadow: 1, at: 0.08)),
+    ]) {
+      final map = bandsFromRgba(
+        ByteData.sublistView(rgba),
+        256,
+        1,
+        steps,
+        split: split,
+      );
+      for (var v = 0; v < 256; v++) {
+        expect(
+          map.bands[v],
+          shaderBand(v, v, v, steps, split),
+          reason: 'steps $steps, $split, grey $v',
+        );
+      }
+    }
+    // A line on a band boundary is the even ladder.
+    for (var k = 1; k < 5; k++) {
+      expect(toneCut(k, 5, (shadow: 2, at: 2 / 5)), closeTo(k / 5, 1e-12));
+    }
+  });
+
+  test('a gap leaves the value at the line out of the palette', () {
+    final wide = ValueScale.grey.lstarTargets(6);
+    final ramp = familyRamp(ValueScale.grey, 5, 2, gap: true);
+    expect(ramp, hasLength(5));
+    for (final (i, colour) in ramp.indexed) {
+      expect(lstarOf(colour), closeTo(wide[i < 2 ? i : i + 1], 0.6));
+    }
+  });
+
+  test('the line starts in the valley between the darks and the lights', () {
+    final histogram = List<int>.filled(256, 0);
+    for (var i = 0; i < 40; i++) {
+      histogram[30 + i] += 3;
+      histogram[180 + i] += 2;
+    }
+    final cut = otsu(histogram) * 256;
+    expect(cut, greaterThan(69));
+    expect(cut, lessThanOrEqualTo(180));
   });
 }

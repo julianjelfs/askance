@@ -34,6 +34,7 @@ typedef BlockInput = ({
   int steps,
   double bias,
   double contrast,
+  FamilySplit? split,
   double tolerance,
 });
 
@@ -45,6 +46,7 @@ BlockShapes blockShapes(BlockInput input) {
     input.steps,
     bias: input.bias,
     contrast: input.contrast,
+    split: input.split,
   );
   final masks = <List<List<Offset>>>[];
   final mask = Uint8List(map.width * map.height);
@@ -271,13 +273,14 @@ double bandCentreLstar(
   int steps,
   double bias, {
   double contrast = 0,
+  FamilySplit? split,
 }) {
   final low = math.max(
-    band / steps,
+    band == 0 ? 0.0 : toneCut(band, steps, split),
     toneReach(0, shift: bias, contrast: contrast),
   );
   final high = math.min(
-    (band + 1) / steps,
+    band + 1 >= steps ? 1.0 : toneCut(band + 1, steps, split),
     toneReach(1, shift: bias, contrast: contrast),
   );
   return toneUncurve((low + high) / 2, shift: bias, contrast: contrast) * 100;

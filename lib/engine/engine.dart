@@ -7,6 +7,7 @@ import 'package:flutter/painting.dart';
 import 'blocks.dart';
 import 'crop.dart';
 import 'lstar.dart';
+import 'regions.dart';
 
 /// How the quantised image is presented.
 /// In the order the view selector offers them: the photograph first, since
@@ -375,11 +376,13 @@ Future<ui.Image> renderBlurredSource({
   int steps = 3,
   double bias = 0,
   double contrast = 0,
+  FamilySplit? split,
   double quadrantRadius = kKuwaharaRadius,
 }) async {
   if (smoothing == Smoothing.block) {
     return _renderBlocks(
       contrast: contrast,
+      split: split,
       source: source,
       outputPx: outputPx,
       detail: detail,
@@ -539,6 +542,7 @@ Future<ui.Image> _renderBlocks({
   required int steps,
   required double bias,
   required double contrast,
+  required FamilySplit? split,
 }) async {
   final sourceSize = croppedSize(
     Size(source.width.toDouble(), source.height.toDouble()),
@@ -574,12 +578,15 @@ Future<ui.Image> _renderBlocks({
     steps: steps,
     bias: bias,
     contrast: contrast,
+    split: split,
     tolerance: math.max(1.0, sigma * kBlockStraightness),
   ));
 
   Color grey(int band) {
     final v = clampChannel8(
-      luminanceOfLstar(bandCentreLstar(band, steps, bias, contrast: contrast)),
+      luminanceOfLstar(
+        bandCentreLstar(band, steps, bias, contrast: contrast, split: split),
+      ),
     );
     return Color.fromARGB(255, v, v, v);
   }
@@ -682,6 +689,7 @@ Object blurKeyFor({
   int steps = 3,
   double bias = 0,
   double contrast = 0,
+  FamilySplit? split,
 }) => Object.hash(
   // The pass belongs to a particular photograph. Without this a new image
   // loaded under identical settings collided with the old key, and the
@@ -700,6 +708,7 @@ Object blurKeyFor({
   smoothing == Smoothing.block ? steps : 0,
   smoothing == Smoothing.block ? bias : 0,
   smoothing == Smoothing.block ? contrast : 0,
+  smoothing == Smoothing.block ? split : null,
 );
 
 /// Wraps the compiled fragment program and knows how to set its uniforms.
@@ -749,6 +758,7 @@ class ValueShader {
     required double bias,
     required double contrast,
     int shadowBands = 0,
+    FamilySplit? split,
     Color outline = const Color(0xFF000000),
     bool familyOutline = false,
   }) {
@@ -782,10 +792,11 @@ class ValueShader {
     shader
       ..setFloat(31, skeletonFill.toDouble())
       ..setFloat(32, contrast)
-      ..setFloat(33, shadowBands.toDouble())
+      ..setFloat(33, (split?.shadow ?? shadowBands).toDouble())
       ..setFloat(34, outline.r)
       ..setFloat(35, outline.g)
-      ..setFloat(36, outline.b);
+      ..setFloat(36, outline.b)
+      ..setFloat(37, split?.at ?? 0);
     return shader;
   }
 }

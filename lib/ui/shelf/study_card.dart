@@ -379,6 +379,7 @@ class _StudyThumbnailState extends ConsumerState<StudyThumbnail> {
           steps: widget.study.settings.steps,
           bias: widget.study.settings.bias,
           contrast: widget.study.settings.contrast,
+          split: widget.study.settings.split,
         );
         if (widget.study.settings.photoNeedsOwnPass) {
           _photoBlur.request(

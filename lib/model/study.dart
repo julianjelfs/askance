@@ -7,6 +7,7 @@ import '../engine/engine.dart';
 import '../engine/families.dart';
 import '../engine/lines.dart';
 import '../engine/random_ramp.dart';
+import '../engine/regions.dart';
 import '../engine/sketch.dart';
 import '../engine/tone.dart';
 import '../engine/value_scale.dart';
@@ -59,6 +60,8 @@ class StudySettings {
     this.lines = const [],
     this.sketch,
     this.shadowSteps,
+    this.familyLine,
+    this.familyGap = false,
   });
 
   final int steps;
@@ -155,6 +158,29 @@ class StudySettings {
   /// [shadowSteps] as the current steps allow: each family at least one.
   int? get shadowBands => shadowSteps?.clamp(1, steps - 1);
 
+  /// Where the line between the families falls, in toned lightness 0..1,
+  /// when it is free of the band boundaries; null keeps it on one. Set once
+  /// from the photograph and then by hand, never from what is on screen.
+  final double? familyLine;
+
+  /// How far [familyLine] can go: each family keeps some lightness to band.
+  static const double minLine = 0.05;
+  static const double maxLine = 0.95;
+
+  /// Whether the palette leaves a value out between the families, as a
+  /// drawing leaves a step of the scale unused to keep them apart.
+  final bool familyGap;
+
+  /// The free family line, as the engine bands by it; null for the even
+  /// ladder, with or without families.
+  FamilySplit? get split => switch ((shadowBands, familyLine)) {
+    (final shadow?, final at?) => (
+      shadow: shadow,
+      at: at.clamp(minLine, maxLine),
+    ),
+    _ => null,
+  };
+
   /// Whether PHOTO's blurred photograph needs a pass of its own. Smooth's
   /// pass is already the photograph blurred by the detail; ROUGH and BLOCK
   /// shape theirs further.
@@ -173,7 +199,7 @@ class StudySettings {
               splitBase == ViewMode.random)
       ? randomRamp(scale: scale, steps: steps, seed: randomSeed)
       : switch (shadowBands) {
-          final shadow? => familyRamp(scale, steps, shadow),
+          final shadow? => familyRamp(scale, steps, shadow, gap: familyGap),
           null => scale.ramp(steps),
         };
 
@@ -232,6 +258,8 @@ class StudySettings {
     bool removeSketch = false,
     int? shadowSteps,
     bool removeFamilies = false,
+    double? familyLine,
+    bool? familyGap,
   }) => StudySettings(
     steps: steps ?? this.steps,
     scale: scale ?? this.scale,
@@ -254,6 +282,8 @@ class StudySettings {
     lines: lines ?? this.lines,
     sketch: removeSketch ? null : sketch ?? this.sketch,
     shadowSteps: removeFamilies ? null : shadowSteps ?? this.shadowSteps,
+    familyLine: removeFamilies ? null : familyLine ?? this.familyLine,
+    familyGap: familyGap ?? this.familyGap,
   );
 
   Map<String, Object?> toJson() => {
@@ -280,6 +310,8 @@ class StudySettings {
     'lines': [for (final line in lines) line.toJson()],
     if (sketch case final sketch?) 'sketch': sketch.toJson(),
     'shadowSteps': ?shadowSteps,
+    'familyLine': ?familyLine,
+    if (familyGap) 'familyGap': true,
   };
 
   /// Tolerant by design: a manifest written by an older build, or one that has
@@ -342,6 +374,10 @@ class StudySettings {
     shadowSteps: json['shadowSteps'] is num
         ? _int(json['shadowSteps'], 1).clamp(1, maxSteps - 1)
         : null,
+    familyLine: json['familyLine'] is num
+        ? _double(json['familyLine'], 0.5).clamp(minLine, maxLine)
+        : null,
+    familyGap: json['familyGap'] == true,
   );
 
   @override
@@ -367,7 +403,9 @@ class StudySettings {
       other.tone == tone &&
       listEquals(other.lines, lines) &&
       other.sketch == sketch &&
-      other.shadowSteps == shadowSteps;
+      other.shadowSteps == shadowSteps &&
+      other.familyLine == familyLine &&
+      other.familyGap == familyGap;
 
   @override
   int get hashCode => Object.hash(
@@ -391,7 +429,7 @@ class StudySettings {
     tone,
     Object.hashAll(lines),
     // Object.hash takes at most twenty.
-    Object.hash(sketch, shadowSteps),
+    Object.hash(sketch, shadowSteps, familyLine, familyGap),
   );
 }
 

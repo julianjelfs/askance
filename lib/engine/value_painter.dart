@@ -271,6 +271,7 @@ class ValuePainter extends CustomPainter {
       skeletonFill: settings.skeletonFill.clamp(0, settings.steps),
       bias: settings.bias,
       contrast: settings.contrast,
+      split: settings.split,
     )..setImageSampler(0, source);
 
     canvas.drawRect(area, Paint()..shader = _fragment!);
@@ -401,6 +402,7 @@ class FamilyOutlinePainter extends CustomPainter {
       bias: settings.bias,
       contrast: settings.contrast,
       shadowBands: shadow,
+      split: settings.split,
       outline: colour,
       familyOutline: true,
     )..setImageSampler(0, blurred);
