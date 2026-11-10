@@ -10,6 +10,7 @@ import '../../engine/deferred_disposer.dart';
 import 'screen_awake.dart';
 import '../../engine/crop.dart';
 import '../../engine/engine.dart';
+import '../../engine/families.dart';
 import '../../engine/lines.dart';
 import '../../engine/sketch.dart';
 import '../../engine/value_painter.dart';
@@ -17,6 +18,7 @@ import '../../state/canvas_session.dart';
 import '../../theme.dart';
 import '../widgets/controls.dart';
 import '../widgets/glyphs.dart';
+import 'tool_panel.dart' show probeReadout;
 
 /// The image itself, plus every gesture that acts on it.
 ///
@@ -66,6 +68,43 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
     super.initState();
     ScreenAwake.acquire();
     HardwareKeyboard.instance.addHandler(_onKey);
+    // A new pass is a new picture under the point being read: another zoom
+    // resolves other shapes, another detail merges others.
+    widget.session.blur.addListener(_readProbe);
+  }
+
+  /// Reads the pass under the dropper's point, and hands the colour back to
+  /// the session to band. The pass is the value map's own, mapped the way
+  /// the painter maps it, so the reading is of the shape on screen.
+  Future<void> _readProbe() async {
+    final session = widget.session;
+    final point = session.probePoint;
+    final pass = session.blur.image;
+    if (!session.probing || point == null || pass == null || _size.isEmpty) {
+      return;
+    }
+    final picture = _picture;
+    final rect = passRect(
+      _sourceSize,
+      picture,
+      _area,
+      session.blur.imageView,
+      session.blur.imageOutputPx,
+    );
+    final screen = lineToScreen(point, session.settings.crop, picture);
+    if (rect.isEmpty || !rect.contains(screen)) {
+      session.setProbeColour(point, null);
+      return;
+    }
+    final colour = await readPixel(
+      pass,
+      Offset(
+        (screen.dx - rect.left) / rect.width * pass.width,
+        (screen.dy - rect.top) / rect.height * pass.height,
+      ),
+    );
+    if (!mounted) return;
+    session.setProbeColour(point, colour);
   }
 
   /// Shift pressed or let go with the mouse still: the line being ruled
@@ -116,6 +155,7 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
   void dispose() {
     ScreenAwake.release();
     HardwareKeyboard.instance.removeHandler(_onKey);
+    widget.session.blur.removeListener(_readProbe);
     _pendingTap?.cancel();
     _disposer.disposeAll();
     super.dispose();
@@ -248,6 +288,16 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
     final position = details.localPosition;
     // Lining up, a tap would only hide the controls that end it.
     if (_aligning) return;
+    // Probing, a tap reads the value under it, at once: the double tap's
+    // zoom is still a pinch or a scroll away.
+    if (widget.session.probing) {
+      if (!_area.contains(position)) return;
+      widget.session.placeProbe(
+        screenToLine(position, widget.session.settings.crop, _picture),
+      );
+      _readProbe();
+      return;
+    }
     if (_editing) {
       _onLineClick(position);
       return;
@@ -379,6 +429,43 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
           session.moveSketch(moved(scale: scrollZoomFactor(scrollDelta.dy)));
         }
     }
+  }
+
+  /// A ring on the point being read, and above it what was read there.
+  List<Widget> _probeMarker(Offset point) {
+    final session = widget.session;
+    final at = lineToScreen(point, session.settings.crop, _picture);
+    if (!_area.contains(at)) return const [];
+    const ring = 22.0;
+    final readout = probeReadout(session);
+    return [
+      Positioned(
+        left: at.dx - ring / 2,
+        top: at.dy - ring / 2,
+        width: ring,
+        height: ring,
+        child: const IgnorePointer(
+          child: CustomPaint(painter: _ProbeRingPainter()),
+        ),
+      ),
+      if (readout != null)
+        Positioned(
+          left: at.dx,
+          top: at.dy - ring,
+          child: IgnorePointer(
+            child: FractionalTranslation(
+              translation: const Offset(-0.5, -1),
+              // Turned back upright: the picture may be upside down, the
+              // words never are.
+              child: Transform.flip(
+                flipX: session.flipped,
+                flipY: session.flipped,
+                child: readout,
+              ),
+            ),
+          ),
+        ),
+    ];
   }
 
   @override
@@ -521,6 +608,34 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
                           outline: _aligning,
                         ),
                       ),
+                    // Over the drawing, so the drawing's shadow shape can be
+                    // held against the picture's. A peek is at the
+                    // photograph alone, so it lifts this off too.
+                    if (session.settings.shadowBands != null &&
+                        !session.peeking)
+                      ListenableBuilder(
+                        listenable: session.blur,
+                        builder: (context, _) => switch (session.blur.image) {
+                          final pass? => CustomPaint(
+                            size: Size.infinite,
+                            painter: FamilyOutlinePainter(
+                              shader: widget.shader,
+                              source: session.image!,
+                              blurred: pass,
+                              blurredView: session.blur.imageView,
+                              blurredSize: session.blur.imageOutputPx,
+                              settings: session.settings,
+                              view: session.view,
+                              devicePixelRatio: dpr,
+                              disposer: _disposer,
+                            ),
+                          ),
+                          null => const SizedBox.shrink(),
+                        },
+                      ),
+                    if (session.probing)
+                      if (session.probePoint case final point?)
+                        ..._probeMarker(point),
                     // Its own layer, so following the mouse repaints the
                     // handles and not the picture under them.
                     if (_editing)
@@ -748,4 +863,35 @@ class SplitHandle extends StatelessWidget {
       },
     );
   }
+}
+
+/// The dropper's mark: a ring with a dark and a light edge, so it reads on
+/// any value it lands on.
+class _ProbeRingPainter extends CustomPainter {
+  const _ProbeRingPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final centre = size.center(Offset.zero);
+    final r = size.shortestSide / 2 - 2;
+    canvas.drawCircle(
+      centre,
+      r,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 4
+        ..color = AskanceColors.graphite,
+    );
+    canvas.drawCircle(
+      centre,
+      r,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..color = AskanceColors.paper,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_ProbeRingPainter old) => false;
 }

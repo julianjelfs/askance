@@ -40,6 +40,12 @@ device build — the engine leans on GPU round trips that WebGL makes expensive.
 - **Palette numbered in Munsell values.** Every colour the picture is painted
   in, labelled V1–V9 the way a printed value scale is; tap one to see where
   it falls on its own.
+- **Light and shadow.** Splits the steps at any band boundary into a
+  shadow family and a light family. Shadows are tinted cool and lights
+  warm at unchanged values, and an accent line marks the edge between
+  them in every view, over the photograph and a laid-over sketch too. A
+  dropper reads any point as its family, its step within that family and
+  its Munsell value: "Shadow · 2 of 2 · V3".
 - **Bias.** Slides every threshold together, so a borderline passage can be
   pushed to one side of a boundary or the other — what an under- or
   over-exposed photograph needs.

@@ -8,6 +8,7 @@ import 'package:flutter/scheduler.dart';
 
 import '../engine/crop.dart';
 import '../engine/engine.dart';
+import '../engine/families.dart';
 import '../engine/blur_pass.dart';
 import '../engine/lines.dart';
 import '../engine/sketch.dart';
@@ -38,7 +39,11 @@ enum CanvasTool {
   fill,
 
   /// A photograph of the drawing, laid over the picture to check it.
-  sketch;
+  sketch,
+
+  /// Light and shadow: where the line between the families falls, and the
+  /// dropper that says which side of it a point is on.
+  families;
 
   /// The tools on the tool bar while [mode] is showing. The view selector
   /// picks how to look and the bar holds what adjusts that view, so it never
@@ -47,17 +52,28 @@ enum CanvasTool {
   /// else, and fill only means something under the edges. The picture and
   /// the drawing laid over it are in every view.
   static List<CanvasTool> barFor(ViewMode mode) => switch (mode) {
-    ViewMode.photo => const [picture, tone, grid, sketch],
+    ViewMode.photo => const [picture, tone, families, grid, sketch],
     ViewMode.skeleton => [
       steps,
       picture,
       shapes,
       if (kShowTint) scale,
       fill,
+      families,
       grid,
       sketch,
     ],
-    _ => [steps, picture, shapes, if (kShowTint) scale, grid, sketch],
+    // RANDOM paints its own hues, never the families' tint, and its bar
+    // already carries another deal: on a phone there is no room for both.
+    ViewMode.random => [
+      steps,
+      picture,
+      shapes,
+      if (kShowTint) scale,
+      grid,
+      sketch,
+    ],
+    _ => [steps, picture, shapes, if (kShowTint) scale, families, grid, sketch],
   };
 }
 
@@ -125,6 +141,18 @@ class CanvasSession extends ChangeNotifier {
   /// never run at once.
   bool aligningSketch = false;
 
+  /// Whether a tap on the picture reads the value under it rather than
+  /// doing what it usually does. View state like [drawingLines], and a mode
+  /// of its own like it: the three never run at once.
+  bool probing = false;
+
+  /// The point last read, on the photograph as [BoardLine] measures it, and
+  /// the colour of the pass under it. The colour, not its band, so changing
+  /// the values, the brightness or the line between the families reads it
+  /// afresh without going back to the GPU. Null until a point is tapped.
+  Offset? probePoint;
+  (int, int, int)? probeColour;
+
   /// Live split position during a drag. Written back into [settings] when the
   /// drag ends, so the study only records settled values.
   double splitPosition = 0.5;
@@ -175,6 +203,7 @@ class CanvasSession extends ChangeNotifier {
     // Come back to the passage you were working on, at the zoom you left it.
     view = study.settings.view;
     isolatedBand = null;
+    _stopProbing();
     flipped = false;
     _stopDrawingLines();
     _dropSketchImage();
@@ -196,6 +225,7 @@ class CanvasSession extends ChangeNotifier {
     splitPosition = settings.splitPosition;
     view = const ViewTransform();
     isolatedBand = null;
+    _stopProbing();
     flipped = false;
     _stopDrawingLines();
     _dropSketchImage();
@@ -223,6 +253,7 @@ class CanvasSession extends ChangeNotifier {
     splitPosition = settings.splitPosition;
     view = const ViewTransform();
     isolatedBand = null;
+    _stopProbing();
     flipped = false;
     _stopDrawingLines();
     _dropSketchImage();
@@ -254,6 +285,7 @@ class CanvasSession extends ChangeNotifier {
     splitPosition = incoming.splitPosition;
     view = incoming.view;
     isolatedBand = null;
+    _stopProbing();
     lineStart = null;
     selectedLine = null;
     notifyListeners();
@@ -319,6 +351,26 @@ class CanvasSession extends ChangeNotifier {
     final next = contrast.clamp(-1.0, 1.0);
     if (next == settings.contrast) return;
     settings = settings.copyWith(contrast: next);
+    _persistSoon();
+    notifyListeners();
+  }
+
+  /// Splits the picture into light and shadow families, or stops. Split
+  /// afresh, the line goes at the middle of the steps, the lower half shadow.
+  void setFamilies(bool value) {
+    if (value == (settings.shadowSteps != null)) return;
+    settings = value
+        ? settings.copyWith(shadowSteps: settings.steps ~/ 2)
+        : settings.copyWith(removeFamilies: true);
+    _persistSoon();
+    notifyListeners();
+  }
+
+  /// How many of the steps, darkest first, are shadow.
+  void setShadowSteps(int count) {
+    final next = count.clamp(1, settings.steps - 1);
+    if (next == settings.shadowBands) return;
+    settings = settings.copyWith(shadowSteps: next);
     _persistSoon();
     notifyListeners();
   }
@@ -456,6 +508,8 @@ class CanvasSession extends ChangeNotifier {
     if (crop == settings.crop) return;
     settings = settings.copyWith(crop: crop, gridFrame: kWholeImage);
     view = const ViewTransform();
+    probePoint = null;
+    probeColour = null;
     _persistSoon();
     notifyListeners();
   }
@@ -467,6 +521,7 @@ class CanvasSession extends ChangeNotifier {
     if (value) {
       drawingLines = true;
       aligningSketch = false;
+      _stopProbing();
     } else {
       _stopDrawingLines();
     }
@@ -662,6 +717,7 @@ class CanvasSession extends ChangeNotifier {
     aligningSketch = value;
     if (value) {
       _stopDrawingLines();
+      _stopProbing();
       openTool = null;
       chromeVisible = true;
     }
@@ -673,6 +729,62 @@ class CanvasSession extends ChangeNotifier {
     final old = sketchImage;
     sketchImage = null;
     if (old != null) _disposeAfterFrame(old);
+  }
+
+  // --- the dropper ------------------------------------------------------------
+
+  void setProbing(bool value) {
+    if (value == probing) return;
+    if (value) {
+      probing = true;
+      _stopDrawingLines();
+      aligningSketch = false;
+    } else {
+      _stopProbing();
+    }
+    notifyListeners();
+  }
+
+  /// Where the point last read falls: its band, and its family when the
+  /// picture has families. Null until its colour has been read.
+  BandPlace? get probePlace {
+    final colour = probeColour;
+    if (colour == null) return null;
+    final (r, g, b) = colour;
+    return BandPlace(
+      band: bandOfColour(
+        r,
+        g,
+        b,
+        settings.steps,
+        bias: settings.bias,
+        contrast: settings.contrast,
+      ),
+      steps: settings.steps,
+      shadowBands: settings.shadowBands,
+    );
+  }
+
+  void _stopProbing() {
+    probing = false;
+    probePoint = null;
+    probeColour = null;
+  }
+
+  /// A tap while probing, at [point] on the photograph. The colour under it
+  /// follows from the pass, which the surface reads and hands back.
+  void placeProbe(Offset point) {
+    probePoint = point;
+    probeColour = null;
+    notifyListeners();
+  }
+
+  /// The colour of the pass under [point], if it is still the point being
+  /// read: a read that lands after another tap is stale.
+  void setProbeColour(Offset point, (int, int, int)? colour) {
+    if (point != probePoint || colour == probeColour) return;
+    probeColour = colour;
+    notifyListeners();
   }
 
   void rename(String value) {

@@ -548,6 +548,7 @@ class _ToolBar extends StatelessWidget {
       CanvasTool.tone => (Glyph.mono, 'Colour'),
       CanvasTool.fill => (Glyph.fill, 'Fill'),
       CanvasTool.sketch => (Glyph.overlay, 'Sketch'),
+      CanvasTool.families => (Glyph.families, 'Light'),
     };
 
     return Container(
@@ -627,13 +628,20 @@ class _BarItem extends StatelessWidget {
             children: [
               GlyphIcon(glyph, size: 21 * s, color: colour),
               SizedBox(height: 4 * s),
-              Text(
-                label,
-                style: AskanceText.control(
-                  12.5,
-                  color: colour,
-                  weight: selected ? FontWeight.w600 : FontWeight.w500,
-                ).by(s),
+              // One line, shrunk to fit: a narrow phone with a full bar
+              // has less than "Values · 7" needs, and a label that wraps
+              // runs off the foot of the bar.
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  style: AskanceText.control(
+                    12.5,
+                    color: colour,
+                    weight: selected ? FontWeight.w600 : FontWeight.w500,
+                  ).by(s),
+                ),
               ),
             ],
           ),

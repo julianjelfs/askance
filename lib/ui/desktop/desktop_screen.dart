@@ -362,6 +362,11 @@ class _RailState extends ConsumerState<_Rail> {
                       ),
                   ],
                   _section(
+                    'Light and shadow',
+                    FamiliesControl.readout(session.settings),
+                    FamiliesControl(session: session),
+                  ),
+                  _section(
                     'Board',
                     null,
                     BoardControl(session: session, onEditCrop: widget.onCrop),

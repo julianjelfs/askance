@@ -14,7 +14,7 @@ uniform vec2 uSize;      // logical size of the drawn rect
 uniform vec2 uOrigin;    // its top-left, in the same space as FlutterFragCoord
 uniform vec2 uDevice;    // the same rect in output pixels
 uniform float uSteps;    // 2..7
-uniform float uMode;     // 0 = value map, 1 = skeleton
+uniform float uMode;     // 0 = value map, 1 = skeleton, 2 = family outline
 uniform float uLineWidth;// skeleton stroke, output px
 uniform float uBias;     // slides every threshold together, in L*/100
 
@@ -35,6 +35,13 @@ uniform float uFill;
 // With uBias, the picture's tone curve, which PHOTO shows the photograph
 // through too.
 uniform float uContrast;
+
+// Family outline only: how many bands, darkest first, are the shadow family,
+// and the colour the line between it and the light family is drawn in.
+// Everything off the line is left transparent, so the outline lies over
+// whatever is under it: the value map, the photograph, a drawing.
+uniform float uShadowSteps;
+uniform vec3 uOutline;
 
 uniform sampler2D uSrc;
 
@@ -80,11 +87,36 @@ float bandAt(vec2 devPx) {
   );
 }
 
+bool inShadow(vec2 devPx) {
+  return bandAt(devPx) < uShadowSteps - 0.5;
+}
+
 void main() {
   // The rect is only the part of the frame the photograph occupies, so
   // fragment coordinates have to be made relative to it before they mean
   // anything to the sampler.
   vec2 devPx = (FlutterFragCoord().xy - uOrigin) / uSize * uDevice;
+
+  if (uMode > 1.5) {
+    // Inked wherever a pixel uLineWidth away, in any of eight directions,
+    // is in the other family, so the line straddles the boundary evenly
+    // whichever way it runs. Eight taps however wide the line, which keeps
+    // it cheap enough to sit over a pinch.
+    bool here = inShadow(devPx);
+    float r = uLineWidth;
+    float d = r * 0.7071;
+    bool ink =
+      inShadow(devPx + vec2(r, 0.0)) != here ||
+      inShadow(devPx - vec2(r, 0.0)) != here ||
+      inShadow(devPx + vec2(0.0, r)) != here ||
+      inShadow(devPx - vec2(0.0, r)) != here ||
+      inShadow(devPx + vec2(d, d)) != here ||
+      inShadow(devPx - vec2(d, d)) != here ||
+      inShadow(devPx + vec2(d, -d)) != here ||
+      inShadow(devPx - vec2(d, -d)) != here;
+    fragColor = ink ? vec4(uOutline, 1.0) : vec4(0.0);
+    return;
+  }
 
   if (uMode > 0.5) {
     // Ink a pixel if any of the uLineWidth pixels to its left sits on a band

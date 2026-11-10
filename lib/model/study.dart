@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show listEquals;
 
 import '../engine/crop.dart';
 import '../engine/engine.dart';
+import '../engine/families.dart';
 import '../engine/lines.dart';
 import '../engine/random_ramp.dart';
 import '../engine/sketch.dart';
@@ -57,6 +58,7 @@ class StudySettings {
     this.tone = const PhotoTone(),
     this.lines = const [],
     this.sketch,
+    this.shadowSteps,
   });
 
   final int steps;
@@ -144,6 +146,15 @@ class StudySettings {
   /// the reference. Null until one is added.
   final SketchOverlay? sketch;
 
+  /// How many of the steps, darkest first, are the shadow family; the rest
+  /// are the light. Null when the picture is not split into families. Kept
+  /// as chosen and clamped by [shadowBands], so a trip down to fewer values
+  /// and back finds the line where it was left.
+  final int? shadowSteps;
+
+  /// [shadowSteps] as the current steps allow: each family at least one.
+  int? get shadowBands => shadowSteps?.clamp(1, steps - 1);
+
   /// Whether PHOTO's blurred photograph needs a pass of its own. Smooth's
   /// pass is already the photograph blurred by the detail; ROUGH and BLOCK
   /// shape theirs further.
@@ -161,7 +172,10 @@ class StudySettings {
           ((mode == ViewMode.split || mode == ViewMode.skeleton) &&
               splitBase == ViewMode.random)
       ? randomRamp(scale: scale, steps: steps, seed: randomSeed)
-      : scale.ramp(steps);
+      : switch (shadowBands) {
+          final shadow? => familyRamp(scale, steps, shadow),
+          null => scale.ramp(steps),
+        };
 
   /// The stages a drawing is built up through, coarsest first: at each one
   /// the picture gains a value and its shapes get finer together, the way a
@@ -216,6 +230,8 @@ class StudySettings {
     List<BoardLine>? lines,
     SketchOverlay? sketch,
     bool removeSketch = false,
+    int? shadowSteps,
+    bool removeFamilies = false,
   }) => StudySettings(
     steps: steps ?? this.steps,
     scale: scale ?? this.scale,
@@ -237,6 +253,7 @@ class StudySettings {
     tone: tone ?? this.tone,
     lines: lines ?? this.lines,
     sketch: removeSketch ? null : sketch ?? this.sketch,
+    shadowSteps: removeFamilies ? null : shadowSteps ?? this.shadowSteps,
   );
 
   Map<String, Object?> toJson() => {
@@ -262,6 +279,7 @@ class StudySettings {
     'tone': tone.toJson(),
     'lines': [for (final line in lines) line.toJson()],
     if (sketch case final sketch?) 'sketch': sketch.toJson(),
+    'shadowSteps': ?shadowSteps,
   };
 
   /// Tolerant by design: a manifest written by an older build, or one that has
@@ -321,6 +339,9 @@ class StudySettings {
     ],
     // A damaged sketch costs the sketch, not the study.
     sketch: SketchOverlay.fromJson(json['sketch']),
+    shadowSteps: json['shadowSteps'] is num
+        ? _int(json['shadowSteps'], 1).clamp(1, maxSteps - 1)
+        : null,
   );
 
   @override
@@ -345,7 +366,8 @@ class StudySettings {
       other.gridFrame == gridFrame &&
       other.tone == tone &&
       listEquals(other.lines, lines) &&
-      other.sketch == sketch;
+      other.sketch == sketch &&
+      other.shadowSteps == shadowSteps;
 
   @override
   int get hashCode => Object.hash(
@@ -368,7 +390,8 @@ class StudySettings {
     gridFrame,
     tone,
     Object.hashAll(lines),
-    sketch,
+    // Object.hash takes at most twenty.
+    Object.hash(sketch, shadowSteps),
   );
 }
 

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../engine/blocks.dart';
 import '../../engine/crop.dart';
 import '../../engine/engine.dart';
+import '../../engine/families.dart';
 import '../../engine/value_scale.dart';
 import '../../model/study.dart';
 import '../../state/canvas_session.dart';
@@ -1129,6 +1130,134 @@ class BoardControl extends StatelessWidget {
   }
 }
 
+/// Light and shadow: splits the steps into the two families, sets where the
+/// line between them falls, and offers the dropper that says which side of
+/// it a point is on.
+class FamiliesControl extends StatelessWidget {
+  const FamiliesControl({super.key, required this.session});
+  final CanvasSession session;
+
+  /// "2 shadow · 3 light".
+  static String? readout(StudySettings settings) =>
+      switch (settings.shadowBands) {
+        final shadow? => '$shadow shadow · ${settings.steps - shadow} light',
+        null => null,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final s = DesignScale.of(context);
+    final settings = session.settings;
+    final shadow = settings.shadowBands;
+    final probing = session.probing;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        RuleCheckbox(
+          label: 'Split into light and shadow',
+          value: shadow != null,
+          onChanged: session.setFamilies,
+        ),
+        if (shadow != null) ...[
+          SizedBox(height: 10 * s),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Shadow values',
+                  style: AskanceText.label(14.5).by(s),
+                ),
+              ),
+              RuleStepper(
+                value: shadow,
+                min: 1,
+                max: settings.steps - 1,
+                onChanged: session.setShadowSteps,
+              ),
+            ],
+          ),
+          SizedBox(height: 6 * s),
+          Text(
+            'Shadows are tinted cool and lights warm, at the same values. '
+            'The line is the edge between them; keep every light above it '
+            'and every shadow below.',
+            style: AskanceText.caption(12.5).by(s),
+          ),
+        ],
+        SizedBox(height: 14 * s),
+        ActionButton(
+          label: probing ? 'Done' : 'Read a point',
+          solid: probing,
+          height: 38,
+          fontSize: 13.5,
+          centred: true,
+          onPressed: () => session.setProbing(!probing),
+        ),
+        SizedBox(height: 8 * s),
+        Text(
+          probing
+              ? switch (session.probePlace) {
+                  final place? =>
+                    '${place.label} · ${munsellLabel(settings, place.band)}',
+                  null => 'Tap the picture to read the value there.',
+                }
+              : 'Guess first, then tap a point to check which family and '
+                    'step it is.',
+          style: AskanceText.caption(12.5).by(s),
+        ),
+      ],
+    );
+  }
+}
+
+/// What the dropper read, as a pill to float over the picture: the band's
+/// own colour, its family and step, and its Munsell value. Null until a
+/// point has been read.
+Widget? probeReadout(CanvasSession session) => switch (session.probePlace) {
+  final place? => _ProbeReadout(session: session, place: place),
+  null => null,
+};
+
+class _ProbeReadout extends StatelessWidget {
+  const _ProbeReadout({required this.session, required this.place});
+
+  final CanvasSession session;
+  final BandPlace place;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = DesignScale.of(context);
+    final palette = session.settings.palette;
+    return Container(
+      height: 30 * s,
+      padding: EdgeInsets.fromLTRB(4 * s, 0, 11 * s, 0),
+      decoration: BoxDecoration(
+        color: AskanceColors.graphite,
+        borderRadius: BorderRadius.circular(15 * s),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 22 * s,
+            height: 22 * s,
+            decoration: BoxDecoration(
+              color: palette[place.band.clamp(0, palette.length - 1)],
+              shape: BoxShape.circle,
+              border: Border.all(color: const Color(0x33FFFFFF), width: kRule),
+            ),
+          ),
+          SizedBox(width: 7 * s),
+          Text(
+            '${place.label} · ${munsellLabel(session.settings, place.band)}',
+            style: AskanceText.number(12.5, color: AskanceColors.gesso).by(s),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// The phone's tool panel: one tool at a time, above the tool bar.
 class ToolPanel extends StatelessWidget {
   const ToolPanel({
@@ -1177,6 +1306,7 @@ class ToolPanel extends StatelessWidget {
         ],
         CanvasTool.tone => [ToneControl(session: session)],
         CanvasTool.sketch => [SketchControl(session: session)],
+        CanvasTool.families => [FamiliesControl(session: session)],
         CanvasTool.fill => [
           const ControlLabelRow(label: 'Blocked in under the lines'),
           FillControl(session: session),

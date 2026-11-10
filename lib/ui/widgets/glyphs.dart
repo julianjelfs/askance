@@ -29,6 +29,7 @@ enum Glyph {
   dice,
   mono,
   overlay,
+  families,
 }
 
 class GlyphIcon extends StatelessWidget {
@@ -99,6 +100,8 @@ class _GlyphPainter extends CustomPainter {
         _mono(canvas, size);
       case Glyph.overlay:
         _overlay(canvas, size);
+      case Glyph.families:
+        _families(canvas, size);
     }
   }
 
@@ -277,6 +280,27 @@ class _GlyphPainter extends CustomPainter {
       p,
     );
     canvas.restore();
+  }
+
+  /// A ball lit from the upper left, its shadow side filled: the two
+  /// families and the line between them.
+  void _families(Canvas canvas, Size size) {
+    final u = size.shortestSide;
+    final centre = Offset(u * 0.5, u * 0.5);
+    final r = u * 0.34;
+    final ball = Path()..addOval(Rect.fromCircle(center: centre, radius: r));
+    final lit = Path()
+      ..addOval(
+        Rect.fromCircle(
+          center: centre - Offset(u * 0.13, u * 0.13),
+          radius: r * 1.02,
+        ),
+      );
+    canvas.drawPath(
+      Path.combine(PathOperation.difference, ball, lit),
+      Paint()..color = color,
+    );
+    canvas.drawCircle(centre, r, _line(u));
   }
 
   /// A die showing three: another deal of colours.

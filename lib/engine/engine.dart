@@ -748,6 +748,9 @@ class ValueShader {
     required int skeletonFill,
     required double bias,
     required double contrast,
+    int shadowBands = 0,
+    Color outline = const Color(0xFF000000),
+    bool familyOutline = false,
   }) {
     final shader = _program.fragmentShader();
     shader
@@ -758,7 +761,14 @@ class ValueShader {
       ..setFloat(4, devicePx.width)
       ..setFloat(5, devicePx.height)
       ..setFloat(6, steps.toDouble())
-      ..setFloat(7, skeleton ? 1 : 0)
+      ..setFloat(
+        7,
+        familyOutline
+            ? 2
+            : skeleton
+            ? 1
+            : 0,
+      )
       ..setFloat(8, skeletonLineWidth(devicePx.width))
       ..setFloat(9, bias);
 
@@ -771,7 +781,11 @@ class ValueShader {
     }
     shader
       ..setFloat(31, skeletonFill.toDouble())
-      ..setFloat(32, contrast);
+      ..setFloat(32, contrast)
+      ..setFloat(33, shadowBands.toDouble())
+      ..setFloat(34, outline.r)
+      ..setFloat(35, outline.g)
+      ..setFloat(36, outline.b);
     return shader;
   }
 }

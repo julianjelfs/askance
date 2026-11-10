@@ -115,7 +115,7 @@ class ValuePainter extends CustomPainter {
       // Until the first pass lands.
       _paintPhoto(canvas, area, dest);
     } else {
-      final pass = _passRect(dest, area, blurredView, blurredSize);
+      final pass = passRect(_sourceSize, dest, area, blurredView, blurredSize);
       canvas.save();
       canvas.clipRect(area);
       _paintProcessed(
@@ -181,36 +181,6 @@ class ValuePainter extends CustomPainter {
     }
   }
 
-  /// Where [blurred] belongs on screen under the current view.
-  ///
-  /// A pass covers the part of the picture that was visible when it was
-  /// asked for. Until the next one lands that part is drawn where the current
-  /// view puts it — larger under a pinch, moved under a pan, the same shape
-  /// when the frame changes — rather than stretched over whatever is visible
-  /// now, which showed the wrong passage and then snapped.
-  Rect _passRect(
-    Rect dest,
-    Rect area,
-    ViewTransform? passView,
-    Size? passSize,
-  ) {
-    if (passView == null || passSize == null) return area;
-    // Both are proportional to the frame, so the pass's own units will do.
-    final passDest = passView.destination(_sourceSize, passSize);
-    final passArea = passView.visible(_sourceSize, passSize);
-    if (passDest.isEmpty) return area;
-    double x(double px) =>
-        dest.left + (px - passDest.left) / passDest.width * dest.width;
-    double y(double py) =>
-        dest.top + (py - passDest.top) / passDest.height * dest.height;
-    return Rect.fromLTRB(
-      x(passArea.left),
-      y(passArea.top),
-      x(passArea.right),
-      y(passArea.bottom),
-    );
-  }
-
   /// The photograph as PHOTO shows it: toned, and softened when the tone
   /// has a blur and its pass has landed.
   void _paintPhotoView(Canvas canvas, Rect area, Rect dest) {
@@ -223,8 +193,14 @@ class ValuePainter extends CustomPainter {
         canvas,
         area,
         own
-            ? _passRect(dest, area, photoBlurredView, photoBlurredSize)
-            : _passRect(dest, area, blurredView, blurredSize),
+            ? passRect(
+                _sourceSize,
+                dest,
+                area,
+                photoBlurredView,
+                photoBlurredSize,
+              )
+            : passRect(_sourceSize, dest, area, blurredView, blurredSize),
         image: softened,
         crop: kWholeImage,
       );
@@ -326,6 +302,123 @@ class ValuePainter extends CustomPainter {
         old.drawGrid != drawGrid ||
         old.isolatedBand != isolatedBand ||
         old.outline != outline ||
+        old.devicePixelRatio != devicePixelRatio;
+  }
+}
+
+/// Where a pass belongs on screen under the current view: [dest] and [area]
+/// are where the picture, of [sourceSize], is drawn and what of it shows.
+///
+/// A pass covers the part of the picture that was visible when it was
+/// asked for. Until the next one lands that part is drawn where the current
+/// view puts it — larger under a pinch, moved under a pan, the same shape
+/// when the frame changes — rather than stretched over whatever is visible
+/// now, which showed the wrong passage and then snapped. Null [passView] or
+/// [passSize] means the pass was rendered for exactly this view.
+Rect passRect(
+  Size sourceSize,
+  Rect dest,
+  Rect area,
+  ViewTransform? passView,
+  Size? passSize,
+) {
+  if (passView == null || passSize == null) return area;
+  // Both are proportional to the frame, so the pass's own units will do.
+  final passDest = passView.destination(sourceSize, passSize);
+  final passArea = passView.visible(sourceSize, passSize);
+  if (passDest.isEmpty) return area;
+  double x(double px) =>
+      dest.left + (px - passDest.left) / passDest.width * dest.width;
+  double y(double py) =>
+      dest.top + (py - passDest.top) / passDest.height * dest.height;
+  return Rect.fromLTRB(
+    x(passArea.left),
+    y(passArea.top),
+    x(passArea.right),
+    y(passArea.bottom),
+  );
+}
+
+/// The line between the light and shadow families, on its own layer so it
+/// can lie over the drawing as well as the picture: whether the drawing's
+/// shadow shape keeps inside it is the question it is there to answer.
+///
+/// Cut from the same pass as the value map, through the same bands, so it
+/// runs exactly along the boundary the value map shows.
+class FamilyOutlinePainter extends CustomPainter {
+  FamilyOutlinePainter({
+    required this.shader,
+    required this.source,
+    required this.blurred,
+    this.blurredView,
+    this.blurredSize,
+    required this.settings,
+    required this.view,
+    required this.devicePixelRatio,
+    required this.disposer,
+  });
+
+  final ValueShader shader;
+  final ui.Image source;
+  final ui.Image blurred;
+  final ViewTransform? blurredView;
+  final Size? blurredSize;
+  final StudySettings settings;
+  final ViewTransform view;
+  final double devicePixelRatio;
+  final DeferredDisposer disposer;
+
+  ui.FragmentShader? _fragment;
+
+  /// The cadmium accent: the app's one colour that is never a value.
+  static const Color colour = AskanceColors.accent;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final shadow = settings.shadowBands;
+    if (size.isEmpty || shadow == null) return;
+    final sourceSize = cropPixels(
+      Size(source.width.toDouble(), source.height.toDouble()),
+      settings.crop,
+    ).size;
+    final dest = view.destination(sourceSize, size);
+    final area = view.visible(sourceSize, size);
+    final pass = passRect(sourceSize, dest, area, blurredView, blurredSize);
+    if (pass.isEmpty) return;
+    // A fresh shader every paint, for the reason ValuePainter gives.
+    final old = _fragment;
+    if (old != null) disposer.retire(old.dispose);
+    _fragment = shader.build(
+      area: pass,
+      devicePx: Size(
+        pass.width * devicePixelRatio,
+        pass.height * devicePixelRatio,
+      ),
+      steps: settings.steps,
+      ramp: settings.palette,
+      skeleton: false,
+      skeletonFill: 0,
+      bias: settings.bias,
+      contrast: settings.contrast,
+      shadowBands: shadow,
+      outline: colour,
+      familyOutline: true,
+    )..setImageSampler(0, blurred);
+    canvas.save();
+    canvas.clipRect(area);
+    canvas.drawRect(pass, Paint()..shader = _fragment!);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant FamilyOutlinePainter old) {
+    _fragment = old._fragment;
+    return old.settings != settings ||
+        old.blurred != blurred ||
+        old.blurredView != blurredView ||
+        old.blurredSize != blurredSize ||
+        old.view != view ||
+        old.source != source ||
         old.devicePixelRatio != devicePixelRatio;
   }
 }
