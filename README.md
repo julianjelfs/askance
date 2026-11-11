@@ -41,10 +41,12 @@ device build — the engine leans on GPU round trips that WebGL makes expensive.
   in, labelled V1–V9 the way a printed value scale is; tap one to see where
   it falls on its own.
 - **Light and shadow.** Splits the picture into a shadow family and a
-  light family at a line of your choosing. The line starts at Otsu's
-  threshold for the whole photograph, the valley between its darks and
-  lights, and then moves only by hand. Each family is split into its own
-  number of steps either side of it, so no step straddles the line.
+  light family at a line of your choosing. Turning the split on moves no
+  value: the line starts on the band boundary nearest Otsu's threshold for
+  the whole photograph, the valley between its darks and lights. The
+  slider, or "Find the line", frees it to sit anywhere, and then each
+  family is split into its own number of steps either side of it, so no
+  step straddles the line.
   Shadows are tinted cool and lights warm at unchanged values, and an
   accent line marks the edge between them in every view, over the
   photograph and a laid-over sketch too. The palette can leave a value

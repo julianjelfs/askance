@@ -9,6 +9,7 @@ import 'package:askance/engine/regions.dart';
 import 'package:askance/engine/value_painter.dart';
 import 'package:askance/engine/value_scale.dart';
 import 'package:askance/model/study.dart';
+import 'package:askance/state/canvas_session.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -115,6 +116,31 @@ void main() {
       expect(bandOfColour(r, g, b, 3, bias: 0, contrast: 0), band);
     }
     expect(await readPixel(image, const Offset(96, 16)), isNull);
+  });
+
+  test('splitting into light and shadow moves no value', () async {
+    final session = CanvasSession()..setSteps(7);
+    session.loadImage(await stripes(), Uint8List(0));
+    Future<List<int>> bands() async => [
+      for (final x in [10.0, 48.0, 90.0])
+        switch ((await readPixel(session.image!, Offset(x, 16)))!) {
+          (final r, final g, final b) => bandOfColour(
+            r,
+            g,
+            b,
+            session.settings.steps,
+            bias: session.settings.bias,
+            contrast: session.settings.contrast,
+            split: session.settings.split,
+          ),
+        },
+    ];
+    final before = await bands();
+
+    await session.setFamilies(true);
+
+    expect(session.settings.shadowBands, isNotNull);
+    expect(await bands(), before);
   });
 
   /// The alpha along the middle row of the family outline over [stripes].

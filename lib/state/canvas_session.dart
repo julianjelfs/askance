@@ -355,23 +355,40 @@ class CanvasSession extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Splits the picture into light and shadow families, or stops. Split
-  /// afresh, the lower half of the steps are shadow, and the line between
-  /// the families goes where the photograph's darks and lights part.
-  void setFamilies(bool value) {
+  /// Splits the picture into light and shadow families, or stops. Splitting
+  /// moves no value: the line goes on the band boundary nearest where the
+  /// photograph's darks and lights part, so only the tint changes. The
+  /// slider or "Find the line" frees it from the boundaries.
+  Future<void> setFamilies(bool value) async {
     if (value == (settings.shadowSteps != null)) return;
-    settings = value
-        ? settings.copyWith(shadowSteps: math.max(1, settings.steps ~/ 2))
-        : settings.copyWith(removeFamilies: true);
+    if (!value) {
+      settings = settings.copyWith(removeFamilies: true);
+      _persistSoon();
+      notifyListeners();
+      return;
+    }
+    final line = await _otsuLine();
+    // Split already, by another tap while the histogram was taken.
+    if (settings.shadowSteps != null) return;
+    final steps = settings.steps;
+    final shadow = line == null ? steps ~/ 2 : (line * steps).round();
+    settings = settings.copyWith(shadowSteps: shadow.clamp(1, steps - 1));
     _persistSoon();
     notifyListeners();
-    if (value) unawaited(findFamilyLine());
   }
 
   /// Puts the family line at Otsu's threshold for the whole photograph.
   Future<void> findFamilyLine() async {
+    final line = await _otsuLine();
+    if (line == null || settings.shadowSteps == null) return;
+    setFamilyLine(line);
+  }
+
+  /// Otsu's threshold for the whole photograph, in toned lightness; null
+  /// with no photograph, or a different one by the time it is taken.
+  Future<double?> _otsuLine() async {
     final source = image;
-    if (source == null) return;
+    if (source == null) return null;
     final asked = settings;
     final line = await otsuLine(
       source,
@@ -379,9 +396,7 @@ class CanvasSession extends ChangeNotifier {
       bias: asked.bias,
       contrast: asked.contrast,
     );
-    // Gone, or replaced by another picture, while the histogram was taken.
-    if (image != source || settings.shadowSteps == null) return;
-    setFamilyLine(line);
+    return image == source ? line : null;
   }
 
   /// Where the line between the families falls, in toned lightness.
