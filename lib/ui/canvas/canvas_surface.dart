@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/gestures.dart';
@@ -719,8 +720,8 @@ class _SketchPainter extends CustomPainter {
 }
 
 /// What only shows while lines are being ruled: a handle on every end, the
-/// selected line picked out with every line's length as a multiple of it,
-/// and the line being ruled following the mouse from its first end.
+/// selected line picked out with every other line's length as a multiple of
+/// it, and the line being ruled following the mouse from its first end.
 class _LineEditPainter extends CustomPainter {
   _LineEditPainter({
     required this.lines,
@@ -746,7 +747,7 @@ class _LineEditPainter extends CustomPainter {
 
   /// The gap between a length label and the middle of its line, clear of
   /// the middle tick.
-  static const double _labelGap = 7;
+  static const double _labelGap = 6;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -785,11 +786,13 @@ class _LineEditPainter extends CustomPainter {
     if ((selected, photo) case (final unit?, final size?)) {
       if (lengthsIn(lines, unit, size) case final lengths?) {
         for (var i = 0; i < lines.length; i++) {
+          // The unit is 1 by definition, and already picked out.
+          if (i == unit) continue;
           _label(
             canvas,
             lineToScreen(lines[i].a, crop, picture),
             lineToScreen(lines[i].b, crop, picture),
-            i == unit ? '1' : '×${lengths[i].toStringAsFixed(2)}',
+            '×${lengths[i].toStringAsFixed(2)}',
           );
         }
       }
@@ -810,36 +813,39 @@ class _LineEditPainter extends CustomPainter {
     canvas.restore();
   }
 
-  /// [text] on a paper tab beside the middle of the line from [a] to [b], on
-  /// its upper side, so it reads whichever way the line runs.
+  /// [text] on a paper tab along the line from [a] to [b], beside its
+  /// middle and turned to run with it, so the label's angle says which line
+  /// it belongs to. Never upside down: a line steeper than plumb reads the
+  /// other way, and a plumb one reads upwards, like a book's spine.
   void _label(Canvas canvas, Offset a, Offset b, String text) {
     final along = b - a;
-    final length = along.distance;
-    var normal = length == 0
-        ? const Offset(0, -1)
-        : Offset(-along.dy / length, along.dx / length);
-    if (normal.dy > 0 || (normal.dy == 0 && normal.dx < 0)) normal = -normal;
+    var angle = along == Offset.zero ? 0.0 : along.direction;
+    if (angle >= math.pi / 2) angle -= math.pi;
+    if (angle < -math.pi / 2) angle += math.pi;
     final painter = TextPainter(
       text: TextSpan(text: text, style: AskanceText.number(12)),
       textDirection: TextDirection.ltr,
     )..layout();
     final width = painter.width + 10;
     final height = painter.height + 6;
-    // Out far enough that the tab's nearest edge, not its centre, is the gap
-    // away: a wide tab beside a plumb line needs more room than above a
-    // level one.
-    final reach =
-        _labelGap + (normal.dx.abs() * width + normal.dy.abs() * height) / 2;
-    final centre = (a + b) / 2 + normal * reach;
-    final tab = Rect.fromCenter(center: centre, width: width, height: height);
+    canvas.save();
+    canvas.translate((a.dx + b.dx) / 2, (a.dy + b.dy) / 2);
+    canvas.rotate(angle);
+    // Turned with the line, "up" is off its upper side.
+    final tab = Rect.fromCenter(
+      center: Offset(0, -(_labelGap + height / 2)),
+      width: width,
+      height: height,
+    );
     canvas.drawRRect(
       RRect.fromRectAndRadius(tab, const Radius.circular(AskanceRadius.small)),
       Paint()..color = AskanceColors.paper,
     );
     painter.paint(
       canvas,
-      centre - Offset(painter.width / 2, painter.height / 2),
+      tab.center - Offset(painter.width / 2, painter.height / 2),
     );
+    canvas.restore();
     painter.dispose();
   }
 
