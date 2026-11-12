@@ -54,6 +54,24 @@ Offset screenToLine(Offset screen, Rect crop, Rect picture) => Offset(
   crop.top + (screen.dy - picture.top) / picture.height * crop.height,
 );
 
+/// The length of [line] in pixels of a photograph [photo] in size. Its ends
+/// are fractions of each side, so on a photograph that is not square the
+/// same fraction across and down are different lengths.
+double lineLength(BoardLine line, Size photo) {
+  final d = line.b - line.a;
+  return Offset(d.dx * photo.width, d.dy * photo.height).distance;
+}
+
+/// How long each of [lines] is as a multiple of the one at [unit], measured
+/// on a photograph [photo] in size. Null when [unit] is out of range or has
+/// no length to measure by.
+List<double>? lengthsIn(List<BoardLine> lines, int unit, Size photo) {
+  if (unit < 0 || unit >= lines.length) return null;
+  final by = lineLength(lines[unit], photo);
+  if (by == 0) return null;
+  return [for (final line in lines) lineLength(line, photo) / by];
+}
+
 /// How near, in logical pixels, a click has to be to an end or a line to
 /// take hold of it.
 const double kLineReach = 8;

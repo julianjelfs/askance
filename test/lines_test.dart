@@ -158,6 +158,23 @@ void main() {
     });
   });
 
+  test('lengths are compared in pixels of the photograph, so on a wide one '
+      'a width and a height of the same pixels read as equal', () {
+    const photo = Size(400, 200);
+    const lines = [
+      // Half the width: 200px.
+      BoardLine(Offset(0.25, 0.5), Offset(0.75, 0.5)),
+      // The whole height: also 200px.
+      BoardLine(Offset(0.1, 0), Offset(0.1, 1)),
+      // Half the height: 100px.
+      BoardLine(Offset(0.9, 0.25), Offset(0.9, 0.75)),
+    ];
+    final lengths = lengthsIn(lines, 0, photo)!;
+    expect(lengths[0], 1);
+    expect(lengths[1], closeTo(1, 1e-9));
+    expect(lengths[2], closeTo(0.5, 1e-9));
+  });
+
   group('with shift held, a line being ruled', () {
     const area = Rect.fromLTWH(0, 0, 400, 300);
     const from = Offset(100, 100);

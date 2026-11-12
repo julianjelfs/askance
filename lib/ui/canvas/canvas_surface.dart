@@ -646,6 +646,7 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
                           crop: session.settings.crop,
                           picture: _picture,
                           visible: _area,
+                          photo: session.photoSize,
                           selected: session.selectedLine,
                           start: session.lineStart,
                           hover: switch ((session.lineStart, _hover)) {
@@ -718,14 +719,15 @@ class _SketchPainter extends CustomPainter {
 }
 
 /// What only shows while lines are being ruled: a handle on every end, the
-/// selected line picked out, and the line being ruled following the mouse
-/// from its first end.
+/// selected line picked out with every line's length as a multiple of it,
+/// and the line being ruled following the mouse from its first end.
 class _LineEditPainter extends CustomPainter {
   _LineEditPainter({
     required this.lines,
     required this.crop,
     required this.picture,
     required this.visible,
+    required this.photo,
     required this.selected,
     required this.start,
     required this.hover,
@@ -735,11 +737,16 @@ class _LineEditPainter extends CustomPainter {
   final Rect crop;
   final Rect picture;
   final Rect visible;
+  final Size? photo;
   final int? selected;
   final Offset? start;
   final Offset? hover;
 
   static const double _handleRadius = 4.5;
+
+  /// The gap between a length label and the middle of its line, clear of
+  /// the middle tick.
+  static const double _labelGap = 7;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -775,6 +782,19 @@ class _LineEditPainter extends CustomPainter {
       handle(lineToScreen(lines[i].b, crop, picture), filled: i == selected);
     }
 
+    if ((selected, photo) case (final unit?, final size?)) {
+      if (lengthsIn(lines, unit, size) case final lengths?) {
+        for (var i = 0; i < lines.length; i++) {
+          _label(
+            canvas,
+            lineToScreen(lines[i].a, crop, picture),
+            lineToScreen(lines[i].b, crop, picture),
+            i == unit ? '1' : '×${lengths[i].toStringAsFixed(2)}',
+          );
+        }
+      }
+    }
+
     if (start case final first?) {
       final from = lineToScreen(first, crop, picture);
       if (hover case final to?) {
@@ -790,12 +810,46 @@ class _LineEditPainter extends CustomPainter {
     canvas.restore();
   }
 
+  /// [text] on a paper tab beside the middle of the line from [a] to [b], on
+  /// its upper side, so it reads whichever way the line runs.
+  void _label(Canvas canvas, Offset a, Offset b, String text) {
+    final along = b - a;
+    final length = along.distance;
+    var normal = length == 0
+        ? const Offset(0, -1)
+        : Offset(-along.dy / length, along.dx / length);
+    if (normal.dy > 0 || (normal.dy == 0 && normal.dx < 0)) normal = -normal;
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: AskanceText.number(12)),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final width = painter.width + 10;
+    final height = painter.height + 6;
+    // Out far enough that the tab's nearest edge, not its centre, is the gap
+    // away: a wide tab beside a plumb line needs more room than above a
+    // level one.
+    final reach =
+        _labelGap + (normal.dx.abs() * width + normal.dy.abs() * height) / 2;
+    final centre = (a + b) / 2 + normal * reach;
+    final tab = Rect.fromCenter(center: centre, width: width, height: height);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(tab, const Radius.circular(AskanceRadius.small)),
+      Paint()..color = AskanceColors.paper,
+    );
+    painter.paint(
+      canvas,
+      centre - Offset(painter.width / 2, painter.height / 2),
+    );
+    painter.dispose();
+  }
+
   @override
   bool shouldRepaint(_LineEditPainter old) =>
       old.lines != lines ||
       old.crop != crop ||
       old.picture != picture ||
       old.visible != visible ||
+      old.photo != photo ||
       old.selected != selected ||
       old.start != start ||
       old.hover != hover;
