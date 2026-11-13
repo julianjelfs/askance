@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 /// The picture's tone: a lightness [v] from 0 to 1 as the study sees it once
 /// [shift] and [contrast] have been applied. The value map bands this, and
-/// PHOTO, a peek and SPLIT's photograph show it, so what is blocked in is
+/// PHOTO and a peek show it, so what is blocked in is
 /// the picture you are looking at.
 ///
 /// Contrast pivots on the middle; full travel either way is 4x steeper or

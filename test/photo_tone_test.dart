@@ -83,7 +83,6 @@ void main() {
       view: const ViewTransform(),
       devicePixelRatio: 1,
       peeking: peeking,
-      splitPosition: 0.5,
       disposer: disposer,
       drawGrid: false,
     )..paint(Canvas(out, Offset.zero & output), output);
@@ -218,8 +217,6 @@ void main() {
         view: const ViewTransform(),
         devicePixelRatio: 1,
         peeking: peeking,
-        // Split with the photograph across the edge being probed.
-        splitPosition: 0.75,
         disposer: disposer,
         drawGrid: false,
       )..paint(Canvas(out, Offset.zero & size), size);
@@ -268,19 +265,6 @@ void main() {
         greaterThan(40),
       );
     });
-
-    test('is what SPLIT compares the value map against', () async {
-      expect(
-        await nearEdge(const StudySettings(mode: ViewMode.split, detail: 0)),
-        greaterThan(40),
-      );
-      expect(
-        await nearEdge(
-          const StudySettings(mode: ViewMode.split, detail: 1, bias: 0.25),
-        ),
-        greaterThan(40),
-      );
-    });
   });
 
   group('the value map is made from the photograph as PHOTO shows it', () {
@@ -315,7 +299,6 @@ void main() {
         view: const ViewTransform(),
         devicePixelRatio: 1,
         peeking: false,
-        splitPosition: 0.5,
         disposer: disposer,
         drawGrid: false,
       )..paint(Canvas(out, Offset.zero & size), size);

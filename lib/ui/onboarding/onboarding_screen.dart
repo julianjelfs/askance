@@ -12,7 +12,7 @@ import 'onboarding_backdrop.dart';
 /// Bottom-anchored: content sits at the bottom of the screen, not centred.
 ///
 /// Each panel is drawn over the engine doing the thing that panel describes —
-/// the value map, then the split, then the grid — so the tour is the app
+/// the value map, then the edges, then the grid — so the tour is the app
 /// running rather than a picture of it.
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key, this.onDone});
@@ -60,14 +60,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     (
       title: 'Look askance.',
       body:
-          'Hold the image to peek at the photo. Split it down the middle. '
-          'Strip it back to edges, then block the values in, darkest first.',
+          'Hold the image to peek at the photo. Strip it back to edges, '
+          'then block the values in, darkest first.',
       cta: 'Next',
       settings: StudySettings(
         steps: 4,
         detail: 0.45,
-        mode: ViewMode.split,
-        splitPosition: 0.42,
+        mode: ViewMode.skeleton,
+        skeletonFill: 2,
       ),
     ),
     (

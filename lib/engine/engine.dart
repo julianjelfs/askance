@@ -16,7 +16,6 @@ import 'regions.dart';
 enum ViewMode {
   photo('Photo', 'Photograph'),
   value('Values', 'Value map'),
-  split('Split', 'Split'),
 
   /// The value map painted in arbitrary hues of the correct values. Tapping
   /// it again deals another palette: the colours keep changing, the values
@@ -156,8 +155,7 @@ Rect containRect(Size source, Size output) {
 /// the same view is applied at three different scales at once: the photograph
 /// is drawn in logical pixels, the blur pass renders in device pixels, and an
 /// export renders at 1200 or 2480 wide. A pixel offset would make those three
-/// disagree the moment you panned or zoomed — visible as the two halves of a
-/// split sliding apart.
+/// disagree the moment you panned or zoomed.
 class ViewTransform {
   const ViewTransform({
     this.zoom = 1,

@@ -103,7 +103,6 @@ void main() {
         ),
         view: const ViewTransform(),
         target: ExportSize.screen,
-        splitPosition: 0.5,
       );
       final codec = await ui.instantiateImageCodec(png!);
       final image = (await codec.getNextFrame()).image;

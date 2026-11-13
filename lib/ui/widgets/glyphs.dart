@@ -12,7 +12,6 @@ enum Glyph {
   star,
   arrowUpRight,
   copy,
-  splitGrip,
   command,
   trash,
   expand,
@@ -45,10 +44,8 @@ class GlyphIcon extends StatelessWidget {
   final Color color;
 
   @override
-  Widget build(BuildContext context) => CustomPaint(
-    size: Size(glyph == Glyph.splitGrip ? size * 1.7 : size, size),
-    painter: _GlyphPainter(glyph, color),
-  );
+  Widget build(BuildContext context) =>
+      CustomPaint(size: Size(size, size), painter: _GlyphPainter(glyph, color));
 }
 
 class _GlyphPainter extends CustomPainter {
@@ -66,8 +63,6 @@ class _GlyphPainter extends CustomPainter {
         _arrowUpRight(canvas, size);
       case Glyph.copy:
         _copy(canvas, size);
-      case Glyph.splitGrip:
-        _splitGrip(canvas, size);
       case Glyph.command:
         _command(canvas, size);
       case Glyph.trash:
@@ -388,31 +383,6 @@ class _GlyphPainter extends CustomPainter {
     canvas.drawRect(
       Rect.fromLTWH(u * 0.3, u * 0.3, u * 0.62, u * 0.62),
       stroke,
-    );
-  }
-
-  void _splitGrip(Canvas canvas, Size size) {
-    final h = size.height;
-    final fill = Paint()..color = color;
-    final mid = size.height / 2;
-    final w = h * 0.5;
-    final gap = h * 0.18;
-    // Pointing outwards from the centre, which is the direction it drags.
-    canvas.drawPath(
-      Path()
-        ..moveTo(size.width / 2 - gap, mid - w / 2)
-        ..lineTo(size.width / 2 - gap, mid + w / 2)
-        ..lineTo(size.width / 2 - gap - w * 0.8, mid)
-        ..close(),
-      fill,
-    );
-    canvas.drawPath(
-      Path()
-        ..moveTo(size.width / 2 + gap, mid - w / 2)
-        ..lineTo(size.width / 2 + gap, mid + w / 2)
-        ..lineTo(size.width / 2 + gap + w * 0.8, mid)
-        ..close(),
-      fill,
     );
   }
 

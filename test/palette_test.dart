@@ -21,11 +21,15 @@ void main() {
     expect(base.palette, scale.ramp(5));
     expect(base.copyWith(mode: ViewMode.random).palette, random(5));
     expect(
-      base.copyWith(mode: ViewMode.split, splitBase: ViewMode.random).palette,
+      base
+          .copyWith(mode: ViewMode.skeleton, skeletonBase: ViewMode.random)
+          .palette,
       random(5),
     );
     expect(
-      base.copyWith(mode: ViewMode.skeleton, splitBase: ViewMode.value).palette,
+      base
+          .copyWith(mode: ViewMode.skeleton, skeletonBase: ViewMode.value)
+          .palette,
       scale.ramp(5),
     );
   });

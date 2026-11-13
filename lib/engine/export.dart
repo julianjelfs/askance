@@ -54,7 +54,6 @@ Future<Uint8List?> renderExport({
   required StudySettings settings,
   required ViewTransform view,
   required ExportSize target,
-  required double splitPosition,
 }) async {
   final size = target.frameFor(
     croppedSize(
@@ -105,7 +104,6 @@ Future<Uint8List?> renderExport({
     // is one output pixel.
     devicePixelRatio: 1,
     peeking: false,
-    splitPosition: splitPosition,
     disposer: disposer,
     // In exports the grid is drawn into the image, dividing the exported frame.
     drawGrid: true,

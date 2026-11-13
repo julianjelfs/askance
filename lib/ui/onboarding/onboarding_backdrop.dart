@@ -117,7 +117,6 @@ class _OnboardingBackdropState extends ConsumerState<OnboardingBackdrop> {
                 view: view,
                 devicePixelRatio: dpr,
                 peeking: false,
-                splitPosition: widget.settings.splitPosition,
                 disposer: _disposer,
                 drawGrid: true,
               ),

@@ -109,7 +109,7 @@ void main() {
     test('the same view describes the same crop at any output size', () {
       // The photograph is drawn in logical pixels, the blur pass renders in
       // device pixels and an export renders at 1200 wide. All three must agree
-      // on the crop, or the two halves of a split slide apart as you zoom.
+      // on the crop, or the picture and its pass slide apart as you zoom.
       const view = ViewTransform(zoom: 2.5, offset: Offset(-0.18, -0.22));
       const logical = Size(320, 664);
       final atLogical = view.destination(source, logical);

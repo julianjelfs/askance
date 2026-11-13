@@ -79,17 +79,27 @@ void main() {
     expect(StudySettings.fromJson(const {}).randomSeed, 0);
   });
 
-  test('what a split lays its colours over survives a round trip too', () {
-    const settings = StudySettings(splitBase: ViewMode.random);
+  test('what the skeleton lays its colours over survives a round trip too, '
+      'under the key older studies stored it by', () {
+    const settings = StudySettings(skeletonBase: ViewMode.random);
+    expect(settings.toJson()['splitBase'], 'random');
     expect(
-      StudySettings.fromJson(settings.toJson()).splitBase,
+      StudySettings.fromJson(settings.toJson()).skeletonBase,
       ViewMode.random,
     );
     // Anything that is not a colour ramp falls back to the grey one.
     expect(
-      StudySettings.fromJson(const {'splitBase': 'skeleton'}).splitBase,
+      StudySettings.fromJson(const {'splitBase': 'skeleton'}).skeletonBase,
       ViewMode.value,
     );
-    expect(StudySettings.fromJson(const {}).splitBase, ViewMode.value);
+    expect(StudySettings.fromJson(const {}).skeletonBase, ViewMode.value);
+  });
+
+  test('a study left in the split view, since removed, opens on the value '
+      'map', () {
+    expect(
+      StudySettings.fromJson(const {'mode': 'split'}).mode,
+      ViewMode.value,
+    );
   });
 }

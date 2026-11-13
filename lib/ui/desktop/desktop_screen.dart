@@ -183,9 +183,6 @@ class _Stage extends ConsumerWidget {
                       editLines: true,
                     ),
                   ),
-                  if (session.settings.mode == ViewMode.split &&
-                      !session.peeking)
-                    Positioned.fill(child: SplitHandle(session: session)),
                 ],
               ),
             );

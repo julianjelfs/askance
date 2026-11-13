@@ -11,8 +11,8 @@ import 'engine.dart';
 import 'lines.dart';
 import 'value_scale.dart';
 
-/// Paints the study: the quantised value map, the untouched photograph, the
-/// split of the two, or the skeleton — plus the grid, which is always drawn
+/// Paints the study: the quantised value map, the untouched photograph, or
+/// the skeleton — plus the grid, which is always drawn
 /// last in screen space so it never rides the zoom transform.
 class ValuePainter extends CustomPainter {
   ValuePainter({
@@ -28,7 +28,6 @@ class ValuePainter extends CustomPainter {
     required this.view,
     required this.devicePixelRatio,
     required this.peeking,
-    required this.splitPosition,
     required this.disposer,
     required this.drawGrid,
     this.isolatedBand,
@@ -62,9 +61,6 @@ class ValuePainter extends CustomPainter {
   /// Press and hold peeks the photograph as PHOTO shows it, or from PHOTO
   /// itself, the photograph untouched.
   final bool peeking;
-
-  /// Live during a drag; written back to the study when the drag ends.
-  final double splitPosition;
 
   final DeferredDisposer disposer;
   final bool drawGrid;
@@ -124,18 +120,6 @@ class ValuePainter extends CustomPainter {
         Size(pass.width * devicePixelRatio, pass.height * devicePixelRatio),
       );
       canvas.restore();
-      if (settings.mode == ViewMode.split) {
-        final x = splitPosition * size.width;
-        canvas.save();
-        canvas.clipRect(Rect.fromLTWH(0, 0, x, size.height));
-        _paintPhotoView(canvas, area, dest);
-        canvas.restore();
-        // The rule sits on the boundary itself.
-        canvas.drawRect(
-          Rect.fromLTWH(x - 1, 0, 2, size.height),
-          Paint()..color = AskanceColors.accent,
-        );
-      }
     }
 
     if (drawGrid && settings.grid != GridMode.off) {
@@ -298,7 +282,6 @@ class ValuePainter extends CustomPainter {
         old.blurredSize != blurredSize ||
         old.view != view ||
         old.peeking != peeking ||
-        old.splitPosition != splitPosition ||
         old.source != source ||
         old.drawGrid != drawGrid ||
         old.isolatedBand != isolatedBand ||

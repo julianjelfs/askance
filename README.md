@@ -19,10 +19,8 @@ device build — the engine leans on GPU round trips that WebGL makes expensive.
 - **Value map.** The photograph quantised to 2–7 values, spaced the way the
   eye reads them rather than the way a camera measures them, so they line up
   with the printed value scale on an artist's desk.
-- **Five ways of looking.** Values (the value map), Photo (the source, in
-  colour or black and white with brightness and contrast), Split (photograph
-  on one side of a draggable rule, the processed image on the other — laid
-  over whichever colouring was showing when you entered it), Random (see
+- **Four ways of looking.** Values (the value map), Photo (the source, in
+  colour or black and white with brightness and contrast), Random (see
   below), and Edges (the skeleton: just the boundaries between values, with
   the darkest values blocked in on request).
 - **Random mode.** Each value band is painted an arbitrary hue *of exactly the

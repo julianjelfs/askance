@@ -94,7 +94,7 @@ class CanvasSession extends ChangeNotifier {
   final BlurPass blur = BlurPass();
 
   /// The photograph blurred by the study's detail, for PHOTO's squint, a
-  /// peek and SPLIT's photograph. Only asked for while PHOTO squints.
+  /// peek. Only asked for while PHOTO squints.
   final BlurPass photoBlur = BlurPass();
 
   /// The original bytes, kept so exports can re-run the engine from the source
@@ -159,10 +159,6 @@ class CanvasSession extends ChangeNotifier {
   Offset? probePoint;
   (int, int, int)? probeColour;
 
-  /// Live split position during a drag. Written back into [settings] when the
-  /// drag ends, so the study only records settled values.
-  double splitPosition = 0.5;
-
   Size viewportSize = Size.zero;
   double devicePixelRatio = 1;
 
@@ -205,7 +201,6 @@ class CanvasSession extends ChangeNotifier {
     name = study.name;
     imageKey = study.imageKey;
     settings = study.settings;
-    splitPosition = study.settings.splitPosition;
     // Come back to the passage you were working on, at the zoom you left it.
     view = study.settings.view;
     isolatedBand = null;
@@ -228,7 +223,6 @@ class CanvasSession extends ChangeNotifier {
     imageKey = null;
     name = 'Untitled study';
     settings = const StudySettings();
-    splitPosition = settings.splitPosition;
     view = const ViewTransform();
     isolatedBand = null;
     _stopProbing();
@@ -256,7 +250,6 @@ class CanvasSession extends ChangeNotifier {
     imageKey = null;
     name = 'Untitled study';
     settings = const StudySettings();
-    splitPosition = settings.splitPosition;
     view = const ViewTransform();
     isolatedBand = null;
     _stopProbing();
@@ -276,10 +269,9 @@ class CanvasSession extends ChangeNotifier {
     settings: settled,
   );
 
-  /// The study settings as they stand, folding in the two things kept live for
-  /// the duration of a gesture.
-  StudySettings get settled =>
-      settings.copyWith(splitPosition: splitPosition, view: view);
+  /// The study settings as they stand, folding in the view, which is kept
+  /// live for the duration of a gesture.
+  StudySettings get settled => settings.copyWith(view: view);
 
   /// Adopts settings that arrived over the QR transfer, wholesale — including
   /// the view, so the phone lands on the passage the sender was looking at.
@@ -288,7 +280,6 @@ class CanvasSession extends ChangeNotifier {
   /// sending device, so here its key names nothing.
   void applyTransferredSettings(StudySettings incoming) {
     settings = incoming.copyWith(removeSketch: true);
-    splitPosition = incoming.splitPosition;
     view = incoming.view;
     isolatedBand = null;
     _stopProbing();
@@ -458,8 +449,8 @@ class CanvasSession extends ChangeNotifier {
   void setMode(ViewMode mode) {
     if (mode == settings.mode) {
       // Tapping RANDOM while it is showing is the gesture of the mode:
-      // another deal of colours over the same values. Every other mode,
-      // SPLIT included, treats a repeat tap as nothing new.
+      // another deal of colours over the same values. Every other mode
+      // treats a repeat tap as nothing new.
       if (mode != ViewMode.random) return;
       dealColours();
       return;
@@ -473,16 +464,15 @@ class CanvasSession extends ChangeNotifier {
         randomSeed: mode == ViewMode.random && settings.randomSeed == 0
             ? math.Random().nextInt(1 << 31)
             : null,
-        // Split and skeleton are laid over whatever was showing, so they
-        // keep the colours they were entered from — a split compares them
-        // against the photograph, the skeleton's fill blocks them in. From
-        // anywhere else the base stays as it last was.
-        splitBase: mode == ViewMode.split || mode == ViewMode.skeleton
+        // The skeleton is laid over whatever was showing, so its fill
+        // blocks in the colours it was entered from. From anywhere else
+        // the base stays as it last was.
+        skeletonBase: mode == ViewMode.skeleton
             ? (settings.mode == ViewMode.random
                   ? ViewMode.random
                   : settings.mode == ViewMode.value
                   ? ViewMode.value
-                  : settings.splitBase)
+                  : settings.skeletonBase)
             : null,
       );
     }
@@ -1093,15 +1083,6 @@ class CanvasSession extends ChangeNotifier {
   }
 
   // --- view state ---------------------------------------------------------
-
-  void setSplitPosition(double value, {bool settle = false}) {
-    splitPosition = value.clamp(0.0, 1.0);
-    if (settle) {
-      settings = settings.copyWith(splitPosition: splitPosition);
-      _persistSoon();
-    }
-    notifyListeners();
-  }
 
   void setView(ViewTransform next) {
     if (next == view) return;

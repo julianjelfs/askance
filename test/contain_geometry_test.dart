@@ -82,7 +82,6 @@ void main() {
         view: view,
         devicePixelRatio: 1,
         peeking: false,
-        splitPosition: 0.5,
         disposer: disposer,
         drawGrid: false,
       )..paint(canvas, output);

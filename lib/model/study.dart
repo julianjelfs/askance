@@ -51,9 +51,8 @@ class StudySettings {
     this.lockDetail = false,
     this.bias = 0,
     this.contrast = 0,
-    this.splitPosition = 0.5,
     this.randomSeed = 0,
-    this.splitBase = ViewMode.value,
+    this.skeletonBase = ViewMode.value,
     this.view = const ViewTransform(),
     this.crop = kWholeImage,
     this.gridFrame = kWholeImage,
@@ -114,18 +113,17 @@ class StudySettings {
   /// the picture's tone curve: the value map bands the photograph through
   /// it, and PHOTO shows the photograph through it.
   final double contrast;
-  final double splitPosition;
 
   /// Which deal of colours the RANDOM mode is showing. Kept with the study so
   /// a palette that sparked something survives closing it; tapping RANDOM
   /// again moves the seed on.
   final int randomSeed;
 
-  /// What split and skeleton lay their colours over: the scale's ramp or the
-  /// random palette, whichever was on screen when the mode was entered — a
-  /// split compares it against the photograph, the skeleton's fill blocks it
-  /// in. Only [ViewMode.value] or [ViewMode.random].
-  final ViewMode splitBase;
+  /// What the skeleton lays its colours over: the scale's ramp or the random
+  /// palette, whichever was on screen when the mode was entered, for its
+  /// fill to block in. Only [ViewMode.value] or [ViewMode.random]. Stored
+  /// as `splitBase`, from when a split view shared it.
+  final ViewMode skeletonBase;
 
   /// Where the study was left: zoom, and pan as a fraction of the frame.
   ///
@@ -197,13 +195,12 @@ class StudySettings {
   bool get keepsTone => bias == 0 && contrast == 0;
 
   /// The colours the processed image is painted in, darkest first: the
-  /// scale's ramp, or the random deal when RANDOM is showing or is what split
-  /// and skeleton are laid over. The painter and the palette swatch both read
+  /// scale's ramp, or the random deal when RANDOM is showing or is what the
+  /// skeleton is laid over. The painter and the palette swatch both read
   /// this, so the swatch can never show a colour the picture doesn't use.
   List<Color> get palette =>
       mode == ViewMode.random ||
-          ((mode == ViewMode.split || mode == ViewMode.skeleton) &&
-              splitBase == ViewMode.random)
+          (mode == ViewMode.skeleton && skeletonBase == ViewMode.random)
       ? randomRamp(scale: scale, steps: steps, seed: randomSeed)
       : switch (shadowBands) {
           final shadow? => familyRamp(scale, steps, shadow, gap: familyGap),
@@ -253,9 +250,8 @@ class StudySettings {
     bool? lockDetail,
     double? bias,
     double? contrast,
-    double? splitPosition,
     int? randomSeed,
-    ViewMode? splitBase,
+    ViewMode? skeletonBase,
     ViewTransform? view,
     Rect? crop,
     Rect? gridFrame,
@@ -280,9 +276,8 @@ class StudySettings {
     lockDetail: lockDetail ?? this.lockDetail,
     bias: bias ?? this.bias,
     contrast: contrast ?? this.contrast,
-    splitPosition: splitPosition ?? this.splitPosition,
     randomSeed: randomSeed ?? this.randomSeed,
-    splitBase: splitBase ?? this.splitBase,
+    skeletonBase: skeletonBase ?? this.skeletonBase,
     view: view ?? this.view,
     crop: crop ?? this.crop,
     gridFrame: gridFrame ?? this.gridFrame,
@@ -307,9 +302,8 @@ class StudySettings {
     'lockDetail': lockDetail,
     'bias': bias,
     'contrast': contrast,
-    'splitPosition': splitPosition,
     'randomSeed': randomSeed,
-    'splitBase': splitBase.name,
+    'splitBase': skeletonBase.name,
     'zoom': view.zoom,
     'panX': view.offset.dx,
     'panY': view.offset.dy,
@@ -357,9 +351,8 @@ class StudySettings {
           (json['tone'] is Map ? (json['tone'] as Map)['contrast'] : null),
       0,
     ).clamp(-1.0, 1.0),
-    splitPosition: _double(json['splitPosition'], 0.5).clamp(0.0, 1.0),
     randomSeed: _int(json['randomSeed'], 0),
-    splitBase:
+    skeletonBase:
         _enumByName(ViewMode.values, json['splitBase'], ViewMode.value) ==
             ViewMode.random
         ? ViewMode.random
@@ -410,9 +403,8 @@ class StudySettings {
       other.lockDetail == lockDetail &&
       other.bias == bias &&
       other.contrast == contrast &&
-      other.splitPosition == splitPosition &&
       other.randomSeed == randomSeed &&
-      other.splitBase == splitBase &&
+      other.skeletonBase == skeletonBase &&
       other.view == view &&
       other.crop == crop &&
       other.gridFrame == gridFrame &&
@@ -437,9 +429,8 @@ class StudySettings {
     lockDetail,
     bias,
     contrast,
-    splitPosition,
     randomSeed,
-    splitBase,
+    skeletonBase,
     view,
     crop,
     gridFrame,

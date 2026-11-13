@@ -103,7 +103,6 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
       settings: session.settings,
       view: session.view,
       target: _size,
-      splitPosition: session.splitPosition,
     );
   }
 

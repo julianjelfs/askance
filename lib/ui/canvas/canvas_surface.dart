@@ -18,7 +18,6 @@ import '../../engine/value_painter.dart';
 import '../../state/canvas_session.dart';
 import '../../theme.dart';
 import '../widgets/controls.dart';
-import '../widgets/glyphs.dart';
 import 'tool_panel.dart' show probeReadout;
 
 /// The image itself, plus every gesture that acts on it.
@@ -584,7 +583,6 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
                             view: session.view,
                             devicePixelRatio: dpr,
                             peeking: session.peeking,
-                            splitPosition: session.splitPosition,
                             disposer: _disposer,
                             drawGrid: widget.drawGrid,
                             isolatedBand: session.isolatedBand,
@@ -859,71 +857,6 @@ class _LineEditPainter extends CustomPainter {
       old.selected != selected ||
       old.start != start ||
       old.hover != hover;
-}
-
-/// A 44px-wide invisible drag target centred on the split boundary, carrying a
-/// round grip on the rule. The handle travels the full width, edge to edge.
-class SplitHandle extends StatelessWidget {
-  const SplitHandle({super.key, required this.session});
-
-  final CanvasSession session;
-
-  @override
-  Widget build(BuildContext context) {
-    final s = DesignScale.of(context);
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final target = 44 * s;
-        return Stack(
-          clipBehavior: Clip.hardEdge,
-          children: [
-            Positioned(
-              // Deliberately not clamped into the frame: the grip stays
-              // centred on the boundary the whole way and clips at the edges.
-              // Holding it back so it stays wholly visible would leave it
-              // trailing the rule by half its width at either extreme.
-              left: session.splitPosition * width - target / 2,
-              top: 0,
-              bottom: 0,
-              width: target,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                // Follows the pointer by delta, so it needs no mapping back
-                // into the surface's coordinate space.
-                onHorizontalDragUpdate: (d) => session.setSplitPosition(
-                  session.splitPosition + d.delta.dx / width,
-                ),
-                onHorizontalDragEnd: (_) => session.setSplitPosition(
-                  session.splitPosition,
-                  settle: true,
-                ),
-                child: Center(
-                  child: Container(
-                    width: 36 * s,
-                    height: 36 * s,
-                    alignment: Alignment.center,
-                    decoration: const BoxDecoration(
-                      color: AskanceColors.accent,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(color: Color(0x40000000), blurRadius: 6),
-                      ],
-                    ),
-                    child: GlyphIcon(
-                      Glyph.splitGrip,
-                      size: 11 * s,
-                      color: AskanceColors.paper,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
 }
 
 /// The dropper's mark: a ring with a dark and a light edge, so it reads on

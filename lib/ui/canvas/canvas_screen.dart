@@ -143,8 +143,6 @@ class _CanvasBodyState extends ConsumerState<_CanvasBody>
           )
         else
           CanvasSurface(session: session, shader: shader, freezeBlur: frozen),
-        if (session.settings.mode == ViewMode.split && !session.peeking)
-          SplitHandle(session: session),
         // Lining up closes the sheet the controls are on, so the way out
         // floats over the picture instead.
         if (session.aligningSketch)

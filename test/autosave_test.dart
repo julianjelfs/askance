@@ -94,21 +94,6 @@ void main() {
     });
   });
 
-  test('a split drag writes only once it settles', () {
-    fakeAsync((async) {
-      final t = sessionUnderTest();
-      t.session.openStudy(studyNamed('a'));
-      t.session.setSplitPosition(0.3);
-      t.session.setSplitPosition(0.4);
-      async.elapse(const Duration(seconds: 2));
-      expect(t.writes, isEmpty, reason: 'mid-drag positions are not settings');
-
-      t.session.setSplitPosition(0.42, settle: true);
-      async.elapse(const Duration(seconds: 2));
-      expect(t.writes.single.$2.splitPosition, closeTo(0.42, 1e-9));
-    });
-  });
-
   test('zoom and pan persist, so a study reopens where you left it', () {
     fakeAsync((async) {
       final t = sessionUnderTest();

@@ -46,7 +46,6 @@ void main() {
         settings: settings,
         view: const ViewTransform(),
         target: ExportSize.screen,
-        splitPosition: settings.splitPosition,
       );
       return decodeImage(png!);
     }

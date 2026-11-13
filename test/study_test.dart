@@ -17,7 +17,6 @@ void main() {
       expect(s.gridLevel, 2);
       expect(s.gridDivisions, 4);
       expect(s.skeletonFill, 0);
-      expect(s.splitPosition, 0.5);
     });
 
     test('round-trips through JSON', () {
@@ -32,7 +31,6 @@ void main() {
         gridFrame: Rect.fromLTRB(0.25, 0.1, 0.75, 0.6),
         skeletonFill: 3,
         lockDetail: true,
-        splitPosition: 0.25,
       );
       expect(StudySettings.fromJson(original.toJson()), original);
     });
@@ -56,23 +54,19 @@ void main() {
         'steps': 0,
         'gridLevel': 0,
         'detail': -4.0,
-        'splitPosition': -1.0,
       });
       expect(low.steps, StudySettings.minSteps);
       expect(low.gridLevel, StudySettings.minGridLevel);
       expect(low.detail, 0);
-      expect(low.splitPosition, 0);
 
       final high = StudySettings.fromJson(const {
         'steps': 99,
         'gridLevel': 99,
         'detail': 4.0,
-        'splitPosition': 9.0,
       });
       expect(high.steps, StudySettings.maxSteps);
       expect(high.gridLevel, StudySettings.maxGridLevel);
       expect(high.detail, 1);
-      expect(high.splitPosition, 1);
     });
   });
 

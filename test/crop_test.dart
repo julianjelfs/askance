@@ -144,7 +144,6 @@ void main() {
       view: view,
       devicePixelRatio: 1,
       peeking: false,
-      splitPosition: 0.5,
       disposer: disposer,
       drawGrid: false,
     )..paint(Canvas(out, Offset.zero & output), output);
@@ -211,7 +210,6 @@ void main() {
       view: view,
       devicePixelRatio: 1,
       peeking: false,
-      splitPosition: 0.5,
       disposer: disposer,
       drawGrid: false,
     )..paint(Canvas(out, Offset.zero & output), output);
@@ -278,7 +276,6 @@ void main() {
         view: zoomed,
         devicePixelRatio: 1,
         peeking: false,
-        splitPosition: 0.5,
         disposer: disposer,
         drawGrid: false,
       )..paint(Canvas(out, Offset.zero & output), output);
