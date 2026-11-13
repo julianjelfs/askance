@@ -298,7 +298,12 @@ class _RailState extends ConsumerState<_Rail> {
           // the tallest state overflows a laptop's height.
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+              padding: const EdgeInsets.fromLTRB(
+                _railPadding,
+                16,
+                _railPadding,
+                20,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -644,6 +649,9 @@ class _RailState extends ConsumerState<_Rail> {
   );
 }
 
+/// The rail's margin either side of its controls.
+const double _railPadding = 20;
+
 /// The folded groups of the rail.
 enum _RailGroup { picture, families, board, sketch }
 
@@ -699,7 +707,7 @@ class _DisclosureState extends State<_Disclosure> {
   @override
   Widget build(BuildContext context) {
     final open = widget.open;
-    return Column(
+    final content = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const Rule(),
@@ -772,6 +780,26 @@ class _DisclosureState extends State<_Disclosure> {
                 )
               : const SizedBox(width: double.infinity),
         ),
+      ],
+    );
+    // The open group lies on paper, from one edge of the rail to the other:
+    // lighter than the rail around it, so where its controls begin and end
+    // is plain at a glance.
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Positioned(
+          left: -_railPadding,
+          right: -_railPadding,
+          top: 0,
+          bottom: 0,
+          child: AnimatedOpacity(
+            opacity: open ? 1 : 0,
+            duration: _duration,
+            child: const ColoredBox(color: AskanceColors.paper),
+          ),
+        ),
+        content,
       ],
     );
   }
