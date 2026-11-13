@@ -418,7 +418,7 @@ class _RailState extends ConsumerState<_Rail> {
                     _sketchSummary(session),
                     SketchControl(session: session),
                   ),
-                  const Rule(),
+                  const _BleedRule(),
                 ],
               ),
             ),
@@ -652,6 +652,29 @@ class _RailState extends ConsumerState<_Rail> {
 /// The rail's margin either side of its controls.
 const double _railPadding = 20;
 
+/// A hairline from one edge of the rail to the other, past the margin its
+/// controls keep: the open group's paper runs edge to edge, and a rule that
+/// stopped short of it would look broken off.
+class _BleedRule extends StatelessWidget {
+  const _BleedRule();
+
+  @override
+  Widget build(BuildContext context) => const SizedBox(
+    height: kRule,
+    child: Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Positioned(
+          left: -_railPadding,
+          right: -_railPadding,
+          top: 0,
+          child: Rule(),
+        ),
+      ],
+    ),
+  );
+}
+
 /// The folded groups of the rail.
 enum _RailGroup { picture, families, board, sketch }
 
@@ -710,7 +733,7 @@ class _DisclosureState extends State<_Disclosure> {
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Rule(),
+        const _BleedRule(),
         Semantics(
           button: true,
           expanded: open,
