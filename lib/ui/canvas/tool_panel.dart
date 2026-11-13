@@ -1042,11 +1042,9 @@ class _SketchControlState extends ConsumerState<SketchControl> {
             () => ref.read(studiesProvider.notifier).removeSketch(session),
           ),
         ]),
-        SizedBox(height: 16 * s),
-        const ControlLabelRow(label: 'Proportions'),
-        SizedBox(height: 6 * s),
+        SizedBox(height: 8 * s),
         button(
-          marking ? 'Done' : 'Mark points',
+          marking ? 'Done' : 'Landmarks',
           () => session.setMarkingPoints(!marking),
           solid: marking,
           enabled: session.sketchImage != null,
@@ -1066,14 +1064,17 @@ class _SketchControlState extends ConsumerState<SketchControl> {
                   style: AskanceText.caption(12.5).by(s),
                 ),
               ),
-              SizedBox(width: 8 * s),
-              ActionButton(
-                label: _showReport ? 'Hide' : 'Details',
-                solid: false,
-                height: 30,
-                fontSize: 12.5,
-                onPressed: () => setState(() => _showReport = !_showReport),
-              ),
+              // Nothing out means nothing more to tell.
+              if (fit.describe().length > 1) ...[
+                SizedBox(width: 8 * s),
+                ActionButton(
+                  label: _showReport ? 'Hide' : 'Details',
+                  solid: false,
+                  height: 30,
+                  fontSize: 12.5,
+                  onPressed: () => setState(() => _showReport = !_showReport),
+                ),
+              ],
             ],
           ),
         ],
@@ -1082,14 +1083,6 @@ class _SketchControlState extends ConsumerState<SketchControl> {
             SizedBox(height: 6 * s),
             Text(line, style: AskanceText.caption(12.5).by(s)),
           ],
-          SizedBox(height: 6 * s),
-          Text(
-            'Measured after the best fit of the sketch to the picture, so '
-            'how you lined it up does not count, and the sketch is laid '
-            'over the picture as that fit puts it. Percentages are of the '
-            'distance between your two farthest points.',
-            style: AskanceText.caption(12.5).by(s),
-          ),
         ] else if (fit == null && landmarks.isNotEmpty)
           Padding(
             padding: EdgeInsets.only(top: 6 * s),
