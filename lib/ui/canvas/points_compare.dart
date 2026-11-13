@@ -111,11 +111,6 @@ class PointsCompare extends StatelessWidget {
           ),
         );
 
-        // The worst thing out, rather than the count of what is in place.
-        final report = switch (fit?.describe()) {
-          final lines? => lines.length > 1 ? lines[1] : lines[0],
-          null => null,
-        };
         final selected = session.selectedPoint;
         return ColoredBox(
           color: AskanceColors.surround,
@@ -128,25 +123,11 @@ class PointsCompare extends StatelessWidget {
                 child: Row(
                   children: [
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            pointsPrompt(session),
-                            style: AskanceText.body(13.5).by(s),
-                          ),
-                          if (report != null) ...[
-                            SizedBox(height: 4 * s),
-                            Text(
-                              report,
-                              style: AskanceText.caption(
-                                12.5,
-                                color: AskanceColors.accentInk,
-                              ).by(s),
-                            ),
-                          ],
-                        ],
+                      // What is out shows as arrows on the sketch; the
+                      // words wait in the panel, behind Details.
+                      child: Text(
+                        pointsPrompt(session),
+                        style: AskanceText.body(13.5).by(s),
                       ),
                     ),
                     SizedBox(width: 10 * s),
@@ -157,6 +138,15 @@ class PointsCompare extends StatelessWidget {
                       fontSize: 13.5,
                       enabled: landmarks.isNotEmpty,
                       onPressed: session.undoPoint,
+                    ),
+                    SizedBox(width: 8 * s),
+                    ActionButton(
+                      label: 'Clear',
+                      solid: false,
+                      height: 36,
+                      fontSize: 13.5,
+                      enabled: landmarks.isNotEmpty,
+                      onPressed: session.clearPoints,
                     ),
                     SizedBox(width: 8 * s),
                     ActionButton(

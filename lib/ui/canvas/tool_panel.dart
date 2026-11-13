@@ -863,6 +863,10 @@ class _SketchControlState extends ConsumerState<SketchControl> {
   bool _busy = false;
   bool _failed = false;
 
+  /// Whether the proportions are spelled out point by point, not only
+  /// summed up in a line.
+  bool _showReport = false;
+
   /// A mouse and a keyboard, where the wheel scales and shift turns.
   static bool get _pointer => !canTakePhoto;
 
@@ -1047,18 +1051,34 @@ class _SketchControlState extends ConsumerState<SketchControl> {
           solid: marking,
           enabled: session.sketchImage != null,
         ),
-        if (landmarks.isNotEmpty) ...[
-          SizedBox(height: 8 * s),
-          row([
-            button('Undo', session.undoPoint),
-            button('Clear', session.clearPoints),
-          ]),
-        ],
         SizedBox(height: 8 * s),
         if (marking)
           Text(pointsPrompt(session), style: AskanceText.caption(12.5).by(s)),
         if (fit != null) ...[
-          for (final line in fit.describe()) ...[
+          // The verdict in a line; what is out, point by point, waits
+          // behind it. Once read, it is mostly in the way.
+          SizedBox(height: 2 * s),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  fit.describe().first,
+                  style: AskanceText.caption(12.5).by(s),
+                ),
+              ),
+              SizedBox(width: 8 * s),
+              ActionButton(
+                label: _showReport ? 'Hide' : 'Details',
+                solid: false,
+                height: 30,
+                fontSize: 12.5,
+                onPressed: () => setState(() => _showReport = !_showReport),
+              ),
+            ],
+          ),
+        ],
+        if (fit != null && _showReport) ...[
+          for (final line in fit.describe().skip(1)) ...[
             SizedBox(height: 6 * s),
             Text(line, style: AskanceText.caption(12.5).by(s)),
           ],
@@ -1070,7 +1090,7 @@ class _SketchControlState extends ConsumerState<SketchControl> {
             'distance between your two farthest points.',
             style: AskanceText.caption(12.5).by(s),
           ),
-        ] else if (landmarks.isNotEmpty)
+        ] else if (fit == null && landmarks.isNotEmpty)
           Padding(
             padding: EdgeInsets.only(top: 6 * s),
             child: Text(
@@ -1079,7 +1099,7 @@ class _SketchControlState extends ConsumerState<SketchControl> {
               style: AskanceText.caption(12.5).by(s),
             ),
           )
-        else if (!marking)
+        else if (fit == null && !marking)
           Text(
             'Pick points on the picture and the same points on the sketch '
             'to check the proportions between them.',
