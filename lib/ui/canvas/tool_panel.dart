@@ -7,6 +7,7 @@ import '../../engine/blocks.dart';
 import '../../engine/crop.dart';
 import '../../engine/engine.dart';
 import '../../engine/families.dart';
+import '../../engine/landmarks.dart' show kMaxLandmarks;
 import '../../engine/value_scale.dart';
 import '../../model/study.dart';
 import '../../state/canvas_session.dart';
@@ -16,6 +17,24 @@ import '../../theme.dart';
 import '../pick_image.dart';
 import '../sketch_link/sketch_link_dialog.dart';
 import '../widgets/controls.dart';
+
+/// What the next tap does while marking points, for the panel and for the
+/// bar floating over the picture on the phone.
+String pointsPrompt(CanvasSession session) {
+  final count = session.settings.landmarks.length;
+  if (count == 0) {
+    return 'Tap a point on the picture you can find on the sketch: the top '
+        'of the head, the chin, the corner of an eye.';
+  }
+  if (session.nextMark case final i?) {
+    return 'Tap point ${i + 1} on the sketch.';
+  }
+  if (count >= kMaxLandmarks) {
+    return 'That is as many points as a study holds.';
+  }
+  if (count < 3) return 'Tap point ${count + 1} on the picture.';
+  return 'Add another point on the picture, or press Done.';
+}
 
 /// The control groups. Shared verbatim between the phone's tool panel and the
 /// desktop rail — only the surrounding chrome differs.
@@ -989,6 +1008,13 @@ class _SketchControlState extends ConsumerState<SketchControl> {
     }
 
     final aligning = session.aligningSketch;
+    final marking = session.markingPoints;
+    final landmarks = session.settings.landmarks;
+    final fit = session.landmarkFit;
+    final marked = [
+      for (var i = 0; i < landmarks.length; i++)
+        if (session.isMarked(i)) i,
+    ].length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1012,6 +1038,53 @@ class _SketchControlState extends ConsumerState<SketchControl> {
             () => ref.read(studiesProvider.notifier).removeSketch(session),
           ),
         ]),
+        SizedBox(height: 16 * s),
+        const ControlLabelRow(label: 'Proportions'),
+        SizedBox(height: 6 * s),
+        button(
+          marking ? 'Done' : 'Mark points',
+          () => session.setMarkingPoints(!marking),
+          solid: marking,
+          enabled: session.sketchImage != null,
+        ),
+        if (landmarks.isNotEmpty) ...[
+          SizedBox(height: 8 * s),
+          row([
+            button('Undo', session.undoPoint),
+            button('Clear', session.clearPoints),
+          ]),
+        ],
+        SizedBox(height: 8 * s),
+        if (marking)
+          Text(pointsPrompt(session), style: AskanceText.caption(12.5).by(s)),
+        if (fit != null) ...[
+          for (final line in fit.describe()) ...[
+            SizedBox(height: 6 * s),
+            Text(line, style: AskanceText.caption(12.5).by(s)),
+          ],
+          SizedBox(height: 6 * s),
+          Text(
+            'Measured after the best fit of the sketch to the picture, so '
+            'how you lined it up does not count, and the sketch is laid '
+            'over the picture as that fit puts it. Percentages are of the '
+            'distance between your two farthest points.',
+            style: AskanceText.caption(12.5).by(s),
+          ),
+        ] else if (landmarks.isNotEmpty)
+          Padding(
+            padding: EdgeInsets.only(top: 6 * s),
+            child: Text(
+              '$marked of ${landmarks.length} points marked on both. '
+              'Three are needed to compare.',
+              style: AskanceText.caption(12.5).by(s),
+            ),
+          )
+        else if (!marking)
+          Text(
+            'Pick points on the picture and the same points on the sketch '
+            'to check the proportions between them.',
+            style: AskanceText.caption(12.5).by(s),
+          ),
         // Only offered when a page was found: straightened is the default,
         // and this is the way back if the page was found wrongly.
         if (sketch.page != null) ...[

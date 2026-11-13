@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:askance/data/study_repository.dart';
+import 'package:askance/engine/landmarks.dart';
 import 'package:askance/engine/lines.dart';
 import 'package:askance/engine/sketch.dart';
 import 'package:askance/model/study.dart';
@@ -116,6 +117,21 @@ void main() {
             Offset(0.12, 0.85),
           ],
           straighten: false,
+        ),
+      );
+      expect(StudySettings.fromJson(settings.toJson()), settings);
+    });
+
+    test('landmarks on the picture and their marks on the sketch, one '
+        'not yet marked, round-trip through JSON', () {
+      final settings = StudySettings(
+        landmarks: const [
+          Landmark(Offset(0.2, 0.3), 'Chin'),
+          Landmark(Offset(0.5, 0.1)),
+          Landmark(Offset(0.7, 0.8), "Tom's hat"),
+        ],
+        sketch: placed.copyWith(
+          marks: const [Offset(0.25, 0.3), null, Offset(0.66, 0.79)],
         ),
       );
       expect(StudySettings.fromJson(settings.toJson()), settings);

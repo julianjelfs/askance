@@ -24,6 +24,7 @@ class SketchOverlay {
     this.opacity = defaultOpacity,
     this.page,
     this.straighten = true,
+    this.marks = const [],
   });
 
   /// Names the copy of the photograph in app storage, as [Study.imageKey]
@@ -46,6 +47,16 @@ class SketchOverlay {
   /// whole photograph. Means nothing without a page.
   final bool straighten;
 
+  /// The drawing's half of each of the study's landmarks, in order: where
+  /// the point marked on the picture was drawn, as a fraction of each side
+  /// of the drawing's photograph as shown. Null for one not yet marked on
+  /// the drawing; shorter than the landmarks when the last are not.
+  ///
+  /// Kept with the photograph rather than the study: a new photograph of
+  /// the drawing, or the same one squared up differently, has its points
+  /// in other places, while the picture's stay where they were.
+  final List<Offset?> marks;
+
   /// The page the drawing is cropped and squared up to, if it is.
   List<Offset>? get straightenedTo => straighten ? page : null;
 
@@ -62,6 +73,7 @@ class SketchOverlay {
     double? rotation,
     double? opacity,
     bool? straighten,
+    List<Offset?>? marks,
   }) => SketchOverlay(
     imageKey: imageKey,
     center: center ?? this.center,
@@ -70,6 +82,7 @@ class SketchOverlay {
     opacity: opacity ?? this.opacity,
     page: page,
     straighten: straighten ?? this.straighten,
+    marks: marks ?? this.marks,
   );
 
   Map<String, Object?> toJson() => {
@@ -84,6 +97,10 @@ class SketchOverlay {
       ],
       'straighten': straighten,
     },
+    if (marks.isNotEmpty)
+      'marks': [
+        for (final m in marks) m == null ? null : [m.dx, m.dy],
+      ],
   };
 
   /// Null for anything too damaged to place: no image, or no position.
@@ -112,7 +129,22 @@ class SketchOverlay {
       // A damaged page costs the straightening, not the drawing.
       page: _pageFromJson(json['page']),
       straighten: json['straighten'] != false,
+      marks: _marksFromJson(json['marks']),
     );
+  }
+
+  /// A damaged mark costs that mark, not the rest: it comes back unmarked.
+  static List<Offset?> _marksFromJson(Object? json) {
+    if (json is! List) return const [];
+    return [
+      for (final m in json)
+        if (m is List &&
+            m.length == 2 &&
+            m.every((v) => v is num && v.isFinite))
+          Offset((m[0] as num).toDouble(), (m[1] as num).toDouble())
+        else
+          null,
+    ];
   }
 
   static List<Offset>? _pageFromJson(Object? json) {
@@ -140,7 +172,16 @@ class SketchOverlay {
       other.rotation == rotation &&
       other.opacity == opacity &&
       _samePage(other.page, page) &&
-      other.straighten == straighten;
+      other.straighten == straighten &&
+      _sameMarks(other.marks, marks);
+
+  static bool _sameMarks(List<Offset?> a, List<Offset?> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
 
   static bool _samePage(List<Offset>? a, List<Offset>? b) {
     if (a == null || b == null) return a == b;
@@ -160,6 +201,7 @@ class SketchOverlay {
     opacity,
     page == null ? null : Object.hashAll(page!),
     straighten,
+    Object.hashAll(marks),
   );
 }
 

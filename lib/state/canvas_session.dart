@@ -9,6 +9,7 @@ import 'package:flutter/scheduler.dart';
 import '../engine/crop.dart';
 import '../engine/engine.dart';
 import '../engine/families.dart';
+import '../engine/landmarks.dart';
 import '../engine/blur_pass.dart';
 import '../engine/lines.dart';
 import '../engine/sketch.dart';
@@ -140,6 +141,11 @@ class CanvasSession extends ChangeNotifier {
   /// View state like [drawingLines], and like it, a mode of its own: the two
   /// never run at once.
   bool aligningSketch = false;
+
+  /// Whether taps on the picture mark points to check the drawing's
+  /// proportions by. A mode of its own, like [drawingLines]: the two never
+  /// run at once.
+  bool markingPoints = false;
 
   /// Whether a tap on the picture reads the value under it rather than
   /// doing what it usually does. View state like [drawingLines], and a mode
@@ -588,6 +594,7 @@ class CanvasSession extends ChangeNotifier {
     if (value) {
       drawingLines = true;
       aligningSketch = false;
+      markingPoints = false;
       _stopProbing();
     } else {
       _stopDrawingLines();
@@ -785,14 +792,237 @@ class CanvasSession extends ChangeNotifier {
     if (value) {
       _stopDrawingLines();
       _stopProbing();
+      markingPoints = false;
       openTool = null;
       chromeVisible = true;
     }
     notifyListeners();
   }
 
+  // --- points to check the drawing's proportions by -----------------------
+
+  /// Starts or ends marking points. Ending it lays the drawing over the
+  /// picture as the points fit it, when there are enough to fit, so the
+  /// overlay shows what is left over.
+  void setMarkingPoints(bool value) {
+    if (value && settings.sketch == null) return;
+    if (value == markingPoints) return;
+    if (!value) _lineUpOnPoints();
+    markingPoints = value;
+    selectedPoint = null;
+    if (value) {
+      _stopDrawingLines();
+      _stopProbing();
+      aligningSketch = false;
+      // Taps on the picture place points, so on the phone the sheet over
+      // it goes, as it does for lining up.
+      openTool = null;
+      chromeVisible = true;
+    }
+    notifyListeners();
+  }
+
+  /// The size of the drawing's photograph as shown, which its marks are
+  /// fractions of. Null while it is not loaded.
+  Size? get _drawingSize => sketchImage == null
+      ? null
+      : Size(sketchImage!.width.toDouble(), sketchImage!.height.toDouble());
+
+  List<Offset?> get _marks => settings.sketch?.marks ?? const [];
+
+  /// The landmark whose half on the drawing the next tap places: the first
+  /// not yet marked there. Null when the next tap picks a new point on the
+  /// picture, or there is no drawing to mark.
+  int? get nextMark {
+    if (settings.sketch == null || sketchImage == null) return null;
+    final marks = _marks;
+    for (var i = 0; i < settings.landmarks.length; i++) {
+      if (i >= marks.length || marks[i] == null) return i;
+    }
+    return null;
+  }
+
+  /// The point the name chips act on: the one last placed on the picture,
+  /// or the one last tapped in either pane. Null when none is.
+  int? selectedPoint;
+
+  void selectPoint(int? index) {
+    if (index == selectedPoint) return;
+    selectedPoint = index;
+    notifyListeners();
+  }
+
+  /// Calls landmark [index] [name], or nothing for an empty one.
+  void nameLandmark(int index, String? name) {
+    if (index >= settings.landmarks.length) return;
+    final landmarks = [...settings.landmarks];
+    final named = landmarks[index].named(name);
+    if (named == landmarks[index]) return;
+    landmarks[index] = named;
+    settings = settings.copyWith(landmarks: landmarks);
+    _persistSoon();
+    notifyListeners();
+  }
+
+  /// Whether mark [i] has been placed on the drawing.
+  bool isMarked(int i) => i < _marks.length && _marks[i] != null;
+
+  /// A tap on the picture while marking: a new point there, at [point] on
+  /// the photograph as a fraction of each side.
+  void addLandmark(Offset point) {
+    if (settings.landmarks.length >= kMaxLandmarks) return;
+    selectedPoint = settings.landmarks.length;
+    _placed.add(settings.landmarks.length);
+    settings = settings.copyWith(
+      landmarks: [...settings.landmarks, Landmark(point)],
+    );
+    _persistSoon();
+    notifyListeners();
+  }
+
+  /// A tap on the drawing while marking, at [mark] as a fraction of each
+  /// side of its photograph: the drawing's half of the first point not yet
+  /// marked on it. Nothing while every point is.
+  void placeMark(Offset mark) {
+    final next = nextMark;
+    if (next == null) return;
+    _setMark(next, mark);
+    _placed.add(-1 - next);
+    _persistSoon();
+    notifyListeners();
+  }
+
+  /// Puts landmark [index], on the picture, at [point] on the photograph.
+  void moveLandmark(int index, Offset point) {
+    final landmarks = [...settings.landmarks];
+    if (landmarks[index].at == point) return;
+    landmarks[index] = landmarks[index].movedTo(point);
+    settings = settings.copyWith(landmarks: landmarks);
+    _persistSoon();
+    notifyListeners();
+  }
+
+  /// Puts the drawing's half of landmark [index] at [mark] on its
+  /// photograph.
+  void moveMark(int index, Offset mark) {
+    if (!isMarked(index) || _marks[index] == mark) return;
+    _setMark(index, mark);
+    _persistSoon();
+    notifyListeners();
+  }
+
+  void _setMark(int index, Offset mark) {
+    final sketch = settings.sketch;
+    if (sketch == null) return;
+    final marks = [..._marks];
+    while (marks.length <= index) {
+      marks.add(null);
+    }
+    marks[index] = Offset(mark.dx.clamp(0.0, 1.0), mark.dy.clamp(0.0, 1.0));
+    settings = settings.copyWith(sketch: sketch.copyWith(marks: marks));
+  }
+
+  /// What each tap while marking placed, latest last: the index of a
+  /// landmark, or of a mark as `-1 - index`. Only for [undoPoint], so not
+  /// kept with the study.
+  final List<int> _placed = [];
+
+  /// Takes back the last point placed. With nothing placed since the study
+  /// opened, the last mark on the drawing, or failing that the last point
+  /// on the picture.
+  void undoPoint() {
+    final landmarks = settings.landmarks;
+    if (landmarks.isEmpty) return;
+    final marks = _marks;
+    final lastMark = marks.lastIndexWhere((m) => m != null);
+    final last = _placed.isNotEmpty
+        ? _placed.removeLast()
+        : lastMark >= 0
+        ? -1 - lastMark
+        : landmarks.length - 1;
+    if (last < 0) {
+      if (-1 - last < marks.length) _dropMark(-1 - last);
+    } else if (last == landmarks.length - 1) {
+      settings = settings.copyWith(
+        landmarks: landmarks.sublist(0, last),
+        sketch: settings.sketch?.copyWith(
+          marks: marks.length > last ? marks.sublist(0, last) : marks,
+        ),
+      );
+    }
+    if (selectedPoint case final p? when p >= settings.landmarks.length) {
+      selectedPoint = null;
+    }
+    _persistSoon();
+    notifyListeners();
+  }
+
+  void _dropMark(int index) {
+    final sketch = settings.sketch!;
+    final marks = [...sketch.marks];
+    marks[index] = null;
+    while (marks.isNotEmpty && marks.last == null) {
+      marks.removeLast();
+    }
+    settings = settings.copyWith(sketch: sketch.copyWith(marks: marks));
+  }
+
+  /// Takes away every point, on the picture and on the drawing.
+  void clearPoints() {
+    if (settings.landmarks.isEmpty && _marks.isEmpty) return;
+    _placed.clear();
+    selectedPoint = null;
+    settings = settings.copyWith(
+      landmarks: const [],
+      sketch: settings.sketch?.copyWith(marks: const []),
+    );
+    _persistSoon();
+    notifyListeners();
+  }
+
+  /// The drawing's points against the picture's, for every landmark marked
+  /// on both. Null under three such pairs. The picture's in pixels of the
+  /// photograph, the drawing's in pixels of its own: the fit finds the
+  /// scale and turn between them, so how the overlay lies does not matter.
+  LandmarkFit? get landmarkFit {
+    final photo = photoSize;
+    final drawing = _drawingSize;
+    if (photo == null || drawing == null) return null;
+    final picture = <Offset>[];
+    final drawn = <Offset>[];
+    final numbers = <int>[];
+    final names = <String?>[];
+    for (var i = 0; i < settings.landmarks.length; i++) {
+      if (!isMarked(i)) continue;
+      final p = settings.landmarks[i].at;
+      final m = _marks[i]!;
+      picture.add(Offset(p.dx * photo.width, p.dy * photo.height));
+      drawn.add(Offset(m.dx * drawing.width, m.dy * drawing.height));
+      numbers.add(i + 1);
+      names.add(settings.landmarks[i].name);
+    }
+    return fitLandmarks(picture, drawn, numbers: numbers, names: names);
+  }
+
+  /// Lays the drawing over the picture as the fit puts it, so its points
+  /// lie as near the picture's as they can. What is left over is the
+  /// drawing's own.
+  void _lineUpOnPoints() {
+    final fit = landmarkFit;
+    final sketch = settings.sketch;
+    final photo = photoSize;
+    final drawing = _drawingSize;
+    if (fit == null || sketch == null || photo == null || drawing == null) {
+      return;
+    }
+    moveSketch(fit.overlay(sketch, photo, drawing));
+  }
+
   void _dropSketchImage() {
     aligningSketch = false;
+    markingPoints = false;
+    // A new photograph of the drawing starts its marks afresh.
+    _placed.removeWhere((p) => p < 0);
     final old = sketchImage;
     sketchImage = null;
     if (old != null) _disposeAfterFrame(old);
@@ -806,6 +1036,7 @@ class CanvasSession extends ChangeNotifier {
       probing = true;
       _stopDrawingLines();
       aligningSketch = false;
+      markingPoints = false;
     } else {
       _stopProbing();
     }

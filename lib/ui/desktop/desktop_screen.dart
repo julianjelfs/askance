@@ -12,6 +12,7 @@ import '../../theme.dart';
 import '../fullscreen/fullscreen_stub.dart'
     if (dart.library.js_interop) '../fullscreen/fullscreen_web.dart';
 import '../canvas/canvas_surface.dart';
+import '../canvas/points_compare.dart';
 import '../canvas/tool_panel.dart';
 import '../crop/crop_screen.dart';
 import '../share/share_sheet.dart';
@@ -122,6 +123,10 @@ class _Stage extends ConsumerWidget {
     if (!session.hasImage || shader == null) {
       return const ColoredBox(color: AskanceColors.surround);
     }
+
+    // Marking points sets the picture and the drawing side by side, so it
+    // takes the whole stage rather than a frame the shape of one of them.
+    if (session.markingPoints) return PointsCompare(session: session);
 
     return ColoredBox(
       color: AskanceColors.surround,

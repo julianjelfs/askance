@@ -16,6 +16,7 @@ import '../fullscreen/fullscreen_stub.dart'
 import '../widgets/controls.dart';
 import '../widgets/glyphs.dart';
 import 'canvas_surface.dart';
+import 'points_compare.dart';
 import 'tool_panel.dart';
 
 /// The study on a phone or a tablet held upright: the picture on its grey
@@ -127,7 +128,11 @@ class _CanvasBodyState extends ConsumerState<_CanvasBody>
       children: [
         // A study opened from the shelf grows out of its thumbnail. A study
         // that has never been saved has no thumbnail to grow from.
-        if (session.studyId case final id?)
+        // Marking points sets the picture and the drawing side by side in
+        // place of the canvas.
+        if (session.markingPoints)
+          PointsCompare(session: session)
+        else if (session.studyId case final id?)
           Hero(
             tag: studyHeroTag(id),
             child: CanvasSurface(
@@ -216,7 +221,8 @@ class _CanvasBodyState extends ConsumerState<_CanvasBody>
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Expanded(child: surface),
-                      if (session.settings.mode.paintsOnlyPalette)
+                      if (session.settings.mode.paintsOnlyPalette &&
+                          !session.markingPoints)
                         collapsing(
                           IgnorePointer(
                             ignoring: !session.chromeVisible,

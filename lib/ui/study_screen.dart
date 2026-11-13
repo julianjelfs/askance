@@ -105,6 +105,16 @@ class _StudyKeysState extends State<StudyKeys> {
       session.setAligningSketch(false);
       return true;
     }
+    if (session.markingPoints && key == LogicalKeyboardKey.escape) {
+      session.setMarkingPoints(false);
+      return true;
+    }
+    if (session.markingPoints &&
+        (key == LogicalKeyboardKey.delete ||
+            key == LogicalKeyboardKey.backspace)) {
+      session.undoPoint();
+      return true;
+    }
     if (session.probing && key == LogicalKeyboardKey.escape) {
       session.setProbing(false);
       return true;

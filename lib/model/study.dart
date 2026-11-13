@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show listEquals;
 import '../engine/crop.dart';
 import '../engine/engine.dart';
 import '../engine/families.dart';
+import '../engine/landmarks.dart' show Landmark, kMaxLandmarks;
 import '../engine/lines.dart';
 import '../engine/random_ramp.dart';
 import '../engine/regions.dart';
@@ -58,6 +59,7 @@ class StudySettings {
     this.gridFrame = kWholeImage,
     this.tone = const PhotoTone(),
     this.lines = const [],
+    this.landmarks = const [],
     this.sketch,
     this.shadowSteps,
     this.familyLine,
@@ -144,6 +146,11 @@ class StudySettings {
   /// Lines ruled over the picture. Part of the board, like the grid: shown
   /// and exported with it, and hidden while it is off.
   final List<BoardLine> lines;
+
+  /// Points picked on the picture to check the drawing's proportions by,
+  /// placed on the whole photograph like [lines]. The drawing's half of
+  /// each is [SketchOverlay.marks].
+  final List<Landmark> landmarks;
 
   /// A photograph of the drawing, laid over the picture to check it against
   /// the reference. Null until one is added.
@@ -254,6 +261,7 @@ class StudySettings {
     Rect? gridFrame,
     PhotoTone? tone,
     List<BoardLine>? lines,
+    List<Landmark>? landmarks,
     SketchOverlay? sketch,
     bool removeSketch = false,
     int? shadowSteps,
@@ -280,6 +288,7 @@ class StudySettings {
     gridFrame: gridFrame ?? this.gridFrame,
     tone: tone ?? this.tone,
     lines: lines ?? this.lines,
+    landmarks: landmarks ?? this.landmarks,
     sketch: removeSketch ? null : sketch ?? this.sketch,
     shadowSteps: removeFamilies ? null : shadowSteps ?? this.shadowSteps,
     familyLine: removeFamilies ? null : familyLine ?? this.familyLine,
@@ -308,6 +317,8 @@ class StudySettings {
     'gridFrame': cropToJson(gridFrame),
     'tone': tone.toJson(),
     'lines': [for (final line in lines) line.toJson()],
+    if (landmarks.isNotEmpty)
+      'landmarks': [for (final p in landmarks) p.toJson()],
     if (sketch case final sketch?) 'sketch': sketch.toJson(),
     'shadowSteps': ?shadowSteps,
     'familyLine': ?familyLine,
@@ -369,6 +380,11 @@ class StudySettings {
       if (json['lines'] case final List<Object?> lines)
         for (final line in lines) ?BoardLine.fromJson(line),
     ],
+    // A damaged point costs that point.
+    landmarks: [
+      if (json['landmarks'] case final List<Object?> points)
+        for (final p in points) ?Landmark.fromJson(p),
+    ].take(kMaxLandmarks).toList(),
     // A damaged sketch costs the sketch, not the study.
     sketch: SketchOverlay.fromJson(json['sketch']),
     shadowSteps: json['shadowSteps'] is num
@@ -402,6 +418,7 @@ class StudySettings {
       other.gridFrame == gridFrame &&
       other.tone == tone &&
       listEquals(other.lines, lines) &&
+      listEquals(other.landmarks, landmarks) &&
       other.sketch == sketch &&
       other.shadowSteps == shadowSteps &&
       other.familyLine == familyLine &&
@@ -429,7 +446,13 @@ class StudySettings {
     tone,
     Object.hashAll(lines),
     // Object.hash takes at most twenty.
-    Object.hash(sketch, shadowSteps, familyLine, familyGap),
+    Object.hash(
+      sketch,
+      shadowSteps,
+      familyLine,
+      familyGap,
+      Object.hashAll(landmarks),
+    ),
   );
 }
 
