@@ -120,12 +120,26 @@ const double kReferenceWidth = 480;
 /// runs the whole pipeline small and relies on getting the shapes the screen
 /// has, so a sigma that drifted with resolution would put the numbers on
 /// regions that are not there.
+///
+/// The ramp alone never reaches zero, and what it left at the top was a
+/// pixel or two of blur over a picture the control called fully detailed:
+/// soft enough to see beside the original. So the last [kSharpFade] of the
+/// control takes the sigma the rest of the way down, and at full detail the
+/// picture is the photograph, untouched.
 double blurSigma(double detail, double renderWidth) {
   const ceiling = 16.4, floor = 0.4;
   return ceiling *
       math.pow(floor / ceiling, detail) *
+      ((1 - detail) / kSharpFade).clamp(0.0, 1.0) *
       (renderWidth / kReferenceWidth);
 }
+
+/// How much of the top of the detail control the blur runs out over. Short
+/// of every stage, so none of them moves.
+const double kSharpFade = 0.1;
+
+/// A sigma below this blurs nothing a screen can show, and is not asked for.
+const double kNoBlur = 0.05;
 
 /// Skeleton stroke weight, in output pixels.
 double skeletonLineWidth(double renderWidth) =>
@@ -478,30 +492,35 @@ Future<ui.Image> renderBlurredSource({
   //
   // Rasterising into a layer first and filtering that layer is unambiguous on
   // both backends: the sigma is pinned to output pixels.
-  canvas.saveLayer(
-    Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble()),
-    Paint()
-      // Clamp rather than decal: a decal blur pulls transparency in from
-      // outside the layer and leaves a dark rim once premultiplied.
-      ..imageFilter = ui.ImageFilter.blur(
-        sigmaX: sigma * scaleX,
-        sigmaY: sigma * scaleY,
-        tileMode: TileMode.clamp,
-      ),
-  );
+  final sharp = sigma < kNoBlur;
+  if (!sharp) {
+    canvas.saveLayer(
+      Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble()),
+      Paint()
+        // Clamp rather than decal: a decal blur pulls transparency in from
+        // outside the layer and leaves a dark rim once premultiplied.
+        ..imageFilter = ui.ImageFilter.blur(
+          sigmaX: sigma * scaleX,
+          sigmaY: sigma * scaleY,
+          tileMode: TileMode.clamp,
+        ),
+    );
+  }
   canvas.drawImageRect(
     source,
     cropPx,
     placed,
     Paint()..filterQuality = FilterQuality.medium,
   );
-  canvas.restore();
+  if (!sharp) canvas.restore();
 
   final picture = recorder.endRecording();
   final image = await picture.toImage(w, h);
   picture.dispose();
 
-  if (smoothing == Smoothing.gaussian) return image;
+  // With nothing blurred there are no gradients for the flattening to turn
+  // back into patches.
+  if (smoothing == Smoothing.gaussian || sharp) return image;
 
   // Both modes merge by the same blur, so the detail slider means the same
   // thing in each. All Kuwahara does is decide the character of what is left:

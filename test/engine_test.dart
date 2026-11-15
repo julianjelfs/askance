@@ -9,7 +9,16 @@ void main() {
   group('blur sigma', () {
     test('spans the range the control is defined over', () {
       expect(blurSigma(0, 480), closeTo(16.4, 1e-9));
-      expect(blurSigma(1, 480), closeTo(0.4, 1e-9));
+      expect(blurSigma(1, 480), 0);
+    });
+
+    test('leaves the stages where the ramp alone puts them', () {
+      // The run down to nothing happens above the last stage, so asking for
+      // a sharp picture at the top does not move any of them.
+      expect(
+        blurSigma(0.8, 480),
+        closeTo(16.4 * math.pow(0.4 / 16.4, 0.8), 1e-9),
+      );
     });
 
     test('ramps geometrically, so the slider is used all the way', () {
@@ -21,7 +30,7 @@ void main() {
     test('scales with render width so shapes stay the same size', () {
       // computeRegions runs the pipeline small and needs the same shapes the
       // screen has, which only holds if this is strictly proportional.
-      for (final detail in [0.0, 0.25, 0.5, 0.75, 1.0]) {
+      for (final detail in [0.0, 0.25, 0.5, 0.75, 0.95]) {
         expect(
           blurSigma(detail, 960) / blurSigma(detail, 480),
           closeTo(2, 1e-9),
