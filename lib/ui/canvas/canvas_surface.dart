@@ -7,6 +7,7 @@ import 'package:flutter/services.dart'
     show HardwareKeyboard, KeyEvent, LogicalKeyboardKey;
 import 'package:flutter/widgets.dart';
 
+import '../../engine/boxes.dart';
 import '../../engine/deferred_disposer.dart';
 import 'screen_awake.dart';
 import '../../engine/crop.dart';
@@ -50,7 +51,8 @@ class CanvasSurface extends StatefulWidget {
   /// instead of the whole thing simply getting bigger.
   final bool freezeBlur;
 
-  /// Whether lines can be ruled here while the session is drawing them. Only
+  /// Whether guides, lines and boxes, can be drawn here while the session is
+  /// drawing them. Only
   /// the desktop stage: a mouse tells a click from a drag cleanly, where a
   /// finger on the phone's canvas is already panning, peeking and toggling
   /// the controls.
@@ -107,15 +109,14 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
     session.setProbeColour(point, colour);
   }
 
-  /// Shift pressed or let go with the mouse still: the line being ruled
+  /// Shift pressed or let go with the mouse still: the guide being drawn
   /// snaps, or lets go of the snap, without waiting for the mouse to move.
   bool _onKey(KeyEvent event) {
     final key = event.logicalKey;
     if ((key == LogicalKeyboardKey.shiftLeft ||
             key == LogicalKeyboardKey.shiftRight) &&
         _editing &&
-        widget.session.lineStart != null &&
-        _hover != null) {
+        _draft != null) {
       setState(() {});
     }
     return false;
@@ -144,7 +145,24 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
   ({int line, int end})? _draggingEnd;
   Offset _grabOffset = Offset.zero;
 
-  /// The mouse over the picture while lines are being ruled.
+  /// The box being resized from a corner, and the corner across from it,
+  /// on the photograph, which stays put. [_grabOffset] keeps the corner
+  /// under the pointer where it was taken.
+  ({int box, Offset anchor})? _resizing;
+
+  /// The box being moved by a side, as it was when taken hold of.
+  ({int box, BoardBox start})? _moving;
+
+  /// The line being moved whole, as it was when taken hold of.
+  ({int line, BoardLine start})? _movingLine;
+
+  /// A new guide being dragged out, on screen: where the drag began and
+  /// where the pointer is now, held inside the picture. Where the far end
+  /// lands is [_draftEnd], which snaps with shift.
+  ({GuideShape shape, Offset anchor, Offset pointer})? _draft;
+
+  /// The mouse over the picture while guides are being drawn, for the
+  /// cursor.
   Offset? _hover;
 
   /// The drawing as a gesture lining it up found it, which every update of
@@ -181,6 +199,10 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
     _gestureStart = widget.session.view;
     _focalStart = details.localFocalPoint;
     _draggingEnd = null;
+    _resizing = null;
+    _moving = null;
+    _movingLine = null;
+    _draft = null;
     if (_aligning) {
       setState(() => _sketchStart = widget.session.settings.sketch);
       return;
@@ -199,15 +221,100 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
             ) -
             _downAt;
         session.selectLine(found.line);
+        return;
+      }
+      final boxes = session.settings.boxes;
+      if (boxCornerAt(boxes, _downAt, crop, _picture) case final corner?) {
+        final box = boxes[corner.box];
+        _resizing = (box: corner.box, anchor: box.opposite(corner.corner));
+        _grabOffset =
+            lineToScreen(box.corners[corner.corner], crop, _picture) - _downAt;
+        session.selectBox(corner.box);
+        return;
+      }
+      final lines = session.settings.lines;
+      if (lineAt(lines, _downAt, crop, _picture) case final index?) {
+        _movingLine = (line: index, start: lines[index]);
+        session.selectLine(index);
+        return;
+      }
+      if (boxEdgeAt(boxes, _downAt, crop, _picture) case final index?) {
+        _moving = (box: index, start: boxes[index]);
+        session.selectBox(index);
+        return;
+      }
+      if (_area.contains(_downAt)) {
+        setState(
+          () => _draft = (
+            shape: session.guideShape,
+            anchor: _downAt,
+            pointer: _downAt,
+          ),
+        );
       }
     }
   }
 
+  /// Where the far end of [draft] lands on screen: for a line, snapped to
+  /// 15 degrees with shift held; for a box, square.
+  Offset _draftEnd(({GuideShape shape, Offset anchor, Offset pointer}) draft) =>
+      switch (draft.shape) {
+        GuideShape.line => _lineEnd(draft.anchor, draft.pointer),
+        GuideShape.box => _boxCorner(draft.anchor, draft.pointer),
+      };
+
   void _onScaleEnd(ScaleEndDetails details) {
     if (_sketchStart != null) setState(() => _sketchStart = null);
-    if (_draggingEnd == null) return;
-    setState(() => _draggingEnd = null);
+    if (_draft case final draft?) {
+      final session = widget.session;
+      final crop = session.settings.crop;
+      final end = _draftEnd(draft);
+      final a = screenToLine(draft.anchor, crop, _picture);
+      final b = screenToLine(end, crop, _picture);
+      switch (draft.shape) {
+        case GuideShape.line:
+          if ((end - draft.anchor).distance >= kMinGuideDrag) {
+            session.addLine(BoardLine(a, b));
+          }
+        case GuideShape.box:
+          final r = Rect.fromPoints(draft.anchor, end);
+          if (r.width >= kMinGuideDrag && r.height >= kMinGuideDrag) {
+            session.addBox(BoardBox.spanning(a, b));
+          }
+      }
+    }
+    if (_draggingEnd == null &&
+        _resizing == null &&
+        _moving == null &&
+        _movingLine == null &&
+        _draft == null) {
+      return;
+    }
+    setState(() {
+      _draggingEnd = null;
+      _resizing = null;
+      _moving = null;
+      _movingLine = null;
+      _draft = null;
+    });
   }
+
+  /// [at] held inside the picture as it shows: a corner or an end dragged
+  /// off it would be out of reach.
+  Offset _clampToArea(Offset at) {
+    final area = _area;
+    return Offset(
+      at.dx.clamp(area.left, area.right),
+      at.dy.clamp(area.top, area.bottom),
+    );
+  }
+
+  /// Where the dragged corner of a box from [anchor], on screen, goes for
+  /// the pointer at [to]: with shift held the box is square.
+  Offset _boxCorner(Offset anchor, Offset to) =>
+      HardwareKeyboard.instance.isShiftPressed
+      ? squaredBoxCorner(anchor, to, _area)
+      : to;
 
   void _onScaleUpdate(ScaleUpdateDetails details) {
     final session = widget.session;
@@ -229,15 +336,50 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
       );
       return;
     }
-    if (_draggingEnd case final dragging?) {
-      // Held inside the picture as it shows: an end dragged off it would be
-      // out of reach.
-      final area = _area;
-      final at = details.localFocalPoint + _grabOffset;
-      final clamped = Offset(
-        at.dx.clamp(area.left, area.right),
-        at.dy.clamp(area.top, area.bottom),
+    if (_draft case final draft?) {
+      setState(
+        () => _draft = (
+          shape: draft.shape,
+          anchor: draft.anchor,
+          pointer: _clampToArea(details.localFocalPoint),
+        ),
       );
+      return;
+    }
+    if (_resizing case final resizing?) {
+      final crop = session.settings.crop;
+      final anchor = lineToScreen(resizing.anchor, crop, _picture);
+      final corner = _boxCorner(
+        anchor,
+        _clampToArea(details.localFocalPoint + _grabOffset),
+      );
+      session.setBox(
+        resizing.box,
+        BoardBox.spanning(
+          resizing.anchor,
+          screenToLine(corner, crop, _picture),
+        ),
+      );
+      return;
+    }
+    if (_moving case final moving?) {
+      final crop = session.settings.crop;
+      final by =
+          screenToLine(details.localFocalPoint, crop, _picture) -
+          screenToLine(_downAt, crop, _picture);
+      session.setBox(moving.box, moving.start.movedBy(by));
+      return;
+    }
+    if (_movingLine case final moving?) {
+      final crop = session.settings.crop;
+      final by =
+          screenToLine(details.localFocalPoint, crop, _picture) -
+          screenToLine(_downAt, crop, _picture);
+      session.setLine(moving.line, moving.start.movedBy(by));
+      return;
+    }
+    if (_draggingEnd case final dragging?) {
+      final clamped = _clampToArea(details.localFocalPoint + _grabOffset);
       final crop = session.settings.crop;
       final other = lineToScreen(
         session.settings.lines[dragging.line].end(1 - dragging.end),
@@ -299,7 +441,7 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
       return;
     }
     if (_editing) {
-      _onLineClick(position);
+      _onGuideClick(position);
       return;
     }
     final pending = _pendingTap;
@@ -318,38 +460,31 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
     });
   }
 
-  /// A click while ruling lines. Acts at once, with no wait for a second
-  /// click: ruling takes the double click's zoom, and the scroll wheel still
-  /// zooms.
-  void _onLineClick(Offset position) {
+  /// A click while drawing guides. Acts at once, with no wait for a second
+  /// click: drawing takes the double click's zoom, and the scroll wheel
+  /// still zooms. Guides are drawn by dragging, so a click only selects the
+  /// line or box under it, or lets go of the selection.
+  void _onGuideClick(Offset position) {
     final session = widget.session;
     final crop = session.settings.crop;
     final picture = _picture;
-    if (session.lineStart == null) {
-      final lines = session.settings.lines;
-      final hit =
-          lineEndAt(lines, position, crop, picture)?.line ??
-          lineAt(lines, position, crop, picture);
-      if (hit != null) {
-        session.selectLine(hit == session.selectedLine ? null : hit);
-        return;
-      }
-      // A click away from a selected line lets go of it, rather than also
-      // starting a line nobody meant to.
-      if (session.selectedLine != null) {
-        session.selectLine(null);
-        return;
-      }
+    final lines = session.settings.lines;
+    final hit =
+        lineEndAt(lines, position, crop, picture)?.line ??
+        lineAt(lines, position, crop, picture);
+    if (hit != null) {
+      session.selectLine(hit == session.selectedLine ? null : hit);
+      return;
     }
-    if (!_area.contains(position)) return;
-    final end = switch (session.lineStart) {
-      final start? => _lineEnd(lineToScreen(start, crop, picture), position),
-      null => position,
-    };
-    // Snapped from a start since panned out of view, the end can land off
-    // the picture too.
-    if (!_area.inflate(0.5).contains(end)) return;
-    session.placeLineEnd(screenToLine(end, crop, picture));
+    final boxes = session.settings.boxes;
+    final box =
+        boxCornerAt(boxes, position, crop, picture)?.box ??
+        boxEdgeAt(boxes, position, crop, picture);
+    if (box != null) {
+      session.selectBox(box == session.selectedBox ? null : box);
+      return;
+    }
+    session.deselectGuide();
   }
 
   MouseCursor get _cursor {
@@ -359,19 +494,27 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
           : SystemMouseCursors.grab;
     }
     if (!_editing) return MouseCursor.defer;
-    if (_draggingEnd != null) return SystemMouseCursors.grabbing;
+    if (_draggingEnd != null || _moving != null || _movingLine != null) {
+      return SystemMouseCursors.grabbing;
+    }
+    if (_resizing != null || _draft != null) return SystemMouseCursors.precise;
     final hover = _hover;
     if (hover == null || _size.isEmpty) return SystemMouseCursors.precise;
     final session = widget.session;
     final crop = session.settings.crop;
-    if (session.lineStart == null) {
-      final lines = session.settings.lines;
-      if (lineEndAt(lines, hover, crop, _picture) != null) {
-        return SystemMouseCursors.grab;
-      }
-      if (lineAt(lines, hover, crop, _picture) != null) {
-        return SystemMouseCursors.click;
-      }
+    final lines = session.settings.lines;
+    if (lineEndAt(lines, hover, crop, _picture) != null) {
+      return SystemMouseCursors.grab;
+    }
+    final boxes = session.settings.boxes;
+    if (boxCornerAt(boxes, hover, crop, _picture) case final corner?) {
+      return corner.corner.isEven
+          ? SystemMouseCursors.resizeUpLeftDownRight
+          : SystemMouseCursors.resizeUpRightDownLeft;
+    }
+    if (lineAt(lines, hover, crop, _picture) != null ||
+        boxEdgeAt(boxes, hover, crop, _picture) != null) {
+      return SystemMouseCursors.move;
     }
     return SystemMouseCursors.precise;
   }
@@ -636,28 +779,50 @@ class _CanvasSurfaceState extends State<CanvasSurface> {
                     if (session.probing)
                       if (session.probePoint case final point?)
                         ..._probeMarker(point),
+                    // Every box says its proportions, drawing or not: they
+                    // are what it is for. On screen only; the export carries
+                    // the boxes without the words.
+                    if (widget.drawGrid &&
+                        session.settings.boxes.isNotEmpty &&
+                        session.photoSize != null)
+                      IgnorePointer(
+                        child: CustomPaint(
+                          size: Size.infinite,
+                          painter: _BoxLabelPainter(
+                            boxes: session.settings.boxes,
+                            crop: session.settings.crop,
+                            picture: _picture,
+                            visible: _area,
+                            photo: session.photoSize!,
+                            flipped: session.flipped,
+                          ),
+                        ),
+                      ),
                     // Its own layer, so following the mouse repaints the
                     // handles and not the picture under them.
                     if (_editing)
                       CustomPaint(
                         painter: _LineEditPainter(
                           lines: session.settings.lines,
+                          boxes: session.settings.boxes,
                           crop: session.settings.crop,
                           picture: _picture,
                           visible: _area,
                           photo: session.photoSize,
+                          flipped: session.flipped,
                           selected: session.selectedLine,
-                          start: session.lineStart,
-                          hover: switch ((session.lineStart, _hover)) {
-                            (final start?, final hover?) => _lineEnd(
-                              lineToScreen(
-                                start,
-                                session.settings.crop,
-                                _picture,
-                              ),
-                              hover,
+                          selectedBox: session.selectedBox,
+                          draftLine: switch (_draft) {
+                            final d? when d.shape == GuideShape.line => (
+                              d.anchor,
+                              _draftEnd(d),
                             ),
-                            _ => _hover,
+                            _ => null,
+                          },
+                          draftBox: switch (_draft) {
+                            final d? when d.shape == GuideShape.box =>
+                              Rect.fromPoints(d.anchor, _draftEnd(d)),
+                            _ => null,
                           },
                         ),
                       ),
@@ -717,29 +882,40 @@ class _SketchPainter extends CustomPainter {
       old.outline != outline;
 }
 
-/// What only shows while lines are being ruled: a handle on every end, the
-/// selected line picked out with every other line's length as a multiple of
-/// it, and the line being ruled following the mouse from its first end.
+/// What only shows while guides are being drawn: a handle on every end and
+/// corner, the selected line picked out with every other line's length as a
+/// multiple of it, the selected box picked out, and the line or box being
+/// dragged out.
 class _LineEditPainter extends CustomPainter {
   _LineEditPainter({
     required this.lines,
+    required this.boxes,
     required this.crop,
     required this.picture,
     required this.visible,
     required this.photo,
+    required this.flipped,
     required this.selected,
-    required this.start,
-    required this.hover,
+    required this.selectedBox,
+    required this.draftLine,
+    required this.draftBox,
   });
 
   final List<BoardLine> lines;
+  final List<BoardBox> boxes;
   final Rect crop;
   final Rect picture;
   final Rect visible;
   final Size? photo;
+  final bool flipped;
   final int? selected;
-  final Offset? start;
-  final Offset? hover;
+  final int? selectedBox;
+
+  /// The line being dragged out, on screen, from where the drag began.
+  final (Offset, Offset)? draftLine;
+
+  /// The box being dragged out, on screen.
+  final Rect? draftBox;
 
   static const double _handleRadius = 4.5;
 
@@ -776,9 +952,47 @@ class _LineEditPainter extends CustomPainter {
       canvas.drawCircle(at, _handleRadius, ring);
     }
 
+    if (selectedBox case final index? when index < boxes.length) {
+      canvas.drawRect(
+        boxToScreen(boxes[index], crop, picture),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..color = AskanceColors.accent
+          ..strokeWidth = 4,
+      );
+    }
+
     for (var i = 0; i < lines.length; i++) {
       handle(lineToScreen(lines[i].a, crop, picture), filled: i == selected);
       handle(lineToScreen(lines[i].b, crop, picture), filled: i == selected);
+    }
+    for (var i = 0; i < boxes.length; i++) {
+      for (final corner in boxes[i].corners) {
+        handle(lineToScreen(corner, crop, picture), filled: i == selectedBox);
+      }
+    }
+
+    if ((draftBox, photo) case (final r?, final size?)) {
+      final rubber = Paint()
+        ..color = AskanceColors.accent.withValues(alpha: 0.6)
+        ..strokeWidth = 2
+        ..strokeCap = StrokeCap.round;
+      paintBoxOutline(
+        canvas,
+        r,
+        Paint()
+          ..color = rubber.color
+          ..strokeWidth = 2
+          ..style = PaintingStyle.stroke,
+        rubber,
+      );
+      final box = BoardBox.spanning(
+        screenToLine(r.topLeft, crop, picture),
+        screenToLine(r.bottomRight, crop, picture),
+      );
+      if (boxRatioLabel(box, size) case final text?) {
+        paintBoxLabel(canvas, r, text, visible, flipped: flipped);
+      }
     }
 
     if ((selected, photo) case (final unit?, final size?)) {
@@ -796,16 +1010,13 @@ class _LineEditPainter extends CustomPainter {
       }
     }
 
-    if (start case final first?) {
-      final from = lineToScreen(first, crop, picture);
-      if (hover case final to?) {
-        final rubber = Paint()
-          ..color = AskanceColors.accent.withValues(alpha: 0.6)
-          ..strokeWidth = 2
-          ..strokeCap = StrokeCap.round;
-        canvas.drawLine(from, to, rubber);
-        paintTicks(canvas, from, to, rubber);
-      }
+    if (draftLine case (final from, final to)) {
+      final rubber = Paint()
+        ..color = AskanceColors.accent.withValues(alpha: 0.6)
+        ..strokeWidth = 2
+        ..strokeCap = StrokeCap.round;
+      canvas.drawLine(from, to, rubber);
+      paintTicks(canvas, from, to, rubber);
       handle(from, filled: true);
     }
     canvas.restore();
@@ -850,13 +1061,114 @@ class _LineEditPainter extends CustomPainter {
   @override
   bool shouldRepaint(_LineEditPainter old) =>
       old.lines != lines ||
+      old.boxes != boxes ||
       old.crop != crop ||
       old.picture != picture ||
       old.visible != visible ||
       old.photo != photo ||
+      old.flipped != flipped ||
       old.selected != selected ||
-      old.start != start ||
-      old.hover != hover;
+      old.selectedBox != selectedBox ||
+      old.draftLine != draftLine ||
+      old.draftBox != draftBox;
+}
+
+/// Each box's proportions, on a tab above it.
+class _BoxLabelPainter extends CustomPainter {
+  _BoxLabelPainter({
+    required this.boxes,
+    required this.crop,
+    required this.picture,
+    required this.visible,
+    required this.photo,
+    required this.flipped,
+  });
+
+  final List<BoardBox> boxes;
+  final Rect crop;
+  final Rect picture;
+  final Rect visible;
+  final Size photo;
+  final bool flipped;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (visible.isEmpty || picture.isEmpty) return;
+    canvas.save();
+    canvas.clipRect(visible);
+    for (final box in boxes) {
+      if (boxRatioLabel(box, photo) case final text?) {
+        paintBoxLabel(
+          canvas,
+          boxToScreen(box, crop, picture),
+          text,
+          visible,
+          flipped: flipped,
+        );
+      }
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_BoxLabelPainter old) =>
+      old.boxes != boxes ||
+      old.crop != crop ||
+      old.picture != picture ||
+      old.visible != visible ||
+      old.photo != photo ||
+      old.flipped != flipped;
+}
+
+/// The gap between a box and the tab with its proportions.
+const double _boxLabelGap = 4;
+
+/// [text] on a paper tab centred over the top of [box], on screen. Inside
+/// the box when there is no room above it in [visible]. [flipped] when the
+/// picture is shown upside down, so the words are turned back upright and
+/// sit over what reads as the top.
+void paintBoxLabel(
+  Canvas canvas,
+  Rect box,
+  String text,
+  Rect visible, {
+  required bool flipped,
+}) {
+  final painter = TextPainter(
+    text: TextSpan(text: text, style: AskanceText.number(12)),
+    textDirection: TextDirection.ltr,
+  )..layout();
+  final width = painter.width + 10;
+  final height = painter.height + 6;
+  // Upside down, what reads as the top is the bottom.
+  final edge = flipped ? box.bottom : box.top;
+  final outward = flipped ? 1.0 : -1.0;
+  var centreY = edge + outward * (_boxLabelGap + height / 2);
+  final room = flipped
+      ? visible.bottom - (centreY + height / 2)
+      : (centreY - height / 2) - visible.top;
+  if (room < 0) centreY = edge - outward * (_boxLabelGap + height / 2);
+  final tab = Rect.fromCenter(
+    center: Offset(box.center.dx, centreY),
+    width: width,
+    height: height,
+  );
+  canvas.save();
+  if (flipped) {
+    canvas.translate(tab.center.dx, tab.center.dy);
+    canvas.rotate(math.pi);
+    canvas.translate(-tab.center.dx, -tab.center.dy);
+  }
+  canvas.drawRRect(
+    RRect.fromRectAndRadius(tab, const Radius.circular(AskanceRadius.small)),
+    Paint()..color = AskanceColors.paper,
+  );
+  painter.paint(
+    canvas,
+    tab.center - Offset(painter.width / 2, painter.height / 2),
+  );
+  canvas.restore();
+  painter.dispose();
 }
 
 /// The dropper's mark: a ring with a dark and a light edge, so it reads on

@@ -174,6 +174,16 @@ void main() {
     expect(lengths[2], closeTo(0.5, 1e-9));
   });
 
+  test('a line moved toward an edge stops at it without shortening or '
+      'turning', () {
+    const line = BoardLine(Offset(0.6, 0.4), Offset(0.9, 0.2));
+    final moved = line.movedBy(const Offset(0.5, -0.5));
+    expect(moved.a.dx, closeTo(0.7, 1e-9));
+    expect(moved.a.dy, closeTo(0.2, 1e-9));
+    expect(moved.b.dx, closeTo(1, 1e-9));
+    expect(moved.b.dy, closeTo(0, 1e-9));
+  });
+
   group('with shift held, a line being ruled', () {
     const area = Rect.fromLTWH(0, 0, 400, 300);
     const from = Offset(100, 100);
@@ -202,8 +212,9 @@ void main() {
     });
   });
 
-  testWidgets('on the desktop, with the grid off, two clicks rule a line and '
-      'dragging an end moves it', (tester) async {
+  testWidgets('on the desktop, with the grid off, a drag draws a line, '
+      'dragging an end moves that end, and dragging the line moves it '
+      'whole', (tester) async {
     tester.view.physicalSize = const Size(400, 600);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -231,12 +242,41 @@ void main() {
       ),
     );
 
-    await tester.tapAt(const Offset(100, 150), kind: PointerDeviceKind.mouse);
-    await tester.tapAt(const Offset(300, 450), kind: PointerDeviceKind.mouse);
-    await tester.pump();
-    expect(session.settings.lines, const [
-      BoardLine(Offset(0.25, 0.25), Offset(0.75, 0.75)),
-    ]);
+    Future<void> drag(Offset from, Offset by) async {
+      final gesture = await tester.startGesture(
+        from,
+        kind: PointerDeviceKind.mouse,
+      );
+      // Past the slop in one step, then the rest, so the drag ends where
+      // it was meant to.
+      await gesture.moveBy(by / 2);
+      await tester.pump();
+      await gesture.moveBy(by / 2);
+      await tester.pump();
+      await gesture.up();
+      await tester.pump(const Duration(seconds: 1));
+    }
+
+    void expectLine(BoardLine actual, BoardLine expected) {
+      expect(actual.a.dx, closeTo(expected.a.dx, 1e-9));
+      expect(actual.a.dy, closeTo(expected.a.dy, 1e-9));
+      expect(actual.b.dx, closeTo(expected.b.dx, 1e-9));
+      expect(actual.b.dy, closeTo(expected.b.dy, 1e-9));
+    }
+
+    await drag(const Offset(100, 150), const Offset(200, 300));
+    expect(session.settings.lines, hasLength(1));
+    expectLine(
+      session.settings.lines.single,
+      const BoardLine(Offset(0.25, 0.25), Offset(0.75, 0.75)),
+    );
+    expect(session.view, const ViewTransform(), reason: 'no pan');
+
+    // A click on empty picture draws nothing, and nor does a slip.
+    session.selectLine(null);
+    await tester.tapAt(const Offset(50, 500), kind: PointerDeviceKind.mouse);
+    await drag(const Offset(50, 500), const Offset(3, 2));
+    expect(session.settings.lines, hasLength(1));
 
     // Taken a few pixels off the end: the end moves with the pointer
     // rather than jumping under it.
@@ -246,9 +286,10 @@ void main() {
       kind: PointerDeviceKind.mouse,
     );
     await tester.pump(const Duration(seconds: 1));
-    expect(session.settings.lines.single.a, const Offset(0.25, 0.25));
-    expect(session.settings.lines.single.b.dx, closeTo(0.5, 1e-9));
-    expect(session.settings.lines.single.b.dy, closeTo(0.75, 1e-9));
+    expectLine(
+      session.settings.lines.single,
+      const BoardLine(Offset(0.25, 0.25), Offset(0.5, 0.75)),
+    );
     expect(session.view, const ViewTransform(), reason: 'no pan');
 
     // Pressed and held on an end before dragging it, the line stays in
@@ -265,11 +306,19 @@ void main() {
     expect(session.peeking, isFalse);
     expect(session.settings.lines.single.b.dy, closeTo(7 / 12, 1e-9));
 
-    // With shift held, a line clicked a little off plumb is ruled plumb.
+    // Taken by the middle, the line moves whole, keeping its length and
+    // angle. It runs from (100, 150) to (200, 350) on screen now.
+    await drag(const Offset(150, 250), const Offset(40, 0));
+    expect(session.settings.lines, hasLength(1));
+    expectLine(
+      session.settings.lines.single,
+      const BoardLine(Offset(0.35, 0.25), Offset(0.6, 7 / 12)),
+    );
+
+    // With shift held, a line dragged a little off plumb is drawn plumb.
     session.selectLine(null);
     await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
-    await tester.tapAt(const Offset(100, 300), kind: PointerDeviceKind.mouse);
-    await tester.tapAt(const Offset(112, 500), kind: PointerDeviceKind.mouse);
+    await drag(const Offset(100, 300), const Offset(12, 200));
     await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
     await tester.pump();
     expect(session.settings.lines, hasLength(2));

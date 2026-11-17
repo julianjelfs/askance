@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 
 import '../model/study.dart';
 import '../theme.dart';
+import 'boxes.dart';
 import 'crop.dart';
 import 'deferred_disposer.dart';
 import 'engine.dart';
@@ -147,6 +148,14 @@ class ValuePainter extends CustomPainter {
       paintLines(
         canvas,
         settings.lines,
+        settings.crop,
+        dest,
+        area,
+        paint: boardLinePaint,
+      );
+      paintBoxes(
+        canvas,
+        settings.boxes,
         settings.crop,
         dest,
         area,

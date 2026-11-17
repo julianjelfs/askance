@@ -11,10 +11,21 @@ import '../engine/engine.dart';
 import '../engine/families.dart';
 import '../engine/landmarks.dart';
 import '../engine/blur_pass.dart';
+import '../engine/boxes.dart';
 import '../engine/lines.dart';
 import '../engine/sketch.dart';
 import '../engine/value_scale.dart';
 import '../model/study.dart';
+
+/// What a click or drag on empty picture draws while guides are being
+/// drawn. Either way, the guides already there can be taken hold of.
+enum GuideShape {
+  line('Line'),
+  box('Box');
+
+  const GuideShape(this.label);
+  final String label;
+}
 
 enum CanvasTool {
   /// How many values, and the stages that set values and detail together.
@@ -124,13 +135,17 @@ class CanvasSession extends ChangeNotifier {
   bool chromeVisible = true;
   CanvasTool? openTool;
 
-  /// Whether a click on the picture rules lines rather than doing what it
-  /// usually does. View state like [peeking], and with it [lineStart], the
-  /// first end of a line still being ruled, and [selectedLine], the one a
-  /// delete would remove.
+  /// Whether a drag on the picture draws guides, lines or boxes, rather
+  /// than doing what it usually does. View state like [peeking], and with
+  /// it [selectedLine] or [selectedBox], the one a delete would remove. At
+  /// most one of the two is selected.
   bool drawingLines = false;
-  Offset? lineStart;
   int? selectedLine;
+  int? selectedBox;
+
+  /// Which guide a drag on empty picture draws. Kept while the
+  /// session lasts, so coming back to draw more boxes starts on boxes.
+  GuideShape guideShape = GuideShape.line;
 
   /// The photograph of the drawing, decoded for the screen. Where it lies is
   /// [StudySettings.sketch]; this is only its pixels, read back from storage
@@ -283,8 +298,8 @@ class CanvasSession extends ChangeNotifier {
     view = incoming.view;
     isolatedBand = null;
     _stopProbing();
-    lineStart = null;
     selectedLine = null;
+    selectedBox = null;
     notifyListeners();
   }
 
@@ -594,27 +609,33 @@ class CanvasSession extends ChangeNotifier {
 
   void _stopDrawingLines() {
     drawingLines = false;
-    lineStart = null;
     selectedLine = null;
+    selectedBox = null;
   }
 
-  /// A click while ruling lines, at [point] on the photograph as [BoardLine]
-  /// measures it. The first click of a line places its start; the second
-  /// rules it. A second click on the first does nothing but forget it.
-  void placeLineEnd(Offset point) {
-    final start = lineStart;
-    selectedLine = null;
-    if (start == null) {
-      lineStart = point;
-    } else {
-      lineStart = null;
-      if (point != start) {
-        settings = settings.copyWith(
-          lines: [...settings.lines, BoardLine(start, point)],
-        );
-        _persistSoon();
-      }
-    }
+  void setGuideShape(GuideShape shape) {
+    if (shape == guideShape) return;
+    guideShape = shape;
+    notifyListeners();
+  }
+
+  /// Adds [line] and selects it, so the others read as multiples of it at
+  /// once.
+  void addLine(BoardLine line) {
+    settings = settings.copyWith(lines: [...settings.lines, line]);
+    selectedLine = settings.lines.length - 1;
+    selectedBox = null;
+    _persistSoon();
+    notifyListeners();
+  }
+
+  /// Puts line [index] at [line]: moved whole.
+  void setLine(int index, BoardLine line) {
+    if (settings.lines[index] == line) return;
+    final lines = [...settings.lines];
+    lines[index] = line;
+    settings = settings.copyWith(lines: lines);
+    _persistSoon();
     notifyListeners();
   }
 
@@ -630,37 +651,73 @@ class CanvasSession extends ChangeNotifier {
   }
 
   void selectLine(int? index) {
-    if (index == selectedLine) return;
+    if (index == selectedLine && (index == null || selectedBox == null)) {
+      return;
+    }
     selectedLine = index;
+    if (index != null) selectedBox = null;
     notifyListeners();
   }
 
-  /// Escape: forgets a half-ruled line or a selection, in that order.
-  /// Returns whether there was either.
-  bool cancelLine() {
-    if (lineStart == null && selectedLine == null) return false;
-    lineStart = null;
+  /// Adds [box] and selects it, so its proportions can be compared at once.
+  void addBox(BoardBox box) {
+    settings = settings.copyWith(boxes: [...settings.boxes, box]);
+    selectedBox = settings.boxes.length - 1;
     selectedLine = null;
+    _persistSoon();
+    notifyListeners();
+  }
+
+  /// Puts box [index] at [box]: resized from a corner, or moved whole.
+  void setBox(int index, BoardBox box) {
+    if (settings.boxes[index] == box) return;
+    final boxes = [...settings.boxes];
+    boxes[index] = box;
+    settings = settings.copyWith(boxes: boxes);
+    _persistSoon();
+    notifyListeners();
+  }
+
+  void selectBox(int? index) {
+    if (index == selectedBox && (index == null || selectedLine == null)) {
+      return;
+    }
+    selectedBox = index;
+    if (index != null) selectedLine = null;
+    notifyListeners();
+  }
+
+  /// Lets go of the selected line or box. Returns whether there was one.
+  bool deselectGuide() {
+    if (selectedLine == null && selectedBox == null) return false;
+    selectedLine = null;
+    selectedBox = null;
     notifyListeners();
     return true;
   }
 
-  /// Removes the selected line. Returns whether there was one.
-  bool deleteSelectedLine() {
-    final index = selectedLine;
-    if (index == null) return false;
-    settings = settings.copyWith(lines: [...settings.lines]..removeAt(index));
+  /// Removes the selected line or box. Returns whether there was one.
+  bool deleteSelectedGuide() {
+    if (selectedLine case final index?) {
+      settings = settings.copyWith(lines: [...settings.lines]..removeAt(index));
+    } else if (selectedBox case final index?) {
+      settings = settings.copyWith(boxes: [...settings.boxes]..removeAt(index));
+    } else {
+      return false;
+    }
     selectedLine = null;
+    selectedBox = null;
     _persistSoon();
     notifyListeners();
     return true;
   }
 
-  void clearLines() {
-    if (settings.lines.isEmpty && lineStart == null) return;
-    settings = settings.copyWith(lines: const []);
-    lineStart = null;
+  /// Removes every line and box.
+  void clearGuides() {
+    if (settings.lines.isEmpty && settings.boxes.isEmpty) return;
+    settings = settings.copyWith(lines: const [], boxes: const []);
     selectedLine = null;
+    selectedBox = null;
     _persistSoon();
     notifyListeners();
   }

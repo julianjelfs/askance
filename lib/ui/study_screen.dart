@@ -58,8 +58,9 @@ class _StudyScreenState extends ConsumerState<StudyScreen> {
 }
 
 /// The study's keyboard shortcuts: the up arrow flips the picture, Escape
-/// stops lining up a sketch, and while lines are being ruled, Delete or Backspace removes the selected one and
-/// Escape lets go of a half-ruled line or a selection, then stops ruling.
+/// stops lining up a sketch, and while guides are being drawn, Delete or
+/// Backspace removes the selected line or box and Escape lets go of the
+/// selection, then stops drawing.
 ///
 /// Heard from the keyboard directly rather than bound through focus: the
 /// name's text field takes focus by autofocus, which a focus node held here
@@ -122,10 +123,10 @@ class _StudyKeysState extends State<StudyKeys> {
     if (!session.drawingLines) return false;
     if (key == LogicalKeyboardKey.delete ||
         key == LogicalKeyboardKey.backspace) {
-      return session.deleteSelectedLine();
+      return session.deleteSelectedGuide();
     }
     if (key == LogicalKeyboardKey.escape) {
-      if (!session.cancelLine()) session.setDrawingLines(false);
+      if (!session.deselectGuide()) session.setDrawingLines(false);
       return true;
     }
     return false;

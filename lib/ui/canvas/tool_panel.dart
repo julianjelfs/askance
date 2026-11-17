@@ -795,23 +795,34 @@ class GridControl extends StatelessWidget {
   }
 }
 
-/// Ruling straight lines over the picture. Desktop only: see
-/// [CanvasSurface.editLines].
-class LinesControl extends StatelessWidget {
-  const LinesControl({super.key, required this.session});
+/// Drawing guides over the picture: straight lines, and boxes that say
+/// their proportions. Desktop only: see [CanvasSurface.editLines].
+class GuidesControl extends StatelessWidget {
+  const GuidesControl({super.key, required this.session});
   final CanvasSession session;
 
   @override
   Widget build(BuildContext context) {
     final drawing = session.drawingLines;
+    final settings = session.settings;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        SegmentedControl<GuideShape>(
+          values: GuideShape.values,
+          selected: session.guideShape,
+          labelOf: (shape) => shape.label,
+          // Picking a shape is asking to draw it.
+          onChanged: (shape) => session
+            ..setGuideShape(shape)
+            ..setDrawingLines(true),
+        ),
+        const SizedBox(height: 8),
         Row(
           children: [
             Expanded(
               child: ActionButton(
-                label: drawing ? 'Done' : 'Draw lines',
+                label: drawing ? 'Done' : 'Draw',
                 solid: drawing,
                 height: 38,
                 fontSize: 13.5,
@@ -822,27 +833,31 @@ class LinesControl extends StatelessWidget {
             const SizedBox(width: 8),
             Expanded(
               child: ActionButton(
-                label: 'Clear lines',
+                label: 'Clear all',
                 solid: false,
                 height: 38,
                 fontSize: 13.5,
                 centred: true,
-                enabled: session.settings.lines.isNotEmpty,
-                onPressed: session.clearLines,
+                enabled: settings.lines.isNotEmpty || settings.boxes.isNotEmpty,
+                onPressed: session.clearGuides,
               ),
             ),
           ],
         ),
         const SizedBox(height: 8),
-        Text(
-          drawing
-              ? 'Click two points to draw a line. Drag an end to move it. '
-                    'Hold Shift to keep it level, plumb or at 15° steps. '
-                    'Click a line, then press Delete to remove it.'
-              : 'Straight lines over the picture, saved and exported with '
-                    'the study. Ticks mark the middle and quarters of each.',
-          style: AskanceText.caption(12.5),
-        ),
+        Text(switch ((drawing, session.guideShape)) {
+          (true, GuideShape.line) =>
+            'Drag to draw a line. Drag an end to change it, or the line '
+                'to move it. Hold Shift to keep it level, plumb or at 15° '
+                'steps. Click a line, then press Delete to remove it.',
+          (true, GuideShape.box) =>
+            'Drag to draw a box. Drag a corner to resize it, or a side to '
+                'move it. Hold Shift to keep it square. Click a box, then '
+                'press Delete to remove it.',
+          (false, _) =>
+            'Lines and boxes over the picture, saved and exported with '
+                'the study. Each box is labelled width to height.',
+        }, style: AskanceText.caption(12.5)),
       ],
     );
   }

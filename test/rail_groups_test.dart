@@ -61,7 +61,7 @@ void main() {
     await tap('Board');
     expect(find.text('Edit crop'), findsOneWidget);
 
-    await tap('Draw lines');
+    await tap('Draw');
     expect(session.drawingLines, isTrue);
 
     await tap('Picture');

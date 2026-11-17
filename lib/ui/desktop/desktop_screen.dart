@@ -402,12 +402,10 @@ class _RailState extends ConsumerState<_Rail> {
                         ),
                         _gap,
                         ControlLabelRow(
-                          label: 'Lines',
-                          value: settings.lines.isEmpty
-                              ? null
-                              : '${settings.lines.length}',
+                          label: 'Guides',
+                          value: _guidesSummary(settings),
                         ),
-                        LinesControl(session: session),
+                        GuidesControl(session: session),
                       ],
                     ),
                   ),
@@ -525,13 +523,23 @@ class _RailState extends ConsumerState<_Rail> {
 
   static String _boardSummary(CanvasSession session) {
     final settings = session.settings;
-    final lines = settings.lines.length;
     final n = settings.gridDivisions;
     return [
       cropSummary(session),
       if (settings.grid != GridMode.off) '$n × $n grid',
-      if (lines > 0) '$lines ${lines == 1 ? 'line' : 'lines'}',
+      ?_guidesSummary(settings),
     ].join(' · ');
+  }
+
+  /// How many lines and boxes there are, or null for none.
+  static String? _guidesSummary(StudySettings settings) {
+    final lines = settings.lines.length;
+    final boxes = settings.boxes.length;
+    final parts = [
+      if (lines > 0) '$lines ${lines == 1 ? 'line' : 'lines'}',
+      if (boxes > 0) '$boxes ${boxes == 1 ? 'box' : 'boxes'}',
+    ];
+    return parts.isEmpty ? null : parts.join(' · ');
   }
 
   static String _sketchSummary(CanvasSession session) {

@@ -21,6 +21,20 @@ class BoardLine {
 
   Offset end(int end) => end == 0 ? a : b;
 
+  /// The line moved by [by], both ends kept inside the photograph without
+  /// changing its length or angle.
+  BoardLine movedBy(Offset by) {
+    final left = math.min(a.dx, b.dx);
+    final top = math.min(a.dy, b.dy);
+    final right = math.max(a.dx, b.dx);
+    final bottom = math.max(a.dy, b.dy);
+    final shift = Offset(
+      by.dx.clamp(-left, 1 - right),
+      by.dy.clamp(-top, 1 - bottom),
+    );
+    return BoardLine(a + shift, b + shift);
+  }
+
   List<double> toJson() => [a.dx, a.dy, b.dx, b.dy];
 
   /// Null for anything that is not four numbers. The ends are held inside
@@ -75,6 +89,10 @@ List<double>? lengthsIn(List<BoardLine> lines, int unit, Size photo) {
 /// How near, in logical pixels, a click has to be to an end or a line to
 /// take hold of it.
 const double kLineReach = 8;
+
+/// The shortest drag, in logical pixels, that draws a guide: a line this
+/// long, or a box this big each way. Anything shorter was a slip.
+const double kMinGuideDrag = 6;
 
 /// The angles, in radians, a line snaps to with shift held: every 15
 /// degrees, so level and plumb among them.

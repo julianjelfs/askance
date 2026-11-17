@@ -2,6 +2,7 @@ import 'dart:ui' show Color, Offset, Rect;
 
 import 'package:flutter/foundation.dart' show listEquals;
 
+import '../engine/boxes.dart';
 import '../engine/crop.dart';
 import '../engine/engine.dart';
 import '../engine/families.dart';
@@ -58,6 +59,7 @@ class StudySettings {
     this.gridFrame = kWholeImage,
     this.tone = const PhotoTone(),
     this.lines = const [],
+    this.boxes = const [],
     this.landmarks = const [],
     this.sketch,
     this.shadowSteps,
@@ -144,6 +146,10 @@ class StudySettings {
   /// Lines ruled over the picture. Part of the board, like the grid: shown
   /// and exported with it, and hidden while it is off.
   final List<BoardLine> lines;
+
+  /// Boxes drawn round things on the picture to read their proportions by.
+  /// Part of the board, like [lines], and shown and exported with them.
+  final List<BoardBox> boxes;
 
   /// Points picked on the picture to check the drawing's proportions by,
   /// placed on the whole photograph like [lines]. The drawing's half of
@@ -257,6 +263,7 @@ class StudySettings {
     Rect? gridFrame,
     PhotoTone? tone,
     List<BoardLine>? lines,
+    List<BoardBox>? boxes,
     List<Landmark>? landmarks,
     SketchOverlay? sketch,
     bool removeSketch = false,
@@ -283,6 +290,7 @@ class StudySettings {
     gridFrame: gridFrame ?? this.gridFrame,
     tone: tone ?? this.tone,
     lines: lines ?? this.lines,
+    boxes: boxes ?? this.boxes,
     landmarks: landmarks ?? this.landmarks,
     sketch: removeSketch ? null : sketch ?? this.sketch,
     shadowSteps: removeFamilies ? null : shadowSteps ?? this.shadowSteps,
@@ -311,6 +319,7 @@ class StudySettings {
     'gridFrame': cropToJson(gridFrame),
     'tone': tone.toJson(),
     'lines': [for (final line in lines) line.toJson()],
+    if (boxes.isNotEmpty) 'boxes': [for (final box in boxes) box.toJson()],
     if (landmarks.isNotEmpty)
       'landmarks': [for (final p in landmarks) p.toJson()],
     if (sketch case final sketch?) 'sketch': sketch.toJson(),
@@ -373,6 +382,11 @@ class StudySettings {
       if (json['lines'] case final List<Object?> lines)
         for (final line in lines) ?BoardLine.fromJson(line),
     ],
+    // A damaged box costs that box.
+    boxes: [
+      if (json['boxes'] case final List<Object?> boxes)
+        for (final box in boxes) ?BoardBox.fromJson(box),
+    ],
     // A damaged point costs that point.
     landmarks: [
       if (json['landmarks'] case final List<Object?> points)
@@ -410,6 +424,7 @@ class StudySettings {
       other.gridFrame == gridFrame &&
       other.tone == tone &&
       listEquals(other.lines, lines) &&
+      listEquals(other.boxes, boxes) &&
       listEquals(other.landmarks, landmarks) &&
       other.sketch == sketch &&
       other.shadowSteps == shadowSteps &&
@@ -443,6 +458,7 @@ class StudySettings {
       familyLine,
       familyGap,
       Object.hashAll(landmarks),
+      Object.hashAll(boxes),
     ),
   );
 }
