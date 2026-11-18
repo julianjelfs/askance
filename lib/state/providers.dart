@@ -77,7 +77,9 @@ class StudiesNotifier extends AsyncNotifier<List<Study>> {
   /// if this study has never been saved.
   Future<Study> keep(CanvasSession session) async {
     final repo = ref.read(repositoryProvider);
-    final existing = state.valueOrNull ?? const <Study>[];
+    // Wait for the stored shelf: before it has loaded there is nothing in
+    // state, and saving that would replace every stored study.
+    final existing = await future;
 
     var imageKey = session.imageKey;
     if (imageKey == null || imageKey.isEmpty) {
@@ -113,7 +115,9 @@ class StudiesNotifier extends AsyncNotifier<List<Study>> {
     StudySettings settings,
     String name,
   ) async {
-    final existing = state.valueOrNull ?? const <Study>[];
+    // Wait for the stored shelf: before it has loaded there is nothing in
+    // state, and saving that would replace every stored study.
+    final existing = await future;
     final index = existing.indexWhere((s) => s.id == id);
     if (index < 0) return;
 
@@ -135,7 +139,9 @@ class StudiesNotifier extends AsyncNotifier<List<Study>> {
     if (session.studyId == id) session.clear();
 
     final repo = ref.read(repositoryProvider);
-    final existing = state.valueOrNull ?? const <Study>[];
+    // Wait for the stored shelf: before it has loaded there is nothing in
+    // state, and saving that would replace every stored study.
+    final existing = await future;
     final victim = existing.where((s) => s.id == id).firstOrNull;
     final next = existing.where((s) => s.id != id).toList();
     await repo.saveStudies(next);
