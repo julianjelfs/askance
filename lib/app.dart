@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'state/providers.dart';
 import 'theme.dart';
+import 'ui/aslant/aslant_receiver.dart';
 import 'ui/layout.dart';
 import 'ui/onboarding/onboarding_screen.dart';
 import 'ui/shelf/shelf_screen.dart';
@@ -61,7 +62,7 @@ class _Root extends ConsumerWidget {
     }
     final seen = ref.watch(onboardingSeenProvider);
 
-    return switch (seen) {
+    final screen = switch (seen) {
       // In the hand the tour owns the screen; on a desk the shelf embeds it
       // beside the rail.
       AsyncData(value: false) when !isWideLayout(context) =>
@@ -69,5 +70,10 @@ class _Root extends ConsumerWidget {
       AsyncData() => const ShelfScreen(),
       _ => const ColoredBox(color: AskanceColors.gesso),
     };
+    // Opened by Aslant: the picture it hands over opens as a new study.
+    if (ref.read(launchFromAslantProvider)) {
+      return AslantReceiver(child: screen);
+    }
+    return screen;
   }
 }

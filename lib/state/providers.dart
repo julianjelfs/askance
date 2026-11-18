@@ -43,6 +43,10 @@ final sketchLinkProvider = ChangeNotifierProvider<SketchLink>(
 final launchSketchRoomProvider =
     StateProvider<({String token, String keyB64})?>((ref) => null);
 
+/// Whether Aslant opened this page to hand over a picture. Set once at
+/// launch.
+final launchFromAslantProvider = StateProvider<bool>((ref) => false);
+
 final onboardingSeenProvider = AsyncNotifierProvider<OnboardingNotifier, bool>(
   OnboardingNotifier.new,
 );

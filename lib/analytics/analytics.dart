@@ -11,6 +11,7 @@ enum AppEvent {
   photoLoaded('photo-loaded', 'Opened a photograph'),
   sampleLoaded('sample-loaded', 'Opened the sample portrait'),
   studyReceived('study-received', 'Received a study from another device'),
+  aslantReceived('aslant-received', 'Received a picture from Aslant'),
   exportSaved('export-saved', 'Saved an export'),
   exportCopied('export-copied', 'Copied an export'),
   exportPrinted('export-printed', 'Printed an export');
